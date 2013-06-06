@@ -60,6 +60,7 @@ struct srs_context_s {
     void              *cached_srec;      /* previously looked up backend */
     mrp_list_hook_t    disambiguators;   /* disambiguators */
     void              *default_disamb;   /* default disambiguator */
+    void              *voice;            /* active voice engine if any */
 
     /* files and directories */
     const char      *config_file;        /* configuration file */

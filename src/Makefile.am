@@ -24,7 +24,8 @@ srs_daemon_SOURCES =				\
 		daemon/client.c			\
 		daemon/plugin.c			\
 		daemon/audiobuf.c		\
-		daemon/recognizer.c
+		daemon/recognizer.c		\
+		daemon/voice.c
 
 srs_daemon_CFLAGS = 				\
 		$(AM_CFLAGS)			\
@@ -176,6 +177,20 @@ plugin_search_client_la_LDFLAGS =				\
 		-module -avoid-version
 
 plugin_search_client_la_LIBADD  =
+
+# simple-voice synthesizer plugin
+plugin_LTLIBRARIES += plugin-simple-voice.la
+
+plugin_simple_voice_la_SOURCES =				\
+		plugins/simple-voice/simple-voice.c
+
+plugin_simple_voice_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_simple_voice_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_simple_voice_la_LIBADD  =
 
 
 
