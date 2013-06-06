@@ -31,6 +31,7 @@ static double candidate_score(srs_srec_candidate_t *);
 static uint32_t candidate_sort(srs_srec_candidate_t *,srs_srec_candidate_t **);
 
 static bool tkneq(const char *, const char *);
+static const char *tknbase(const char *token);
 
 
 void utterance_start(context_t *ctx)
@@ -181,10 +182,10 @@ static void acoustic_processor(context_t *ctx,
                     }
                     else {
                         tkn = cand->tokens + cand->ntoken++;
-                        tkn->token = hyp;
+                        tkn->token = tknbase(hyp);
                         ps_seg_frames(seg, &tkn->start, &tkn->end);
                         //printf("hyp=%s (%d, %d) tkn count %d\n",
-                        //      tkn->word, tkn->start,tkn->end, cand->ntoken); 
+                        //      tkn->token, tkn->start,tkn->end, cand->ntoken);
                     }
                 }
             } /* while seg */
@@ -252,7 +253,7 @@ static void fsg_processor(context_t *ctx,
 
             if (nod && (token = ps_latnode_word(dag, nod)) && *token != '<') {
                 tkn = cand->tokens + cand->ntoken++;
-                tkn->token = token;
+                tkn->token = tknbase(token);
                 tkn->start = ps_latnode_times(nod, &fef, &lef);
                 tkn->end = (fef + lef) / 2;
             }
@@ -273,7 +274,7 @@ static void fsg_processor(context_t *ctx,
 
                     if (!tkn || !tkneq(token, tkn->token)) {
                         tkn = cand->tokens + cand->ntoken++;
-                        tkn->token = token;
+                        tkn->token = tknbase(token);
                         tkn->start = start;
                         tkn->end = fef;
                     }
@@ -410,6 +411,36 @@ static bool tkneq(const char *tkn1, const char *tkn2)
     }
 
     return false;
+}
+
+static const char *tknbase(const char *token)
+{
+    static char  pool[16384];
+    static char *ptr = pool;
+    static char *end = pool + (sizeof(pool) - 1);
+
+    char c, *p, *stripped;
+    const char *q;
+    int i;
+
+    for (i = 0; i < 2;  i++) {
+        for (stripped = p = ptr, q = token;  p < end;  p++) {
+            c = *q++;
+
+            if (c == '\0')
+                return token;
+
+            if (c == '(') {
+                *p++ = '\0';
+                ptr = p;
+                return stripped;
+            }
+
+            *p++ = c;
+        }
+        ptr = pool;
+    }
+    return token;
 }
 
 
