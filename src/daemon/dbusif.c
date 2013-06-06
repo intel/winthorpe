@@ -264,7 +264,7 @@ static int register_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
     mrp_debug("got register request from %s", id);
 
     c = client_create(srs, SRS_CLIENT_TYPE_DBUS, name, appcls, cmds, ncmd,
-                      id, &ops);
+                      id, &ops, NULL);
 
     if (c != NULL) {
         if (mrp_dbus_follow_name(dbus, id, name_change_cb, srs)) {
@@ -414,11 +414,32 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 }
 
 
-static int command_notify(srs_client_t *client, int ntoken, char **tokens)
+static int command_notify(srs_client_t *c, int ntoken, char **tokens)
 {
-    MRP_UNUSED(client);
-    MRP_UNUSED(ntoken);
-    MRP_UNUSED(tokens);
+    srs_context_t *srs   = c->srs;
+    const char    *dest  = c->id;
+    const char    *path  = SRS_SERVICE_PATH;
+    const char    *iface = SRS_SERVICE_INTERFACE;
+    const char    *sig   = SRS_SIGNAL_COMMAND;
 
-    return FALSE;
+    char           buf[1024], *cmd, *p, *t;
+    int            i, n, l;
+
+    p = cmd = buf;
+    l = sizeof(cmd) - 1;
+    t = "";
+
+    for (i = 0; i < ntoken; i++) {
+        n = snprintf(p, l, "%s%s", t, tokens[i]);
+
+        if (n >= l)
+            return FALSE;
+
+        p += n;
+        l += n;
+        t  = " ";
+    }
+
+    return mrp_dbus_signal(srs->dbus, dest, path, iface, sig,
+                           DBUS_TYPE_STRING, &cmd, DBUS_TYPE_INVALID);
 }
