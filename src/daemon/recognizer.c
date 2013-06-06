@@ -185,7 +185,8 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
     mrp_log_info("Got %zd recognition candidates in from %s backend:",
                  utt->ncand, srec->name);
 
-    for (i = 0, c = utt->cands; i < (int)utt->ncand; i++, c++) {
+    for (i = 0; i < (int)utt->ncand; i++) {
+        c = utt->cands[i];
         mrp_log_info("Candidate #%d:", i);
         for (j = 0, t = c->tokens; j < (int)c->ntoken; j++, t++) {
             mrp_log_info("    token #%d: '%s'", j, t->token);

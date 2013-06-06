@@ -36,6 +36,9 @@ typedef struct srs_srec_utterance_s srs_srec_utterance_t;
 /** Type for a backend recognition notification callback. */
 typedef int (*srs_srec_notify_t)(srs_srec_utterance_t *utt, void *notify_data);
 
+/** Notification callback return value for flushing the full audio buffer. */
+#define SRS_SREC_FLUSH_ALL -1
+
 /*
  * API to a speech recognition backend.
  */
@@ -66,26 +69,24 @@ typedef struct {
     uint32_t  end;                       /* end in audio buffer */
 } srs_srec_token_t;
 
-
 /*
- * a single candidate
+ * a single candidate (essentially a set of speech tokens)
  */
 typedef struct {
-    double            score;
-    size_t            ntoken;
-    srs_srec_token_t *tokens;
+    double            score;             /* overall candidate quality score */
+    size_t            ntoken;            /* number of tokens in candidate */
+    srs_srec_token_t *tokens;            /* actual tokens of this candidate */
 } srs_srec_candidate_t;
 
-
 /*
- * an utterance with a set of candidates
+ * an utterance (candidates for a silence-terminated audio sequence)
  */
 struct srs_srec_utterance_s {
-    const char           *id;
-    double                score;
-    uint32_t              length;
-    size_t                ncand;
-    srs_srec_candidate_t *cands;
+    const char            *id;           /* backend ID for this utterance */
+    double                 score;        /* overall quality score */
+    uint32_t               length;       /* length in the audio buffer */
+    size_t                 ncand;        /* number of candidates */
+    srs_srec_candidate_t **cands;        /* actual candidates */
 };
 
 /** Register a speech recognition backend. */
