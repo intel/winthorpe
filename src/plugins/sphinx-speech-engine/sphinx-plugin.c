@@ -126,53 +126,29 @@ static void *sampledup(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static int check_decoder(const char *model, void *user_data)
+static int check_decoder(const char *decoder, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
 
     MRP_UNUSED(ctx);
 
-    mrp_debug("checking model '%s' for CMU Sphinx backend", model);
+    mrp_debug("checking availability of decoder '%s' for CMU Sphinx backend",
+              decoder);
 
     return TRUE;
 }
 
 
-static int sphinx_check_dictionary(const char *dictionary, void *user_data)
+static int select_decoder(const char *decoder, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
 
     MRP_UNUSED(ctx);
 
-    mrp_debug("checking dictionary '%s' for CMU Sphinx backend", dictionary);
+    mrp_debug("selecting decoder '%s' for CMU Sphinx backend", decoder);
 
     return TRUE;
 }
-
-
-static int set_decoder(const char *model, void *user_data)
-{
-    context_t *ctx = (context_t *)user_data;
-
-    MRP_UNUSED(ctx);
-
-    mrp_debug("setting model '%s' for CMU Sphinx backend", model);
-
-    return TRUE;
-}
-
-
-static int sphinx_set_dictionary(const char *dictionary, void *user_data)
-{
-    context_t *ctx = (context_t *)user_data;
-
-    MRP_UNUSED(ctx);
-
-    mrp_debug("setting dictionary '%s' for CMU Sphinx backend", dictionary);
-
-    return TRUE;
-}
-
 
 static int create_sphinx(srs_plugin_t *plugin)
 {
@@ -182,10 +158,8 @@ static int create_sphinx(srs_plugin_t *plugin)
     flush:            flush,
     rescan:           rescan,
     sampledup:        sampledup,
-    check_model:      check_decoder,
-    check_dictionary: sphinx_check_dictionary,
-    set_model:        set_decoder,
-    set_dictionary:   sphinx_set_dictionary,
+    check_decoder:    check_decoder,
+    select_decoder:   select_decoder,
     };
 
     srs_context_t *srs = plugin->srs;
