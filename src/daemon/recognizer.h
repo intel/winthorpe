@@ -30,6 +30,12 @@
 #ifndef __SRS_DAEMON_RECOGNIZER_H__
 #define __SRS_DAEMON_RECOGNIZER_H__
 
+#include "src/daemon/client.h"
+
+/*
+ * speech recognition backend interface
+ */
+
 /** Type for tokens recognized by a speech recognition backend. */
 typedef struct srs_srec_utterance_s srs_srec_utterance_t;
 
@@ -97,6 +103,9 @@ int srs_register_srec(srs_context_t *srs, const char *name,
 /** Unregister a speech recognition backend. */
 void srs_unregister_srec(srs_context_t *srs, const char *name);
 
+/** Macro to refer to the default recognizer backend. */
+#define SRS_DEFAULT_RECOGNIZER NULL
+
 /** Activate speech recognition using the specified backend. */
 int srs_activate_srec(srs_context_t *srs, const char *name);
 
@@ -109,5 +118,85 @@ int srs_check_decoder(srs_context_t *srs, const char *name,
 
 /** Select a decoder for a backend. */
 int srs_set_decoder(srs_context_t *srs, const char *name, const char *decoder);
+
+
+/*
+ * speech recognition disambiguator interface
+ */
+
+/** Type for disambiguated speech recognition results. */
+typedef struct srs_srec_result_s srs_srec_result_t;
+
+/*
+ * disambiguation result
+ */
+
+typedef enum {
+    SRS_DISAMB_UNKNOWN = 0,
+    SRS_DISAMB_MATCH,                    /* full match */
+    SRS_DISAMB_RESCAN,                   /* rescan (after dictionary switch) */
+    SRS_DISAMB_AMBIGUOUS,                /* failed to (fully) disambiguate */
+} srs_disamb_type_t;
+
+typedef struct {
+    srs_disamb_type_t type;
+    union {
+        struct {
+            srs_client_t *clients;
+            int           indices;
+            int           nclient;
+        } match;
+        struct {
+            uint32_t      flush_start;
+            uint32_t      flush_end;
+        } rescan;
+        struct {
+            srs_client_t *clients;
+            int           indices;
+            int           nclient;
+        } ambiguity;
+    } result;
+} srs_disamb_result_t;
+
+struct srs_srec_result_s {
+    srs_client_t    *client;             /* client */
+    int              index;              /* command index */
+    double           score;              /* recognition backend score */
+    int              fuzz;               /* disambiguation fuzz */
+    mrp_list_hook_t  hook;               /* to more results */
+};
+
+
+/*
+ * API to a disambiguator implementation.
+ */
+
+typedef struct {
+    /** Register the commands of a client. */
+    int (*add_client)(srs_client_t *client, void *api_data);
+    /** Unregister the commands of a client. */
+    void (*del_client)(srs_client_t *client, void *api_data);
+    /** Disambiguate an utterance with candidates. */
+    int (*disambiguate)(srs_srec_utterance_t *utt, mrp_list_hook_t *results,
+                        void *api_data);
+} srs_disamb_api_t;
+
+
+/** Register a disambiguator implementation. */
+int srs_register_disambiguator(srs_context_t *srs, const char *name,
+                               srs_disamb_api_t *api, void *api_data);
+
+/** Unregister a disambiguator implementation. */
+void srs_unregister_disambiguator(srs_context_t *srs, const char *name);
+
+/** Register a client for speech recognition. */
+int srs_srec_add_client(srs_context_t *srs, srs_client_t *client);
+
+/** Unregister a client from speech recognition. */
+void srs_srec_del_client(srs_context_t *srs, srs_client_t *client);
+
+
+/** Macro to refer to the default disambiguator. */
+#define SRS_DEFAULT_DISAMBIGUATOR NULL
 
 #endif /* __SRS_DAEMON_RECOGNIZER_H__ */

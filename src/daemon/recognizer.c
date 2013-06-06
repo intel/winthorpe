@@ -34,15 +34,40 @@
 #include "src/daemon/context.h"
 #include "src/daemon/recognizer.h"
 
+
+/*
+ * a speech recognition backend
+ */
+
 typedef struct {
+    srs_context_t   *srs;                /* main context */
     char            *name;               /* recognizer name */
     mrp_list_hook_t  hook;               /* to list of recognizers */
     srs_srec_api_t   api;                /* backend API */
     void            *api_data;           /* opaque backend data */
 } srs_srec_t;
 
+
+/*
+ * a speech recognition disambiguator
+ */
+
+typedef struct {
+    char             *name;
+    mrp_list_hook_t   hook;
+    srs_disamb_api_t  api;
+    void             *api_data;
+} srs_disamb_t;
+
+
 static srs_srec_t *find_srec(srs_context_t *srs, const char *name);
 static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data);
+static srs_disamb_t *find_disamb(srs_context_t *srs, const char *name);
+
+
+/*
+ * speech recognizer backend handling
+ */
 
 int srs_register_srec(srs_context_t *srs, const char *name,
                       srs_srec_api_t *api, void *api_data,
@@ -66,6 +91,7 @@ int srs_register_srec(srs_context_t *srs, const char *name,
 
     if (srec != NULL) {
         mrp_list_init(&srec->hook);
+        srec->srs      = srs;
         srec->name     = mrp_strdup(name);
         srec->api      = *api;
         srec->api_data = api_data;
@@ -75,6 +101,9 @@ int srs_register_srec(srs_context_t *srs, const char *name,
 
             if (srs->cached_srec == NULL)
                 srs->cached_srec = srec;
+
+            if (srs->default_srec == NULL)
+                srs->default_srec = srec;
 
             mrp_log_info("Registered speech recognition engine '%s'.", name);
 
@@ -104,6 +133,9 @@ void srs_unregister_srec(srs_context_t *srs, const char *name)
 
         if (srs->cached_srec == srec)
             srs->cached_srec = NULL;
+
+        if (srs->default_srec == srec)
+            srs->default_srec = NULL;
 
         mrp_log_info("Unregistered speech recognition engine '%s'.", name);
     }
@@ -158,6 +190,9 @@ static srs_srec_t *find_srec(srs_context_t *srs, const char *name)
     srs_srec_t      *srec = srs->cached_srec;
     mrp_list_hook_t *p, *n;
 
+    if (name == SRS_DEFAULT_RECOGNIZER)
+        return srs->default_srec;
+
     if (srec == NULL || strcmp(srec->name, name) != 0) {
         mrp_list_foreach(&srs->recognizers, p, n) {
             srec = mrp_list_entry(p, typeof(*srec), hook);
@@ -175,10 +210,20 @@ static srs_srec_t *find_srec(srs_context_t *srs, const char *name)
 }
 
 
+static void free_srec_result(srs_srec_result_t *res)
+{
+    mrp_list_delete(&res->hook);
+    mrp_free(res);
+}
+
+
 static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
 {
     srs_srec_t           *srec = (srs_srec_t *)notify_data;
+    srs_disamb_t         *dis;
     srs_srec_candidate_t *c;
+    mrp_list_hook_t       results, *p, *n;
+    srs_srec_result_t    *res;
     srs_srec_token_t     *t;
     int                   i, j;
 
@@ -193,5 +238,123 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
         }
     }
 
+    dis = find_disamb(srec->srs, SRS_DEFAULT_DISAMBIGUATOR);
+
+    if (dis != NULL) {
+        mrp_list_init(&results);
+
+        if (dis->api.disambiguate(utt, &results, dis->api_data) == 0) {
+            mrp_log_info("Disambiguation succeeded.");
+
+            mrp_list_foreach(&results, p, n) {
+                res = mrp_list_entry(p, typeof(*res), hook);
+
+                client_notify_command(res->client, res->index);
+
+                free_srec_result(res);
+            }
+        }
+    }
+
     return -1;
+}
+
+
+/*
+ * disambiguator handling
+ */
+
+int srs_register_disambiguator(srs_context_t *srs, const char *name,
+                               srs_disamb_api_t *api, void *api_data)
+{
+    srs_disamb_t *dis;
+
+    if (find_disamb(srs, name) != NULL) {
+        mrp_log_error("A disambiguator '%s' already exists.", name);
+
+        errno = EEXIST;
+        return -1;
+    }
+
+    dis = mrp_allocz(sizeof(*dis));
+
+    if (dis != NULL) {
+        mrp_list_init(&dis->hook);
+        dis->name     = mrp_strdup(name);
+        dis->api      = *api;
+        dis->api_data = api_data;
+
+        if (dis->name != NULL) {
+            mrp_list_append(&srs->disambiguators, &dis->hook);
+
+            if (srs->default_disamb == NULL)
+                srs->default_disamb = dis;
+
+            mrp_log_info("Registered disambiguator '%s'.", name);
+
+            return 0;
+        }
+
+        mrp_free(dis);
+    }
+
+    mrp_log_error("Failed to allocate disambiguator '%s'.", name);
+
+    return -1;
+}
+
+
+void srs_unregister_disambiguator(srs_context_t *srs, const char *name)
+{
+    srs_disamb_t *dis = find_disamb(srs, name);
+
+    if (dis != NULL) {
+        mrp_list_delete(&dis->hook);
+        mrp_free(dis->name);
+        mrp_free(dis);
+
+        if (srs->default_disamb == dis)
+            srs->default_disamb = NULL;
+
+        mrp_log_info("Unregistered disambiguator '%s'.", name);
+    }
+}
+
+
+static srs_disamb_t *find_disamb(srs_context_t *srs, const char *name)
+{
+    srs_disamb_t    *dis;
+    mrp_list_hook_t *p, *n;
+
+    if (name == SRS_DEFAULT_DISAMBIGUATOR)
+        return srs->default_disamb;
+
+    mrp_list_foreach(&srs->disambiguators, p, n) {
+        dis = mrp_list_entry(p, typeof(*dis), hook);
+
+            if (!strcmp(dis->name, name))
+                return dis;
+    }
+
+    return NULL;
+}
+
+
+int srs_srec_add_client(srs_context_t *srs, srs_client_t *client)
+{
+    srs_disamb_t *dis = find_disamb(srs, SRS_DEFAULT_DISAMBIGUATOR);
+
+    if (dis != NULL)
+        return dis->api.add_client(client, dis->api_data);
+    else
+        return -1;
+}
+
+
+void srs_srec_del_client(srs_context_t *srs, srs_client_t *client)
+{
+   srs_disamb_t *dis = find_disamb(srs, SRS_DEFAULT_DISAMBIGUATOR);
+
+   if (dis != NULL)
+       dis->api.del_client(client, dis->api_data);
 }

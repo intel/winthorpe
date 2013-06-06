@@ -22,8 +22,7 @@ srs_daemon_SOURCES =				\
 		daemon/resourceif.c		\
 		daemon/client.c			\
 		daemon/plugin.c			\
-		daemon/recognizer.c		\
-		daemon/router.c
+		daemon/recognizer.c
 
 srs_daemon_CFLAGS = 				\
 		$(AM_CFLAGS)			\
@@ -113,6 +112,21 @@ plugin_nuance_speech_la_LDFLAGS =			\
 		-module -avoid-version
 
 plugin_nuance_speech_la_LIBADD  =
+
+# SRS fake speech engine plugin
+plugin_LTLIBRARIES += plugin-simple-disambiguator.la
+
+plugin_simple_disambiguator_la_SOURCES =			\
+		plugins/simple-disambiguator/disambiguator.c
+
+plugin_simple_disambiguator_la_CFLAGS  =			\
+		$(AM_CFLAGS)
+
+plugin_simple_disambiguator_la_LDFLAGS =			\
+		-module -avoid-version
+
+plugin_simple_disambiguator_la_LIBADD  =
+
 
 # cleanup
 clean-local::

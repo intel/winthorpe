@@ -62,10 +62,45 @@ typedef enum {
  * client commands
  */
 
+#define SRS_MAX_TOKENS 64
+
 typedef struct {
     char **tokens;                       /* tokens of this command */
     int    ntoken;                       /* number of tokens */
 } srs_command_t;
+
+
+/* dictionary pseudo-commands */
+#define SRS_DICTCMD_SWITCH    "__switch_dict__"
+#define SRS_DICTCMD_PUSH      "__push_dict__"
+#define SRS_DICTCMD_POP       "__pop_dict__"
+
+#define SRS_DICT_SWITCH(dict) SRS_DICTCMD_SWITCH"("dict")"
+#define SRS_DICT_PUSH(dict)   SRS_DICTCMD_PUSH"("dict")"
+#define SRS_DICT_POP()        SRS_DICTCMD_POP
+
+
+/*
+ * special tokens
+ */
+
+#define SRS_TOKEN_SWITCHDICT "__switch_dict__"
+#define SRS_TOKEN_PUSHDICT   "__push_dict__"
+#define SRS_TOKEN_POPDICT    "__pop_dict__"
+
+#define SRS_TOKEN_WILDCARD "*"           /* match till end of utterance */
+
+/*
+ * dictionary operations
+ */
+
+/* dictionary operations */
+typedef enum {
+    SRS_DICT_OP_UNKNOWN = 0,
+    SRS_DICT_OP_SWITCH,
+    SRS_DICT_OP_PUSH,
+    SRS_DICT_OP_POP
+} srs_dict_op_t;
 
 
 /*
@@ -93,7 +128,8 @@ struct srs_client_s {
     srs_voice_focus_t       focus;       /* requested voice focus */
     int                     enabled : 1; /* interested in commands */
     int                     allowed : 1; /* has resource granted */
-    srs_client_ops_t       *ops;         /* client ops (notifications)  */
+    srs_client_ops_t        ops;         /* client ops (notifications)  */
+    void                   *user_data;   /* opaque client data */
 };
 
 
@@ -101,7 +137,8 @@ struct srs_client_s {
 srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
                             const char *name, const char *appclass,
                             char **commands, int ncommand,
-                            const char *id, srs_client_ops_t *ops);
+                            const char *id, srs_client_ops_t *ops,
+                            void *user_data);
 
 /** Destroy a client. */
 void client_destroy(srs_client_t *c);
@@ -120,5 +157,8 @@ void client_reset_resources(srs_context_t *srs);
 
 /** Deliver a resource notification event to the client. */
 void client_resource_event(srs_client_t *c, srs_resset_event_t event);
+
+/** Deliver a command notification event to the client. */
+void client_notify_command(srs_client_t *c, int index);
 
 #endif /* __SRS_DAEMON_CLIENT_H__ */

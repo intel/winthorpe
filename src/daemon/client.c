@@ -31,6 +31,7 @@
 #include <murphy/common/log.h>
 
 #include "src/daemon/resourceif.h"
+#include "src/daemon/recognizer.h"
 #include "src/daemon/client.h"
 
 
@@ -153,7 +154,7 @@ static srs_command_t *parse_commands(char **commands, int ncommand)
 srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
                             const char *name, const char *appclass,
                             char **commands, int ncommand, const char *id,
-                            srs_client_ops_t *ops)
+                            srs_client_ops_t *ops, void *user_data)
 {
     srs_client_t *c;
 
@@ -163,13 +164,13 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
         return NULL;
 
     mrp_list_init(&c->hook);
-    c->srs  = srs;
-    c->type = type;
-    c->ops  = ops;
-
-    c->name     = mrp_strdup(name);
-    c->appclass = mrp_strdup(appclass);
-    c->id       = mrp_strdup(id);
+    c->srs       = srs;
+    c->type      = type;
+    c->ops       = *ops;
+    c->user_data = user_data;
+    c->name      = mrp_strdup(name);
+    c->appclass  = mrp_strdup(appclass);
+    c->id        = mrp_strdup(id);
 
     if (c->name == NULL || c->appclass == NULL || c->id == NULL) {
         client_destroy(c);
@@ -179,7 +180,7 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
     c->commands = parse_commands(commands, ncommand);
     c->ncommand = ncommand;
 
-    if (c->commands == NULL) {
+    if (c->commands == NULL || srs_srec_add_client(srs, c) != 0) {
         client_destroy(c);
         return NULL;
     }
@@ -201,6 +202,7 @@ void client_destroy(srs_client_t *c)
         mrp_log_info("destroying client %s (%s:%s)", c->id,
                      c->appclass, c->name);
 
+        srs_srec_del_client(c->srs, c);
         resource_destroy(c);
 
         mrp_list_delete(&c->hook);
@@ -275,7 +277,7 @@ static int notify_focus(srs_client_t *c)
                      c->focus == SRS_VOICE_FOCUS_SHARED ?
                      "shared " : "exclusive ");
 
-    c->ops->notify_focus(c, c->focus);
+    c->ops.notify_focus(c, c->focus);
 
     return TRUE;
 }
@@ -297,4 +299,21 @@ void client_resource_event(srs_client_t *c, srs_resset_event_t e)
     }
 
     notify_focus(c);
+}
+
+
+void client_notify_command(srs_client_t *c, int index)
+{
+    srs_command_t *cmd;
+    char          *tokens[SRS_MAX_TOKENS];
+    int            ntoken;
+
+    if (c->enabled && /*c->allowed && */ 0 <= index && index < c->ncommand) {
+        cmd = c->commands + index;
+
+        for (ntoken = 0; ntoken < cmd->ntoken; ntoken++)
+            tokens[ntoken] = cmd->tokens[ntoken];
+
+        c->ops.notify_command(c, ntoken, tokens);
+    }
 }
