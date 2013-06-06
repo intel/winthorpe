@@ -65,8 +65,6 @@ void decoder_set_destroy(context_t *ctx)
 
             if (dec->ps)
                 ps_free(dec->ps);
-            if (dec->cfg)
-                cmd_ln_free_r(dec->cfg);
 
             for (j = 0; j < dec->nfsg; j++)
                 mrp_free((void *)dec->fsgs[j]);
