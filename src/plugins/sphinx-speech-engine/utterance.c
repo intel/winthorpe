@@ -116,15 +116,11 @@ static void acoustic_processor(context_t *ctx,
     double prob;
     ps_nbest_t *nb;
     ps_seg_t *seg;
-    ps_lattice_t *dag;
-    ps_latnode_iter_t *it;
-    ps_latlink_t *lnk;
-    ps_latnode_t *nod;
     int32 start, end;
-    size_t ncand, nsort;
+    size_t ncand;
     srs_srec_candidate_t *cand;
     srs_srec_token_t *tkn;
-    int32_t length, purgelen;
+    int32_t length;
 
     if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec))
         return;
@@ -218,7 +214,6 @@ static void fsg_processor(context_t *ctx,
     decoder_set_t *decset;
     decoder_t *dec;
     logmath_t *lmath;
-    const char *hyp;
     const char *uttid;
     int32_t score;
     double prob;
@@ -230,13 +225,11 @@ static void fsg_processor(context_t *ctx,
     const char *token;
     int32_t start;
     int16 fef, lef;
-    int32_t purgelen;
 
     if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec))
         return;
 
     lmath = ps_get_logmath(dec->ps);
-    hyp = ps_get_hyp(dec->ps, &score, &uttid);
     prob = logmath_exp(lmath, score);
 
     cand = cands;
@@ -269,7 +262,7 @@ static void fsg_processor(context_t *ctx,
                 {
                     start = ps_latnode_times(nod, &fef, &lef);
 
-                    if (tkn && start < tkn->end)
+                    if (tkn && start < (int32_t)tkn->end)
                         break;  /* just take one candidate */
 
                     if (!tkn || !tkneq(token, tkn->token)) {
@@ -303,10 +296,10 @@ static void print_utterance(context_t *ctx, srs_srec_utterance_t *utt)
     size_t i,j;
 
     if (ctx && (decset = ctx->decset) && (dec = decset->curdec)) {
-        mrp_log_info("*** %15s  (%.4lf) %u candidates, length %u",
+        mrp_log_info("*** %15s  (%.4lf) %zd candidates, length %u",
                      utt->id, utt->score, utt->ncand, utt->length);
 
-        for (i = 0; cand = utt->cands[i];  i++) {
+        for (i = 0; (cand = utt->cands[i]) != NULL;  i++) {
             mrp_log_info("  (%.4lf) ----------------------", cand->score);
 
             for (j = 0;  j < cand->ntoken;  j++) {
@@ -388,7 +381,7 @@ static uint32_t candidate_sort(srs_srec_candidate_t *cands,
 static bool tkneq(const char *tkn1, const char *tkn2)
 {
     const char *e1, *e2;
-    int l1, l2, l;
+    int l1, l2;
 
     if (!tkn1 || !tkn2)
         return false;

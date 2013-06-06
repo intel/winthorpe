@@ -52,12 +52,12 @@ static void init_samples(const char *file)
     int fd;
 
     if (stat(file, &buf) < 0) {
-        printf("*** could not stat sample file '%s'\n");
+        printf("*** could not stat sample file '%s'\n", file);
         return;
     }
 
     if ((size = buf.st_size) > 500000) {
-        printf("*** file too length %u exceeds the max 500000\n", size);
+        printf("*** file too length %zd exceeds the max 500000\n", size);
         return;
     }
 
@@ -90,7 +90,7 @@ static void init_samples(const char *file)
 
     nsample = len / sizeof(int16_t);
 
-    printf("*** succesfully read %u samples\n", nsample);
+    printf("*** succesfully read %zd samples\n", nsample);
 }
 
 
@@ -166,6 +166,8 @@ int clients_start(context_t *ctx)
 
 int clients_stop(context_t *ctx)
 {
+    MRP_UNUSED(ctx);
+
     return 0;
 }
 
@@ -327,6 +329,9 @@ static int play_samples(context_t *ctx, size_t nsample, int16_t *samples)
 
 static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
 {
+    MRP_UNUSED(srs_client);
+    MRP_UNUSED(focus);
+
     return TRUE;
 }
 

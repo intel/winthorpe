@@ -146,7 +146,6 @@ void dbusif_set_player_property(player_t *player,
     DBusMessage *msg;
     DBusMessageIter mit;
     DBusMessageIter vit;
-    int success;
 
     if (!player || !player->name || !player->address ||
         !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
@@ -330,7 +329,6 @@ void dbusif_raise_player(player_t *player)
     context_t *ctx;
     dbusif_t *dbusif;
     DBusMessage *msg;
-    const char *member;
 
     if (!player || !player->address ||
         !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
@@ -351,7 +349,6 @@ void dbusif_quit_player(player_t *player)
     context_t *ctx;
     dbusif_t *dbusif;
     DBusMessage *msg;
-    const char *member;
 
     if (!player || !player->address ||
         !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
@@ -377,6 +374,9 @@ static void name_follow_cb(mrp_dbus_t *dbus,
     dbusif_t *dbusif;
     const char *dot;
     const char *name;
+
+    MRP_UNUSED(dbus);
+    MRP_UNUSED(error);
 
     if (ctx && (dbusif = ctx->dbusif) && (dot = strrchr(dbus_name, '.'))) {
         name = dot + 1;
@@ -412,6 +412,8 @@ static void property_query_cb(mrp_dbus_t *dbus,
     context_t *ctx;
     DBusMessageIter mit;
 
+    MRP_UNUSED(dbus);
+
     if (player && (ctx = player->ctx) && dbus_message_iter_init(msg, &mit))
         parse_properties(ctx, player, &mit);
 }
@@ -422,9 +424,10 @@ static void introspect_cb(mrp_dbus_t *dbus,
 {
     player_t *player = (player_t *)user_data;
     context_t *ctx;
-    DBusMessageIter mit;
     dbus_bool_t success;
     const char *xml;
+
+    MRP_UNUSED(dbus);
 
     if (player && (ctx = player->ctx)) {
         success = dbus_message_get_args(msg, NULL,
@@ -447,6 +450,8 @@ static void playlist_query_cb(mrp_dbus_t *dbus,
     playlist_t lists[PLAYLIST_MAX + 1];
     playlist_t *list;
     size_t nlist;
+
+    MRP_UNUSED(dbus);
 
     if (!player || !(ctx = player->ctx))
         return;
@@ -489,6 +494,8 @@ static int property_changed_cb(mrp_dbus_t *dbus,
     player_t *player;
     const char *interface;
     DBusMessageIter mit;
+
+    MRP_UNUSED(dbus);
 
     if (!ctx || ! sender)
         return FALSE;

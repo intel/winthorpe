@@ -179,6 +179,8 @@ static modem_t *create_modem(context_t *ctx,
     reference_modem(modem);
 
     mrp_list_prepend(&dbusif->modems, &modem->link);
+
+    return modem;
 }
 
 static void destroy_modem(modem_t *modem)
@@ -356,6 +358,8 @@ static int modem_property_changed_cb(mrp_dbus_t *dbus,
     int type;
     DBusBasicValue value;
 
+    MRP_UNUSED(dbus);
+
     if (ctx && (dbusif = ctx->dbusif) && dbus_message_iter_init(msg, &mit)) {
         path = dbus_message_get_path(msg);
 
@@ -398,6 +402,8 @@ static int handsfree_property_changed_cb(mrp_dbus_t *dbus,
     DBusBasicValue value;
     hfp_state_t state;
 
+    MRP_UNUSED(dbus);
+
     if (ctx && (dbusif = ctx->dbusif) && dbus_message_iter_init(msg, &mit)) {
         path = dbus_message_get_path(msg);
 
@@ -431,9 +437,10 @@ static void modem_query_all_cb(mrp_dbus_t *dbus,
     const char *addr;
     const char *name;
     dbus_bool_t online;
-    hfp_state_t state;
     modem_t *modem;
     DBusMessageIter mit, ait, sit;
+
+    MRP_UNUSED(dbus);
 
     if (ctx && (dbusif = ctx->dbusif) && dbus_message_iter_init(msg, &mit)) {
         if (dbus_message_iter_get_arg_type(&mit) != DBUS_TYPE_ARRAY)
@@ -479,8 +486,9 @@ static void modem_query_cb(mrp_dbus_t *dbus,
     const char *addr;
     const char *name;
     dbus_bool_t online;
-    hfp_state_t state;
-    DBusMessageIter mit, ait, sit;
+    DBusMessageIter mit;
+
+    MRP_UNUSED(dbus);
 
     if (modem && (ctx = modem->ctx)) {
 
@@ -517,7 +525,9 @@ static void handsfree_query_cb(mrp_dbus_t *dbus,
     modem_t *modem = (modem_t *)user_data;
     context_t *ctx;
     hfp_state_t state;
-    DBusMessageIter mit, ait, sit;
+    DBusMessageIter mit;
+
+    MRP_UNUSED(dbus);
 
     if (modem && (ctx = modem->ctx)) {
 
@@ -574,7 +584,6 @@ static void parse_modem_properties(context_t *ctx,
                                    const char **btname,
                                    dbus_bool_t *online)
 {
-    modem_t *modem;
     const char *prop;
     int type;
     DBusBasicValue value;
@@ -648,8 +657,7 @@ static void parse_handsfree_properties(modem_t *modem,
     const char *prop;
     int type;
     DBusBasicValue value;
-    DBusMessageIter ait, dit, vit, iit;
-    dbus_bool_t has_handsfree_interface = FALSE;
+    DBusMessageIter ait, dit, vit;
 
     if (!modem || !sit || !state)
         return;

@@ -215,7 +215,7 @@ static int config_sphinx(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
     context_t *ctx = (context_t *)plugin->plugin_data;
     srs_cfg_t *cfg;
-    int        n, i;
+    int        n;
 
     mrp_debug("configuring CMU Sphinx speech recognition backend plugin");
 

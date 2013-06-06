@@ -115,9 +115,6 @@ static int stream_create(context_t *ctx)
     options_t *opts = ctx->opts;
     pulse_interface_t *pulseif = ctx->pulseif;
     input_buf_t *inpbuf = ctx->inpbuf;
-    decoder_set_t *decset = ctx->decset;
-    decoder_t *dec = decset->decs;
-    cmd_ln_t  *cfg  = dec->cfg;
     double rate = opts->rate;
     double dsilen = opts->silen;
     const char *source = opts->srcnam;
@@ -277,6 +274,8 @@ static void read_callback(pa_stream *stream, size_t bytes, void *userdata)
     pulse_interface_t *pulseif = ctx->pulseif;
     const void *data;
     size_t size;
+
+    MRP_UNUSED(bytes);
 
     if (pulseif->stream != stream) {
         mrp_log_error("sphinx plugin: %s() confused with internal "

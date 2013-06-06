@@ -62,14 +62,16 @@ static void sink_info_callback(pa_context *, const pa_sink_info *,
 int pulseif_create(context_t *ctx, pa_mainloop *mloop)
 {
     pulseif_t *pulseif = NULL;
-    pa_mainloop_api *api = NULL;
+#if 0
+    pa_mainloop_api *api;
+#endif
 
     if (!(pulseif = mrp_allocz(sizeof(pulseif_t))))
         goto failed;
 
+#if 0
     api = pa_mainloop_get_api(mloop);
 
-#if 0
     if (pa_signal_init(api) < 0)
         goto failed;
 #endif
@@ -630,6 +632,8 @@ static void read_callback(pa_stream *stream, size_t bytes, void *userdata)
     double m;
     int16_t *s;
 
+    MRP_UNUSED(bytes);
+
     if (!card || !(device = card->device) || !(ctx = device->ctx) ||
         !(pulseif = ctx->pulseif))
         goto confused;
@@ -737,7 +741,7 @@ static void write_callback(pa_stream *stream, size_t bytes, void *userdata)
     return;
 
  could_not_write:
-    mrp_log_error("bluetooth plugin: could not write %u bytes to stream %s",
+    mrp_log_error("bluetooth plugin: could not write %zd bytes to stream %s",
                   bytes, device->btaddr);
 }
 
@@ -980,6 +984,8 @@ static void card_info_callback(pa_context *c,
     const char *btaddr;
     uint32_t j;
 
+    MRP_UNUSED(c);
+
     if (pend && (ctx = pend->ctx)) {
         if (eol)
             remove_pending_op(pend);
@@ -1024,7 +1030,8 @@ static void source_info_callback(pa_context *c,
     modem_t *modem;
     const char *proto;
     const char *btaddr;
-    uint32_t j;
+
+    MRP_UNUSED(c);
 
     if (pend && (ctx = pend->ctx)) {
         if (eol)
@@ -1062,7 +1069,8 @@ static void sink_info_callback(pa_context *c,
     modem_t *modem;
     const char *proto;
     const char *btaddr;
-    uint32_t j;
+
+    MRP_UNUSED(c);
 
     if (pend && (ctx = pend->ctx)) {
         if (eol)

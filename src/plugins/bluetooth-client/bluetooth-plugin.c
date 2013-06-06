@@ -51,7 +51,6 @@ static int create_bt_voicerec(srs_plugin_t *plugin)
 {
     srs_context_t *srs = plugin->srs;
     context_t     *ctx = NULL;
-    int            sts;
 
     mrp_debug("creating bluetooth voice recognition client plugin");
 
@@ -77,12 +76,13 @@ static int create_bt_voicerec(srs_plugin_t *plugin)
 
 static int config_bt_voicerec(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
-    context_t *ctx = (context_t *)plugin->plugin_data;
-    srs_cfg_t *cfgs, *c, *s;
+    srs_cfg_t *cfgs, *c;
     const char *key;
     int pfxlen;
     int n, i;
     int success;
+
+    MRP_UNUSED(plugin);
 
     mrp_debug("configuring bluetooth voice recognition client plugin");
 
@@ -139,8 +139,7 @@ static void stop_bt_voicerec(srs_plugin_t *plugin)
 
 static void destroy_bt_voicerec(srs_plugin_t *plugin)
 {
-    srs_context_t *srs = plugin->srs;
-    context_t     *ctx = (context_t *)plugin->plugin_data;
+    context_t *ctx = (context_t *)plugin->plugin_data;
 
     mrp_debug("destroy bluetooth voice recognition client plugin");
 

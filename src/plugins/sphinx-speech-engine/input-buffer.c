@@ -96,12 +96,10 @@ void input_buffer_process_data(context_t *ctx, const void *buf, size_t len)
     input_buf_t *inpbuf;
     filter_buf_t *filtbuf;
     cont_ad_t *cont;
-    int32 l, max, rem;
     uint32_t minreq;
     size_t maxlen;
     size_t totlen;
     size_t extra;
-    size_t move;
 
     if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec) ||
         !(inpbuf = ctx->inpbuf) || !(cont = inpbuf->cont) ||
@@ -118,13 +116,13 @@ void input_buffer_process_data(context_t *ctx, const void *buf, size_t len)
     if ((totlen = len + inpbuf->len) > maxlen) {
         extra = totlen - maxlen;
 
-        mrp_log_error("input buffer overflow (%u bytes). "
+        mrp_log_error("input buffer overflow (%zd bytes). "
                       "throwing away extra bytes", extra);
 
         if (extra > maxlen) {
             buf += (len - (len % maxlen));
             len = maxlen;
-        }       
+        }
         else {
             inpbuf->len -= extra;
             memmove(inpbuf->buf, inpbuf->buf + extra, inpbuf->len);
@@ -162,7 +160,6 @@ void input_buffer_process_data(context_t *ctx, const void *buf, size_t len)
 static int32 ad_buffer_read(ad_rec_t *ud, int16 *buf, int32 reqlen)
 {
     input_buf_t *inpbuf = (input_buf_t *)ud;
-    context_t *ctx = inpbuf->ctx;
     size_t len = reqlen * sizeof(int16);
 
     if (!inpbuf->max || !inpbuf->buf)
@@ -179,9 +176,9 @@ static int32 ad_buffer_read(ad_rec_t *ud, int16 *buf, int32 reqlen)
                 memmove(inpbuf->buf, inpbuf->buf + len, inpbuf->len);
         }
     }
-    
+
     if ((len % sizeof(int16)))
-        mrp_log_error("%s(): odd buffer size %u", __FUNCTION__, len);
+        mrp_log_error("%s(): odd buffer size %zd", __FUNCTION__, len);
 
     return (int32)(len / sizeof(int16));
 }

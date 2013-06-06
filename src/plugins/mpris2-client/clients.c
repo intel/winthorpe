@@ -99,7 +99,6 @@ int clients_start(context_t *ctx)
     srs_plugin_t *pl;
     srs_context_t *srs;
     clients_t *clients;
-    player_t *player;
     srs_client_ops_t callbacks;
 
     if (!ctx || !(pl = ctx->plugin) || !(srs = pl->srs) ||
@@ -123,6 +122,8 @@ int clients_start(context_t *ctx)
 
 int clients_stop(context_t *ctx)
 {
+    MRP_UNUSED(ctx);
+
     return 0;
 }
 
@@ -363,6 +364,9 @@ void clients_player_quit(player_t *player)
 
 static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
 {
+    MRP_UNUSED(srs_client);
+    MRP_UNUSED(focus);
+
     return TRUE;
 }
 
@@ -427,6 +431,10 @@ static void handle_delayed_request(pa_mainloop_api *api,
 {
     player_t *player = (player_t *)user_data;
 
+    MRP_UNUSED(api);
+    MRP_UNUSED(e);
+    MRP_UNUSED(tv);
+
     dbusif_query_playlists(player);
     dbusif_set_player_state(player, player->request.state);
     memset(&player->request, 0, sizeof(player->request));
@@ -467,7 +475,8 @@ static int player_register(void *key, void *object, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
     player_t *player = (player_t *)object;
-    int sts;
+
+    MRP_UNUSED(key);
 
     dbusif_register_player(ctx, player->name);
 
@@ -484,7 +493,8 @@ static void player_free(void *key, void *object)
 
 
     if (strcmp(key, player->name))
-        mrp_log_error("mpris2-client: corrupt hashtable (key '%s')", key);
+        mrp_log_error("mpris2-client: corrupt hashtable (key '%s')",
+                      (char *)key);
     else {
         if (player->timer && (ctx = player->ctx) && (pl = ctx->plugin) &&
             (srs = pl->srs) && (api = pa_mainloop_get_api(srs->pa)))

@@ -160,7 +160,7 @@ void filter_buffer_process_data(context_t *ctx)
     input_buf_t *inpbuf;
     filter_buf_t *filtbuf;
     cont_ad_t *cont;
-    int32_t l, max, len, rem;
+    int32_t l, max, len;
 
     if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec) ||
         !(inpbuf = ctx->inpbuf) || !(cont = inpbuf->cont) ||

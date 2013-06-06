@@ -21,7 +21,6 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
     const char *key;
     const char *value;
     char *e;
-    int c;
     bool verbose;
     int i;
     int sts;
