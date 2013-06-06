@@ -65,8 +65,12 @@ static const char *cmd_exit[] = { "hal", "exit" };
 static const char *cmd_dial[] = { "hal", "dial", "nine", "one", "one" };
 static const char *cmd_dial1[] = { "hal", "dial" };
 static const char *cmd_artist[] = { "hal", "play", "artist", "foobar" };
+static const char *cmd_search1[] = { "search", "for", "google", "glass" };
+static const char *cmd_search2[] = { "google", "for", "george", "w", "bush" };
 
 static fake_candidate_t commands[] = {
+    { tokens: (char **)cmd_search1, ntoken: MRP_ARRAY_SIZE(cmd_search1)  },
+    { tokens: (char **)cmd_search2, ntoken: MRP_ARRAY_SIZE(cmd_search2)  },
     { tokens: (char **)cmd_hal   , ntoken: MRP_ARRAY_SIZE(cmd_hal)    },
     { tokens: (char **)cmd_cant  , ntoken: MRP_ARRAY_SIZE(cmd_cant)   },
     { tokens: (char **)cmd_music , ntoken: MRP_ARRAY_SIZE(cmd_music)  },
@@ -74,6 +78,8 @@ static fake_candidate_t commands[] = {
     { tokens: (char **)cmd_dial  , ntoken: MRP_ARRAY_SIZE(cmd_dial)   },
     { tokens: (char **)cmd_artist, ntoken: MRP_ARRAY_SIZE(cmd_artist) },
     { tokens: (char **)cmd_dial1 , ntoken: MRP_ARRAY_SIZE(cmd_dial1)  },
+    { tokens: (char **)cmd_search1, ntoken: MRP_ARRAY_SIZE(cmd_search1)  },
+    { tokens: (char **)cmd_search2, ntoken: MRP_ARRAY_SIZE(cmd_search2)  },
     { NULL, 0 }
 };
 
