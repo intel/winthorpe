@@ -63,7 +63,7 @@ int clients_create(context_t *ctx)
     clients->srs_client = client_create(srs, SRS_CLIENT_TYPE_BUILTIN,
                                         PLUGIN_NAME, "player",
                                         commands, ncommand,
-                                        PLUGIN_NAME, &callbacks);
+                                        PLUGIN_NAME, &callbacks, NULL);
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.nentry = 10;
@@ -79,7 +79,7 @@ int clients_create(context_t *ctx)
     clients->current = NULL;
 
     ctx->clients = clients;
-    
+
     return 0;
 }
 
@@ -366,7 +366,7 @@ static void player_free(void *key, void *object)
     srs_plugin_t *pl;
     srs_context_t *srs;
     pa_mainloop_api *api;
-    
+
 
     if (strcmp(key, player->name))
         mrp_log_error("mpris2-client: corrupt hashtable (key '%s')", key);
