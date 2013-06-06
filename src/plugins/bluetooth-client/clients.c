@@ -33,7 +33,7 @@ static char *commands[] = {
 };
 static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
 
-static int play_samples(context_t *, size_t, int16_t *);
+static int play_samples(context_t *, uint32_t, uint32_t, srs_audiobuf_t *);
 static int notify_focus(srs_client_t *, srs_voice_focus_t);
 static int notify_command(srs_client_t *, int, int, char **, uint32_t *,
                           uint32_t *, srs_audiobuf_t *);
@@ -216,9 +216,10 @@ void clients_stop_recognising_voice(device_t *device)
     card_t *card;
 
     if (device) {
-        mrp_free(device->samples);
-        device->nsample = 0;
-        device->samples = NULL;
+        srs_unref_audiobuf(device->audio.buf);
+        device->audio.buf = NULL;
+        device->audio.start = 0;
+        device->audio.end = 0;
 
         if ((modem = device->modem) && modem->state == VOICE_RECOGNITION_ON) {
             dbusif_set_voice_recognition(modem, VOICE_RECOGNITION_OFF);
@@ -231,16 +232,17 @@ void clients_stop_recognising_voice(device_t *device)
     }
 }
 
-static int play_samples(context_t *ctx, size_t nsample, int16_t *samples)
+static int play_samples(context_t *ctx,
+                        uint32_t start,
+                        uint32_t end,
+                        srs_audiobuf_t *buf)
 {
     clients_t *clients;
     device_t *device;
     modem_t *modem;
     card_t *card;
-    int16_t *dup;
-    size_t len;
 
-    if (!ctx || !nsample || !samples || !(clients = ctx->clients))
+    if (!ctx || start >= end || !end || !buf || !(clients = ctx->clients))
         return -1;
 
     if (!(device = clients->current)) {
@@ -251,26 +253,18 @@ static int play_samples(context_t *ctx, size_t nsample, int16_t *samples)
     if (!(modem = device->modem) || !(card = device->card))
         return -1;
 
-    if (device->nsample || device->samples ||
-        modem->state == VOICE_RECOGNITION_ON)
-    {
+    if (device->audio.buf || modem->state == VOICE_RECOGNITION_ON) {
         mrp_log_error("bluetooth client: can't play samples: voicerec "
                       "already in progress");
         return -1;
     }
 
-    len = nsample * sizeof(int16_t);
+    device->audio.buf = srs_ref_audiobuf(buf);
+    device->audio.start = start;
+    device->audio.end = end;
 
-    if (!(dup = mrp_alloc(len)))
-        return -1;
-    else
-        memcpy(dup, samples, len);
-
-    device->nsample = nsample;
-    device->samples = dup;
-
-    mrp_log_info("bluetooth plugin: forwarding %u samples to device", nsample);
-
+    mrp_log_info("bluetooth plugin: forwarding %u samples to device",
+                 end - start);
 
     if (dbusif_set_voice_recognition(modem, VOICE_RECOGNITION_ON) < 0 ||
         pulseif_add_input_stream_to_card(card)                    < 0  )
@@ -306,7 +300,6 @@ static int notify_command(srs_client_t *srs_client, int idx,
     MRP_UNUSED(tokens);
     MRP_UNUSED(start);
     MRP_UNUSED(end);
-    MRP_UNUSED(audio);
 
     if (!srs_client || !(ctx = srs_client->user_data) ||
         !(clients = ctx->clients))
@@ -317,14 +310,10 @@ static int notify_command(srs_client_t *srs_client, int idx,
     for (i = 0, sep = "", *p = 0;   i < ntoken && p < e;   i++, sep = " ")
         p += snprintf(p, e-p, "%s%s", sep, tokens[i]);
 
-    if (!(device = clients->current)) {
-        mrp_log_info("no bluetooth device to execute command '%s'", cmd);
-        return FALSE;
-    }
-
     mrp_log_info("Bluetooth client got command '%s'\n", cmd);
 
-    play_samples(ctx, samplelen, samplebuf);
+    if (play_samples(ctx, 0, audio->samples, audio) < 0)
+        return FALSE;
 
     return TRUE;
 }

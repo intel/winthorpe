@@ -666,7 +666,7 @@ static void read_callback(pa_stream *stream, size_t bytes, void *userdata)
                     printf("*** cling ends\n");
                     card->input.state = ST_READY;
 
-                    if (device->nsample && device->samples)
+                    if (device->audio.buf && device->audio.end > 0)
                         pulseif_add_output_stream_to_card(card);
                 }
             }
@@ -692,8 +692,9 @@ static void write_callback(pa_stream *stream, size_t bytes, void *userdata)
     device_t *device;
     context_t *ctx;
     pulseif_t *pulseif;
-    size_t size, len;
+    size_t size, len, offs;
     int16_t *data;
+    srs_audiobuf_t *buf;
 
     if (!card || !(device = card->device) || !(ctx = device->ctx) ||
         !(pulseif = ctx->pulseif))
@@ -704,27 +705,28 @@ static void write_callback(pa_stream *stream, size_t bytes, void *userdata)
 
     while (bytes > 0) {
 
-        if (card->input.state != ST_READY || !device->samples ||
-            device->nsample <= card->output.sent)
+        if (card->input.state != ST_READY || !(buf = device->audio.buf) ||
+            buf->samples <= card->output.sent)
         {
-            len = (sizeof(silence) < bytes) ? len : bytes;
+            len = (sizeof(silence) < bytes) ? sizeof(silence) : bytes;
 
             if (pa_stream_write(stream,silence,len,NULL,0,PA_SEEK_RELATIVE)<0)
                 goto could_not_write;
         }
         else {
-            size = device->nsample - card->output.sent;
-            len = size * 2;
+            size = device->audio.end - device->audio.start;
+            len  = (size - card->output.sent) * sizeof(int16_t);
+            offs = device->audio.start + card->output.sent;
 
             if (len > bytes)
                 len = bytes;
 
-            data = device->samples + card->output.sent;
+            data = (int16_t *)buf->data + offs;
 
             if (pa_stream_write(stream, data,len, NULL,0,PA_SEEK_RELATIVE) < 0)
                 goto could_not_write;
 
-            card->output.sent += len / 2;
+            card->output.sent += len / sizeof(int16_t);
         }
 
         if (bytes < len)

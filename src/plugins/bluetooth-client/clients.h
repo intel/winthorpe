@@ -14,8 +14,11 @@ struct device_s {
     modem_t *modem;
     card_t *card;
     bool active;
-    size_t nsample;
-    int16_t *samples;
+    struct {
+        uint32_t start;
+        uint32_t end;
+        srs_audiobuf_t *buf;
+    } audio;
 };
 
 
