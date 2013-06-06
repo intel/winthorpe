@@ -68,11 +68,14 @@ typedef struct {
     const char     *focus;
     char          **commands;
     int             ncommand;
+    int             autoregister : 1;
+    const char     *autofocus;
 } client_t;
 
 
+static void register_client(client_t *c);
+static void request_focus(client_t *c, const char *focus);
 static void execute_user_command(client_t *c, int narg, char **args);
-
 
 static void set_prompt(client_t *c, const char *prompt)
 {
@@ -348,6 +351,9 @@ static void server_name_change(mrp_dbus_t *dbus, const char *name, int running,
     if (running) {
         set_prompt(c, "server up");
         print(c, "Server (%s) is now up (as %s).", name, owner);
+
+        if (c->autoregister)
+            register_client(c);
     }
     else {
         set_prompt(c, "server down");
@@ -550,6 +556,8 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
            "      DBUS is 'session', 'system', or a DBUS daemon address.\n"
            "  -v, --verbose                  increase logging verbosity\n"
            "  -d, --debug                    enable debug messages\n"
+           "  -R, --register                 automatically register to server\n"
+           "  -F, --focus[=TYPE]             automatically request focus\n"
            "  -h, --help                     show help on usage\n", exe);
     printf("\n");
 
@@ -562,12 +570,14 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
 
 static void parse_cmdline(client_t *c, int argc, char **argv)
 {
-#   define OPTIONS "N:C:D:d:h"
+#   define OPTIONS "N:C:D:d:RFh"
     struct option options[] = {
         { "name"      , required_argument, NULL, 'N' },
         { "class"     , required_argument, NULL, 'C' },
         { "dbus"      , required_argument, NULL, 'D' },
         { "debug"     , required_argument, NULL, 'd' },
+        { "register"  , no_argument      , NULL, 'R' },
+        { "focus"     , optional_argument, NULL, 'F' },
         { "help"      , no_argument      , NULL, 'h' },
         { NULL, 0, NULL, 0 }
     };
@@ -593,6 +603,14 @@ static void parse_cmdline(client_t *c, int argc, char **argv)
             mrp_debug_enable(TRUE);
             break;
 
+        case 'R':
+            c->autoregister = TRUE;
+            break;
+
+        case 'F':
+            c->autofocus = optarg ? optarg : "shared";
+            break;
+
         case 'h':
             print_usage(argv[0], -1, "");
             exit(0);
@@ -614,6 +632,8 @@ static void register_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
     if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
         set_prompt(c, c->app_name);
         print(c, "Successfully registered to server.");
+        if (c->autofocus)
+            request_focus(c, c->autofocus);
     }
     else {
         set_prompt(c, "failed");
