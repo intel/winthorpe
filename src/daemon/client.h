@@ -70,6 +70,16 @@ typedef struct {
 } srs_command_t;
 
 
+/*
+ * special command tokens
+ */
+
+#define SRS_TOKEN_SWITCHDICT "__switch_dict__"
+#define SRS_TOKEN_PUSHDICT   "__push_dict__"
+#define SRS_TOKEN_POPDICT    "__pop_dict__"
+#define SRS_TOKEN_WILDCARD   "*"
+
+
 /* dictionary pseudo-commands */
 #define SRS_DICTCMD_SWITCH    "__switch_dict__"
 #define SRS_DICTCMD_PUSH      "__push_dict__"
