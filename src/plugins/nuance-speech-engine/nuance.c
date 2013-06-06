@@ -97,7 +97,8 @@ static int nuance_rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *nuance_sampledup(uint32_t start, uint32_t end, void *user_data)
+static void *nuance_sampledup(uint32_t start, uint32_t end, size_t *size,
+                              void *user_data)
 {
     nuance_t *nua = (nuance_t *)user_data;
 
@@ -105,7 +106,10 @@ static void *nuance_sampledup(uint32_t start, uint32_t end, void *user_data)
 
     mrp_debug("duplicating Nuance backend sample (%u - %u)", start, end);
 
-    return (void *)4;
+    if (size != NULL)
+        *size = sizeof(void *);
+
+    return mrp_allocz(sizeof(void *));
 }
 
 
