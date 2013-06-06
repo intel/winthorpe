@@ -98,7 +98,7 @@ static void connect_to_server(context_t *ctx)
         pulseif->pactx = NULL;
     }
 
-    if (!(pulseif->pactx = pactx = pa_context_new(api, "srs"))) {
+    if (!(pulseif->pactx = pactx = pa_context_new(api, "sphinx"))) {
         mrp_log_error("pa_context_new() failed");
         return;
     }
@@ -133,12 +133,14 @@ static int stream_create(context_t *ctx)
     int32_t silen;
 
     if (rate < 8000.0 || rate > 48000.0) {
-        mrp_log_error("invalid sample rate %.1lf KHz", rate / 1000.0);
+        mrp_log_error("sphinx plugin: invalid sample rate %.1lf KHz",
+                      rate / 1000.0);
         return -1;
     }
 
     if (!pulseif->conup) {
-        mrp_log_error("attempt to create input stream when not connected");
+        mrp_log_error("sphinx plugin: attempt to create input stream "
+                      "when not connected");
         return -1;
     }
 
@@ -159,8 +161,8 @@ static int stream_create(context_t *ctx)
         size = hwm + extra;
 
         if (ctx->verbose) {
-            mrp_debug("calibration requires %u samples (%.3lf sec)",
-                      calsiz / sizeof(int16),
+            mrp_debug("sphinx plugin: calibration requires %u samples "
+                      "(%.3lf sec)", calsiz / sizeof(int16),
                       (double)(calsiz / sizeof(int16)) / (double)rate);
         }
 
@@ -229,27 +231,30 @@ static void state_callback(pa_stream *stream, void *userdata)
             
         case PA_STREAM_CREATING:
             CHECK_STREAM(pulseif, stream);
-            mrp_debug("pulseaudio input stream creating");
+            mrp_debug("sphinx plugin: pulseaudio input stream creating");
             break;
             
         case PA_STREAM_TERMINATED:
             CHECK_STREAM(pulseif, stream);
-            mrp_log_info("pulseaudio input stream terminated");
+            mrp_log_info("sphinx plugin: pulseaudio input stream terminated");
             pulseif->stream = NULL;
             break;
             
         case PA_STREAM_READY:
             CHECK_STREAM(pulseif, stream);
-            mrp_log_info("pulseaudio input stream is ready", __FUNCTION__);
+            mrp_log_info("sphinx plugin: pulseaudio input stream is ready");
             break;
             
         case PA_STREAM_FAILED:
         default:
             if ((err = pa_context_errno(pactx))) {
-                if (!(strerr = pa_strerror(err)))
-                    mrp_log_error("pulseaudio input stream error");
+                if (!(strerr = pa_strerror(err))) {
+                    mrp_log_error("sphinx plugin: pulseaudio input stream "
+                                  "error");
+                }
                 else {
-                    mrp_log_error("pulseaudio input stream error: %s", strerr);
+                    mrp_log_error("sphinx plugin: pulseaudio input stream "
+                                  "error: %s", strerr);
                 }
             }
             break;
@@ -259,7 +264,8 @@ static void state_callback(pa_stream *stream, void *userdata)
     return;
 
  confused:
-    mrp_log_error("%s(): confused with data structures", __FUNCTION__);
+    mrp_log_error("sphinx plugin: %s() confused with data structures",
+                  __FUNCTION__);
     return;
 
 #undef CHECK_STREAM
@@ -273,8 +279,8 @@ static void read_callback(pa_stream *stream, size_t bytes, void *userdata)
     size_t size;
 
     if (pulseif->stream != stream) {
-        mrp_log_error("%s(): confused with internal data structures",
-                      __FUNCTION__);
+        mrp_log_error("sphinx plugin: %s() confused with internal "
+                      "data structures", __FUNCTION__);
         return;
     }
 
@@ -295,12 +301,14 @@ static void context_callback(pa_context *pactx, void *userdata)
     const char *strerr;
 
     if (!pactx) {
-        mrp_log_error("%s() called with zero context", __FUNCTION__);
+        mrp_log_error("sphinx plugin: %s() called with zero context",
+                      __FUNCTION__);
         return;
     }
 
     if (pulseif->pactx != pactx) {
-        mrp_log_error("%s(): Confused with data structures", __FUNCTION__);
+        mrp_log_error("sphinx plugin: %s(): Confused with data structures",
+                      __FUNCTION__);
         return;
     }
 
@@ -308,27 +316,27 @@ static void context_callback(pa_context *pactx, void *userdata)
 
     case PA_CONTEXT_CONNECTING:
         pulseif->conup = false;
-        mrp_debug("connecting to pulseaudio server");
+        mrp_debug("sphinx plugin: connecting to pulseaudio server");
         break;
         
     case PA_CONTEXT_AUTHORIZING:
         pulseif->conup = false;
-        mrp_debug("   authorizing");
+        mrp_debug("   sphinx plugin: authorizing");
         break;
         
     case PA_CONTEXT_SETTING_NAME:
         pulseif->conup = false;
-        mrp_debug("   setting name");
+        mrp_debug("   sphinx plugin: setting name");
         break;
         
     case PA_CONTEXT_READY:
         pulseif->conup = true;
-        mrp_log_info("pulseaudio connection established");
+        mrp_log_info("sphinx plugin: pulseaudio connection established");
         stream_create(ctx);
         break;
         
     case PA_CONTEXT_TERMINATED:
-        mrp_log_info("pulseaudio connection terminated");
+        mrp_log_info("sphinx plugin: pulseaudio connection terminated");
         goto disconnect;
         
     case PA_CONTEXT_FAILED:
@@ -336,7 +344,8 @@ static void context_callback(pa_context *pactx, void *userdata)
         if ((err = pa_context_errno(pactx)) != 0) {
             if ((strerr = pa_strerror(err)) == NULL)
                 strerr = "<unknown>";
-            mrp_log_error("pulseaudio server connection error: %s", strerr);
+            mrp_log_error("sphinx plugin: pulseaudio server connection "
+                          "error: %s", strerr);
         }
 
     disconnect:
@@ -353,21 +362,23 @@ static void event_callback(pa_context *pactx,pa_subscription_event_type_t type,
 
     (void)idx;
   
-    if (pulseif->pactx != pactx)
-        mrp_log_error("%s(): confused with data structures", __FUNCTION__);
+    if (pulseif->pactx != pactx) {
+        mrp_log_error("sphinx plugin: %s() confused with data structures",
+                      __FUNCTION__);
+    }
     else {
         switch (type) {
 
         case PA_SUBSCRIPTION_EVENT_SOURCE:
-            mrp_debug("Event source");
+            mrp_debug("sphinx plugin: event source");
             break;
 
         case PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT:
-            mrp_debug("Event source output");
+            mrp_debug("sphinx plugin: event source output");
             break;
 
         default:
-            mrp_debug("Event %d", type);
+            mrp_debug("sphinx plugin: event %d", type);
             break;
         }
     }
