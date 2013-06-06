@@ -421,8 +421,8 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
             mrp_list_init(&res->result.matches);
 
             c     = utt->cands[0];
-            start = c->tokens[0].start;
-            end   = c->tokens[c->ntoken-1].end;
+            start = 0;
+            end   = utt->length;
 
             res->samplebuf = srec->api.sampledup(start, end, &res->samplelen,
                                                  srec->api_data);
