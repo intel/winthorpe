@@ -107,6 +107,7 @@ static void acoustic_processor(context_t *ctx,
                                srs_srec_candidate_t *cands,
                                srs_srec_candidate_t **sorted)
 {
+    filter_buf_t *filtbuf;
     decoder_set_t *decset;
     decoder_t *dec;
     logmath_t *lmath;
@@ -116,15 +117,18 @@ static void acoustic_processor(context_t *ctx,
     double prob;
     ps_nbest_t *nb;
     ps_seg_t *seg;
+    int32_t frlen;
     int32 start, end;
     size_t ncand;
     srs_srec_candidate_t *cand;
     srs_srec_token_t *tkn;
     int32_t length;
 
-    if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec))
+    if (!ctx || !(filtbuf = ctx->filtbuf) ||
+        !(decset = ctx->decset) || !(dec = decset->curdec))
         return;
 
+    frlen = filtbuf->frlen;
     lmath = ps_get_logmath(dec->ps);
     uttid = "<unknown>";
     hyp = ps_get_hyp(dec->ps, &score, &uttid);
@@ -169,7 +173,7 @@ static void acoustic_processor(context_t *ctx,
                         ps_seg_frames(seg, &start, &end);
                         ps_seg_free(seg);
                         //printf("hyp=</s> ncand=%d\n", ncand);
-                        length = end;
+                        length = end * frlen;
                         break;
                     }
                     else if (!strcmp(hyp, "<sil>")) {
@@ -179,7 +183,9 @@ static void acoustic_processor(context_t *ctx,
                     else {
                         tkn = cand->tokens + cand->ntoken++;
                         tkn->token = tknbase(hyp);
-                        ps_seg_frames(seg, &tkn->start, &tkn->end);
+                        ps_seg_frames(seg, &start, &end);
+                        tkn->start = start * frlen;
+                        tkn->end = end * frlen;
                         //printf("hyp=%s (%d, %d) tkn count %d\n",
                         //      tkn->token, tkn->start,tkn->end, cand->ntoken);
                     }
@@ -211,6 +217,7 @@ static void fsg_processor(context_t *ctx,
                           srs_srec_candidate_t *cands,
                           srs_srec_candidate_t **sorted)
 {
+    filter_buf_t *filtbuf;
     decoder_set_t *decset;
     decoder_t *dec;
     logmath_t *lmath;
@@ -223,12 +230,15 @@ static void fsg_processor(context_t *ctx,
     ps_latlink_t *lnk;
     ps_latnode_t *nod;
     const char *token;
-    int32_t start;
+    int32_t frlen;
+    int32_t start, end;
     int16 fef, lef;
 
-    if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec))
+    if (!ctx || !(filtbuf = ctx->filtbuf) ||
+        !(decset = ctx->decset) || !(dec = decset->curdec))
         return;
 
+    frlen = filtbuf->frlen;
     lmath = ps_get_logmath(dec->ps);
     ps_get_hyp(dec->ps, &score, &uttid);
     prob = logmath_exp(lmath, score);
@@ -248,8 +258,8 @@ static void fsg_processor(context_t *ctx,
             if (nod && (token = ps_latnode_word(dag, nod)) && *token != '<') {
                 tkn = cand->tokens + cand->ntoken++;
                 tkn->token = tknbase(token);
-                tkn->start = ps_latnode_times(nod, &fef, &lef);
-                tkn->end = (fef + lef) / 2;
+                tkn->start = ps_latnode_times(nod, &fef, &lef) * frlen;
+                tkn->end = ((fef + lef) / 2) * frlen;
             }
 
             goto handle_destination_node;
@@ -261,7 +271,8 @@ static void fsg_processor(context_t *ctx,
 
                 if (nod && (token = ps_latnode_word(dag,nod)) && *token != '<')
                 {
-                    start = ps_latnode_times(nod, &fef, &lef);
+                    start = ps_latnode_times(nod, &fef, &lef) * frlen;
+                    end = fef * frlen;
 
                     if (tkn && start < (int32_t)tkn->end)
                         break;  /* just take one candidate */
@@ -270,7 +281,7 @@ static void fsg_processor(context_t *ctx,
                         tkn = cand->tokens + cand->ntoken++;
                         tkn->token = tknbase(token);
                         tkn->start = start;
-                        tkn->end = fef;
+                        tkn->end = end;
                     }
                 }
             }
@@ -282,7 +293,7 @@ static void fsg_processor(context_t *ctx,
 
     utt->id = uttid;
     utt->score = prob < 0.00001 ? 0.00001 : prob;
-    utt->length = dag ? ps_lattice_n_frames(dag) : 0;
+    utt->length = dag ? ps_lattice_n_frames(dag) * frlen : 0;
     utt->ncand = 1;
     utt->cands = sorted;
 }

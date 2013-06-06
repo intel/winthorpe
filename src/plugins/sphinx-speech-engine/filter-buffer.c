@@ -123,8 +123,8 @@ void filter_buffer_purge(context_t *ctx, int32_t length)
     if (!ctx || !(filtbuf = ctx->filtbuf))
         return;
 
-    if (length > 0)               /* convert frame length to sample length */
-        length = (length + 1) * filtbuf->frlen; 
+    if (length > 0)
+        length++;
 
     if (length < 0 || length > filtbuf->len)
         length = filtbuf->len;
@@ -259,16 +259,15 @@ int16_t *filter_buffer_dup(context_t *ctx,
     if (start < 0 || end < 0 || start >= end || start >= filtbuf->len)
         return NULL;
 
-    len = (end - start) * filtbuf->frlen * sizeof(int16_t);
+    len = (end - start) * sizeof(int16_t);
 
     if (!(dup = mrp_alloc(len)))
         len = 0;
     else
-        memcpy(dup, filtbuf->buf + (start * filtbuf->frlen), len);
+        memcpy(dup, filtbuf->buf + start, len);
 
     if (ret_length)
         *ret_length = len / sizeof(int16_t);
-
 
     return dup;
 }
