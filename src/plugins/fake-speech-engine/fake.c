@@ -60,13 +60,17 @@ static const char *cmd_hal[]  = { "hal", "open", "the", "pod", "bay", "doors" };
 static const char *cmd_cant[] = { "I", "am", "afraid", "I", "can't", "do",
                                   "that", "Dave" };
 static const char *cmd_music[] = { "hal", "play", "music" };
-static const char *cmd_exit[]  = { "hal", "exit" };
+static const char *cmd_exit[] = { "hal", "exit" };
+static const char *cmd_dial[] = { "hal", "dial", "nine", "one", "one" };
+static const char *cmd_artist[] = { "hal", "play", "artist", "foobar" };
 
 static fake_candidate_t commands[] = {
-    { tokens: (char **)cmd_hal  , ntoken: MRP_ARRAY_SIZE(cmd_hal)   },
-    { tokens: (char **)cmd_cant , ntoken: MRP_ARRAY_SIZE(cmd_cant)  },
-    { tokens: (char **)cmd_music, ntoken: MRP_ARRAY_SIZE(cmd_music) },
-    { tokens: (char **)cmd_exit , ntoken: MRP_ARRAY_SIZE(cmd_exit)  },
+    { tokens: (char **)cmd_hal   , ntoken: MRP_ARRAY_SIZE(cmd_hal)    },
+    { tokens: (char **)cmd_cant  , ntoken: MRP_ARRAY_SIZE(cmd_cant)   },
+    { tokens: (char **)cmd_music , ntoken: MRP_ARRAY_SIZE(cmd_music)  },
+    { tokens: (char **)cmd_exit  , ntoken: MRP_ARRAY_SIZE(cmd_exit)   },
+    { tokens: (char **)cmd_dial  , ntoken: MRP_ARRAY_SIZE(cmd_dial)   },
+    { tokens: (char **)cmd_artist, ntoken: MRP_ARRAY_SIZE(cmd_artist) },
     { NULL, 0 }
 };
 
