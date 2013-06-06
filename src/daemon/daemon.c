@@ -67,6 +67,7 @@ static srs_context_t *create_context(void)
         mrp_list_init(&srs->clients);
         mrp_list_init(&srs->plugins);
         mrp_list_init(&srs->recognizers);
+        mrp_list_init(&srs->disambiguators);
 
         srs->pa = pa_mainloop_new();
         srs->ml = mrp_mainloop_pulse_get(pa_mainloop_get_api(srs->pa));
@@ -163,6 +164,7 @@ static void setup_signals(srs_context_t *srs)
 int main(int argc, char *argv[])
 {
     srs_context_t *srs;
+    srs_cfg_t     *cfg;
     const char    *srec;
 
     srs = create_context();
@@ -185,10 +187,11 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        daemonize(srs);
-
-        srec = srs_get_string_config(srs->settings, "daemon.activate", "fake");
+        cfg  = srs->settings;
+        srec = srs_get_string_config(cfg, "daemon.speech-backend", NULL);
         srs_activate_srec(srs, srec);
+
+        daemonize(srs);
 
         run_mainloop(srs);
 

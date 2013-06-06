@@ -56,7 +56,10 @@ struct srs_context_s {
     mrp_res_context_t *rctx;             /* resource context */
     mrp_res_logger_t   rlog;             /* original resource logger */
     mrp_list_hook_t    recognizers;      /* speech recognition backends */
-    void              *cached_srec;
+    void              *default_srec;     /* default backend */
+    void              *cached_srec;      /* previously looked up backend */
+    mrp_list_hook_t    disambiguators;   /* disambiguators */
+    void              *default_disamb;   /* default disambiguator */
 
     /* files and directories */
     const char      *config_file;        /* configuration file */
