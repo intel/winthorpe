@@ -512,8 +512,8 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
 
     /* XXX handling multiple candidates currently not implemented */
     if (utt->ncand > 1) {
-        mrp_log_error("handling multiple candidates not implemented");
-        return -1;
+        mrp_log_warning("Handling multiple candidates not implemented.");
+        mrp_log_warning("Ignoring all but first candidate.");
     }
 
     src = utt->cands[0];
@@ -529,18 +529,6 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
         mrp_log_error("Expected result buffer not found.");
         return -1;
     }
-#if 0
-    else {
-        node = dis->root;
-        res  = mrp_allocz(sizeof(*res));
-
-        if (res == NULL)
-            return -1;
-
-        mrp_list_init(&res->hook);
-        mrp_list_init(&res->result.matches);
-    }
-#endif
 
     for (i = 0, match = TRUE; i < (int)src->ntoken && match; i++) {
         tkn = src->tokens[i].token;
