@@ -30,7 +30,8 @@ static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
 
 static int play_samples(context_t *, size_t, int16_t *);
 static int notify_focus(srs_client_t *, srs_voice_focus_t);
-static int notify_command(srs_client_t *, int, char **);
+static int notify_command(srs_client_t *, int, int, char **, void *, size_t,
+                          uint32_t *, uint32_t *);
 static device_t *device_find(clients_t *, const char *);
 static void device_free(void *, void *);
 
@@ -329,7 +330,10 @@ static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
     return TRUE;
 }
 
-static int notify_command(srs_client_t *srs_client, int ntoken, char **tokens)
+static int notify_command(srs_client_t *srs_client, int idx,
+                          int ntoken, char **tokens,
+                          void *samplebuf, size_t samplelen,
+                          uint32_t *start, uint32_t *end)
 {
     context_t *ctx;
     clients_t *clients;
@@ -337,6 +341,8 @@ static int notify_command(srs_client_t *srs_client, int ntoken, char **tokens)
     char cmd[2048];
     char *e, *p, *sep;
     int i;
+
+    MRP_UNUSED(idx);
 
     if (!srs_client || !(ctx = srs_client->user_data) ||
         !(clients = ctx->clients))
