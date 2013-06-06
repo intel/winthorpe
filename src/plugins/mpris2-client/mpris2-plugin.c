@@ -45,53 +45,6 @@
 #define PLUGIN_VERSION     "0.0.1"
 
 
-/*************************************************************/
-pa_io_event *ioev;
-
-static void handle_input(pa_mainloop_api *api, pa_io_event *e, int fd,
-                         pa_io_event_flags_t events, void *ud)
-{
-    context_t *ctx = (context_t *)ud;
-    player_t *player;
-    int cnt;
-    char cmd;
-
-    for (;;) {
-        if ((cnt = read(0, &cmd, 1)) != 1) {
-            if (errno == EINTR)
-                continue;
-            return;
-        }
-
-        if (!(player = clients_find_player_by_name(ctx, "rhythmbox"))) {
-            printf("can't find rhythmbox player\n");
-            return;
-        }
-
-        switch (cmd) {
-        case 'p':   clients_player_request_state(player, PLAY);   break;
-        case 's':   clients_player_request_state(player, PAUSE);  break;
-        case 'e':   clients_player_request_state(player, STOP);   break;
-        case 'a':   printf("Show\n");                             break; 
-        default:                                                  break;
-        }
-
-        return;
-    }
-}
-
-static void input_create(context_t *ctx)
-{
-    srs_plugin_t *pl = ctx->plugin;
-    srs_context_t *srs = pl->srs;
-    pa_mainloop_api *api = pa_mainloop_get_api(srs->pa);
-
-    ioev = api->io_new(api, 0, PA_IO_EVENT_INPUT, handle_input, ctx);
-}
-
-/*************************************************************/
-
-
 
 static int create_mpris2(srs_plugin_t *plugin)
 {
@@ -184,8 +137,6 @@ static int start_mpris2(srs_plugin_t *plugin)
     mrp_debug("start Mpris2 client plugin");
 
     clients_start(ctx);
-
-    // input_create(ctx);
 
     return TRUE;
 }

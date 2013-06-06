@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <murphy/common/debug.h>
 
@@ -37,8 +38,12 @@ static uint64_t get_current_time(void);
 static char *commands[] = {
     "play music",
     "stop music",
+    "play louder",
+    "play quieter",
+    "play next",
+    "play previous",
     "show player",
-    "hide player",
+    "quit player",
     NULL
 };
 static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
@@ -46,24 +51,13 @@ static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
 int clients_create(context_t *ctx)
 {
     clients_t *clients;
-    srs_plugin_t *pl;
-    srs_context_t *srs;
-    srs_client_ops_t callbacks;
     mrp_htbl_config_t cfg;
 
-    if (!ctx || !(pl = ctx->plugin) || !(srs = pl->srs))
+    if (!ctx)
         return -1;
 
     if (!(clients = mrp_allocz(sizeof(clients_t))))
         return -1;
-
-    callbacks.notify_focus = notify_focus;
-    callbacks.notify_command = notify_command;
-
-    clients->srs_client = client_create(srs, SRS_CLIENT_TYPE_BUILTIN,
-                                        PLUGIN_NAME, "player",
-                                        commands, ncommand,
-                                        PLUGIN_NAME, &callbacks, NULL);
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.nentry = 10;
@@ -101,13 +95,27 @@ void clients_destroy(context_t *ctx)
 
 int clients_start(context_t *ctx)
 {
+    srs_plugin_t *pl;
+    srs_context_t *srs;
     clients_t *clients;
     player_t *player;
+    srs_client_ops_t callbacks;
 
-    if (!ctx || !(clients = ctx->clients))
+    if (!ctx || !(pl = ctx->plugin) || !(srs = pl->srs) ||
+        !(clients = ctx->clients))
         return -1;
 
+    callbacks.notify_focus = notify_focus;
+    callbacks.notify_command = notify_command;
+
+    clients->srs_client = client_create(srs, SRS_CLIENT_TYPE_BUILTIN,
+                                        PLUGIN_NAME, "player",
+                                        commands, ncommand,
+                                        PLUGIN_NAME, &callbacks, ctx);
+
     mrp_htbl_foreach(clients->player.name, player_register, (void *)ctx);
+
+    client_request_focus(clients->srs_client, SRS_VOICE_FOCUS_SHARED);
 
     return 0;
 }
@@ -142,6 +150,11 @@ int clients_register_player(context_t *ctx,
     mrp_log_info("Mpris2 player '%s' (service '%s' object '%s') registered",
                  player->name, player->service ? player->service : "none",
                  player->object ? player->object : "none");
+
+    if (!clients->current) {
+        clients->current = player;
+        mrp_log_info("'%s' become the default player", player->name);
+    }
 
     return 0;
 }
@@ -190,9 +203,6 @@ void clients_player_appeared(context_t *ctx,
             mrp_log_info("mrpis2 client '%s' appeared (address %s)",
                          name, address);
 
-            if (!clients->current)
-                clients->current = player;
-
             dbusif_query_player_properties(player);
         }
     }
@@ -224,10 +234,6 @@ void clients_player_disappeared(context_t *ctx, const char *name)
                 player->active_list = NULL;
 
                 mrp_log_info("mrpis2 client '%s' disappeared", name);
-
-                if (player == clients->current) {
-                    clients->current = NULL;
-                }
             }
         }
     }
@@ -246,6 +252,16 @@ void clients_player_status_changed(player_t *player, bool ready)
             schedule_delayed_request(player);
 
         player->ready = ready;
+    }
+}
+
+void clients_player_volume_changed(player_t *player, double volume)
+{
+    if (player) {
+        if (volume < 0.00001)  volume = 0.00001;
+        else if (volume > 1.0) volume = 1.0;
+
+        player->volume = log10(volume) * 20.0;
     }
 }
 
@@ -295,6 +311,55 @@ void clients_player_request_state(player_t *player, player_state_t state)
         dbusif_introspect_player(player);
 }
 
+void clients_player_request_track(player_t *player, track_t track)
+{
+    if (!player || (track != NEXT_TRACK && track != PREVIOUS_TRACK))
+        return;
+
+    if (!player->address)
+        clients_player_request_state(player, PLAY);
+    else {
+        if (player->state != PLAY)
+            dbusif_set_player_state(player, PLAY);
+
+        if (track == PREVIOUS_TRACK)
+            dbusif_change_track(player, PREVIOUS_TRACK);
+
+        dbusif_change_track(player, track);
+    }
+}
+
+void clients_player_adjust_volume(player_t *player, double adjust)
+{
+    double volume;
+
+    if (player && player->address) {
+        volume = pow(10, (player->volume + adjust) / 20.0);
+
+        if (volume < 0.0) volume = 0;
+        else if (volume > 1.0) volume = 1.0;
+
+        dbusif_set_player_property(player, "Volume", "d", &volume);
+    }
+}
+
+void clients_player_show(player_t *player)
+{
+    if (player) {
+        if (player->address)
+            dbusif_raise_player(player);
+        else
+            /* this supposed to launch the player */
+            dbusif_introspect_player(player);
+    }
+}
+
+void clients_player_quit(player_t *player)
+{
+    if (player && player->address)
+        dbusif_quit_player(player);
+}
+
 static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
 {
     return TRUE;
@@ -302,6 +367,46 @@ static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
 
 static int notify_command(srs_client_t *srs_client, int ntoken, char **tokens)
 {
+    context_t *ctx;
+    clients_t *clients;
+    player_t *player;
+    char cmd[2048];
+    char *e, *p, *sep;
+    int i;
+
+    if (!srs_client || !(ctx = srs_client->user_data) ||
+        !(clients = ctx->clients))
+        return FALSE;
+
+    e = (p = cmd) + (sizeof(cmd) - 1);
+
+    for (i = 0, sep = "", *p = 0;   i < ntoken && p < e;   i++, sep = " ")
+        p += snprintf(p, e-p, "%s%s", sep, tokens[i]);
+
+    if (!(player = clients->current)) {
+        mrp_log_info("no player to execute command '%s'", cmd);
+        return FALSE;
+    }
+
+    mrp_log_info("Mpris2 client got command '%s'\n", cmd);
+
+    if (!strcmp(cmd, "play music"))
+        clients_player_request_state(player, PLAY);
+    else if (!strcmp(cmd, "stop music"))
+        clients_player_request_state(player, PAUSE);
+    else if (!strcmp(cmd, "play next"))
+        clients_player_request_track(player, NEXT_TRACK);
+    else if (!strcmp(cmd, "play previous"))
+        clients_player_request_track(player, PREVIOUS_TRACK);
+    else if (!strcmp(cmd, "play louder"))
+        clients_player_adjust_volume(player, +2);
+    else if (!strcmp(cmd, "play quieter"))
+        clients_player_adjust_volume(player, -2);
+    else if (!strcmp(cmd, "show player"))
+        clients_player_show(player);
+    else if (!strcmp(cmd, "quit player"))
+        clients_player_quit(player);
+
     return TRUE;
 }
 

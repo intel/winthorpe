@@ -13,7 +13,7 @@
 #define MAKE_DBUS_VERSION(major, minor, patch)  \
     (((major) << 16) | ((minor) << 8) | (patch))
 
-#if DBUS_VERSION < MAKE_DBUS_VERSION(1, 7, 0)
+#if DBUS_VERSION < MAKE_DBUS_VERSION(1, 6, 8)
 /* For old versions, we define DBusBasicValue with the member we use... */
 typedef union {
     char        *str;
@@ -134,6 +134,44 @@ void dbusif_query_player_properties(player_t *player)
     dbus_message_unref(msg);
 }
 
+void dbusif_set_player_property(player_t *player,
+                                const char *name,
+                                const char *type,
+                                void *value)
+{
+    const char *interface = "org.mpris.MediaPlayer2.Player";
+
+    context_t *ctx;
+    dbusif_t *dbusif;
+    DBusMessage *msg;
+    DBusMessageIter mit;
+    DBusMessageIter vit;
+    int success;
+
+    if (!player || !player->name || !player->address ||
+        !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
+        return;
+
+    msg = dbus_message_new_method_call(player->address,
+                                       "/org/mpris/MediaPlayer2",
+                                       "org.freedesktop.DBus.Properties",
+                                       "Set");
+
+    if (!msg)
+        return;
+
+    dbus_message_iter_init_append(msg, &mit);
+    dbus_message_iter_append_basic(&mit, DBUS_TYPE_STRING, &interface);
+    dbus_message_iter_append_basic(&mit, DBUS_TYPE_STRING, &name);
+    dbus_message_iter_open_container(&mit, DBUS_TYPE_VARIANT, type, &vit);
+    dbus_message_iter_append_basic(&vit, type[0], value);
+    dbus_message_iter_close_container(&mit, &vit);
+
+    mrp_dbus_send_msg(dbusif->dbus, msg);
+
+    dbus_message_unref(msg);
+}
+
 void dbusif_introspect_player(player_t *player)
 {
     context_t *ctx;
@@ -167,8 +205,6 @@ void dbusif_set_player_state(player_t *player, player_state_t state)
     DBusMessage *msg;
     const char *member;
 
-    printf("address: %s\n", player->address ? player->address : "unknown");
-
     if (!player || !player->address ||
         !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
         return;
@@ -180,8 +216,32 @@ void dbusif_set_player_state(player_t *player, player_state_t state)
     default:                                                            return;
     }
 
-    printf("member: %s\n", member);
+    msg = dbus_message_new_method_call(player->address,
+                                       "/org/mpris/MediaPlayer2",
+                                       "org.mpris.MediaPlayer2.Player",
+                                       member);
+    if (msg) {
+        mrp_dbus_send_msg(dbusif->dbus, msg);
+        dbus_message_unref(msg);
+    }
+}
 
+void dbusif_change_track(player_t *player, track_t track)
+{
+    context_t *ctx;
+    dbusif_t *dbusif;
+    DBusMessage *msg;
+    const char *member;
+
+    if (!player || !player->address ||
+        !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
+        return;
+
+    switch (track) {
+    case NEXT_TRACK:       member = "Next";         break;
+    case PREVIOUS_TRACK:   member = "Previous";     break;
+    default:                                        return;
+    }
 
     msg = dbus_message_new_method_call(player->address,
                                        "/org/mpris/MediaPlayer2",
@@ -263,6 +323,48 @@ void dbusif_query_playlists(player_t *player)
     }
 
     dbus_message_unref(msg);
+}
+
+void dbusif_raise_player(player_t *player)
+{
+    context_t *ctx;
+    dbusif_t *dbusif;
+    DBusMessage *msg;
+    const char *member;
+
+    if (!player || !player->address ||
+        !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
+        return;
+
+    msg = dbus_message_new_method_call(player->address,
+                                       "/org/mpris/MediaPlayer2",
+                                       "org.mpris.MediaPlayer2",
+                                       "Raise");
+    if (msg) {
+        mrp_dbus_send_msg(dbusif->dbus, msg);
+        dbus_message_unref(msg);
+    }
+}
+
+void dbusif_quit_player(player_t *player)
+{
+    context_t *ctx;
+    dbusif_t *dbusif;
+    DBusMessage *msg;
+    const char *member;
+
+    if (!player || !player->address ||
+        !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
+        return;
+
+    msg = dbus_message_new_method_call(player->address,
+                                       "/org/mpris/MediaPlayer2",
+                                       "org.mpris.MediaPlayer2",
+                                       "Quit");
+    if (msg) {
+        mrp_dbus_send_msg(dbusif->dbus, msg);
+        dbus_message_unref(msg);
+    }
 }
 
 static void name_follow_cb(mrp_dbus_t *dbus,
@@ -454,16 +556,17 @@ static int parse_properties(context_t *ctx,
                 else
                     state = UNKNOWN;
 
-                printf("*** state %d\n", state);
+                // printf("*** state %d\n", state);
 
                 if (state != UNKNOWN)
                     clients_player_state_changed(player, state);
             }
             else if (!strcmp(prop, "Volume") && type == DBUS_TYPE_DOUBLE) {
                 printf("*** volume %.4lf\n", value.dbl);
+                clients_player_volume_changed(player, value.dbl);
             }
             else if (!strcmp(prop, "CanPlay") && type == DBUS_TYPE_BOOLEAN) {
-                printf("*** %s play\n", value.bool_val ? "can" : "unable to");
+                //printf("*** %s play\n", value.bool_val ? "can":"unable to");
                 clients_player_status_changed(player, value.bool_val);
             }
         }

@@ -15,12 +15,18 @@ int  dbusif_register_player(context_t *ctx, const char *name);
 void dbusif_unregister_player(context_t *ctx, const char *name);
 
 void dbusif_query_player_properties(player_t *player);
+void dbusif_set_player_property(player_t *player, const char *name,
+                                const char *type, void *value);
 void dbusif_introspect_player(player_t *player);
 
 void dbusif_set_player_state(player_t *player, player_state_t state);
+void dbusif_change_track(player_t *player, track_t track);
 
 void dbusif_query_playlists(player_t *player);
 void dbusif_set_playlist(player_t *player, const char *id);
+
+void dbusif_raise_player(player_t *player);
+void dbusif_quit_player(player_t *player);
 
 
 #endif /* __SRS_MPRIS2_DBUS_INTERFACE_H__ */

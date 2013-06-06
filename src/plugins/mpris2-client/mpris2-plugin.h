@@ -11,6 +11,7 @@
 #define MPRIS2_PREFIX  "mpris2."
 
 typedef enum   player_state_e  player_state_t;
+typedef enum   track_e         track_t;
 
 typedef struct context_s       context_t;
 typedef struct dbusif_s        dbusif_t;
