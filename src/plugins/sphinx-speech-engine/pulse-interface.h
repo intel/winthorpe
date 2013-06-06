@@ -1,0 +1,28 @@
+#ifndef __SRS_POCKET_SPHINX_PULSE_INTERFACE_H__
+#define __SRS_POCKET_SPHINX_PULSE_INTERFACE_H__
+
+#include <pulse/pulseaudio.h>
+#include <pulse/mainloop.h>
+
+#include "sphinx-plugin.h"
+
+struct pulse_interface_s {
+    pa_mainloop *mloop;
+    pa_context *pactx;
+    pa_stream *stream;
+    bool conup;
+};
+
+int  pulse_interface_create(context_t *ctx, pa_mainloop *mloop);
+void pulse_interface_destroy(context_t *ctx);
+
+
+#endif /* __SRS_POCKET_SPHINX_PULSE_INTERFACE_H__ */
+
+/*
+ * Local Variables:
+ * c-basic-offset: 4
+ * indent-tabs-mode: nil
+ * End:
+ *
+ */

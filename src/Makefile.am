@@ -77,8 +77,14 @@ plugin_fake_speech_la_LIBADD  =
 if SPHINX_ENABLED
 plugin_LTLIBRARIES += plugin-sphinx-speech.la
 
-plugin_sphinx_speech_la_SOURCES =			\
-		plugins/sphinx-speech-engine/sphinx.c
+plugin_sphinx_speech_la_SOURCES =				\
+		plugins/sphinx-speech-engine/sphinx-plugin.c	\
+		plugins/sphinx-speech-engine/pulse-interface.c	\
+		plugins/sphinx-speech-engine/input-buffer.c	\
+		plugins/sphinx-speech-engine/filter-buffer.c	\
+		plugins/sphinx-speech-engine/utterance.c	\
+		plugins/sphinx-speech-engine/decoder-set.c	\
+		plugins/sphinx-speech-engine/options.c
 
 plugin_sphinx_speech_la_CFLAGS  =			\
 		$(AM_CFLAGS) 				\
