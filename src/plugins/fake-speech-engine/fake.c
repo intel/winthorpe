@@ -239,23 +239,28 @@ static int fake_rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *fake_sampledup(uint32_t start, uint32_t end, size_t *size,
-                            void *user_data)
+static srs_audiobuf_t *fake_sampledup(uint32_t start, uint32_t end,
+                                      void *user_data)
 {
-    fake_t   *fake = (fake_t *)user_data;
-    uint32_t *buf  = mrp_allocz(2 * sizeof(*buf));
+    fake_t            *fake = (fake_t *)user_data;
+    srs_audioformat_t  format;
+    uint32_t           rate;
+    uint8_t            channels;
+    size_t             samples;
+    uint32_t           buf[2];
 
     MRP_UNUSED(fake);
 
     mrp_debug("duplicating fake backend sample (%u - %u)", start, end);
 
-    buf[0] = start;
-    buf[1] = end;
+    format   = SRS_AUDIO_S32LE;
+    rate     = 16000;
+    channels = 2;
+    samples  = 1;
+    buf[0]   = start;
+    buf[1]   = end;
 
-    if (size != NULL)
-        *size = 2;
-
-    return (void *)buf;
+    return srs_create_audiobuf(format, rate, channels, samples, buf);
 }
 
 
