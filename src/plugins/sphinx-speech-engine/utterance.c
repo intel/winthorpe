@@ -92,8 +92,16 @@ static void process_utterance(context_t *ctx)
         processed:
             if (ctx->verbose || 1)
                 print_utterance(ctx, &utt);
+
             purgelen = plugin_utterance_handler(ctx, &utt);
             filter_buffer_purge(ctx, purgelen);
+
+            if (!filter_buffer_is_empty(ctx)) {
+                mrp_log_info("processing what is left in filter buffer");
+                utterance_start(ctx);
+                filter_buffer_utter(ctx, true);
+                utterance_end(ctx);
+            }
             break;
 
         default:
