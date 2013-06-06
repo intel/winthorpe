@@ -703,10 +703,12 @@ static void write_callback(pa_stream *stream, size_t bytes, void *userdata)
     if (card->output.stream && stream != card->output.stream)
         goto confused;
 
+    size = device->audio.end - device->audio.start;
+
     while (bytes > 0) {
 
         if (card->input.state != ST_READY || !(buf = device->audio.buf) ||
-            buf->samples <= card->output.sent)
+            buf->samples <= card->output.sent || size <= card->output.sent)
         {
             len = (sizeof(silence) < bytes) ? sizeof(silence) : bytes;
 
@@ -714,7 +716,6 @@ static void write_callback(pa_stream *stream, size_t bytes, void *userdata)
                 goto could_not_write;
         }
         else {
-            size = device->audio.end - device->audio.start;
             len  = (size - card->output.sent) * sizeof(int16_t);
             offs = device->audio.start + card->output.sent;
 
