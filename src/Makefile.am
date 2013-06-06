@@ -163,6 +163,21 @@ plugin_bluetooth_client_la_LDFLAGS =				\
 
 plugin_bluetooth_client_la_LIBADD  =
 
+# search plugin
+plugin_LTLIBRARIES += plugin-search-client.la
+
+plugin_search_client_la_SOURCES =				\
+		plugins/search-client/search-plugin.c
+
+plugin_search_client_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_search_client_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_search_client_la_LIBADD  =
+
+
 
 # cleanup
 clean-local::
