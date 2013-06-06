@@ -28,6 +28,7 @@
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 
 #include <murphy/common/list.h>
@@ -61,6 +62,16 @@ typedef struct {
     srs_disamb_api_t  api;
     void             *api_data;
 } srs_disamb_t;
+
+
+/*
+ * feedback TTS or effect
+ */
+
+typedef struct {
+    int         tts;                     /* non-zero for TTS feedback */
+    const char *data;                    /* TTS messgae or effect path */
+} effect_t;
 
 
 static srs_srec_t *find_srec(srs_context_t *srs, const char *name);
@@ -387,6 +398,56 @@ static void process_ambiguity(srs_srec_t *srec, srs_srec_result_t *res)
 }
 
 
+static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
+{
+    static effect_t effects[32];
+    static int      neffect = -1;
+
+    srs_cfg_t *cfg;
+    int        n, i, cnt;
+
+    if (neffect != -1) {
+        *cfgp = &effects[0];
+        return neffect;
+    }
+
+
+    cnt = srs_collect_config(srs->settings, "feedback.tts.", &cfg);
+
+    if (cnt > (int)MRP_ARRAY_SIZE(effects))
+        cnt = (int)MRP_ARRAY_SIZE(effects);
+
+    n = 0;
+    for (i = 0; i < cnt; i++, n++) {
+        effects[n].tts  = TRUE;
+        effects[n].data = cfg[i].value;
+        mrp_log_info("Configured TTS effect '%s'.", cfg[i].value);
+    }
+
+    cnt = srs_collect_config(srs->settings, "feedback.sound.", &cfg);
+
+    if (n + cnt > (int)MRP_ARRAY_SIZE(effects))
+        cnt = (int)MRP_ARRAY_SIZE(effects) - n;
+
+    for (i = 0; i < cnt; i++) {
+        if (access(cfg[i].value, R_OK) == 0) {
+            effects[n].tts  = FALSE;
+            effects[n].data = cfg[i].value;
+            n++;
+            mrp_log_info("Configured sound effect '%s'.", cfg[i].value);
+        }
+        else
+            mrp_log_warning("Dropping non-accessible effect '%s'.",
+                            cfg[i].value);
+    }
+
+    *cfgp   = effects;
+    neffect = n;
+
+    return neffect;
+}
+
+
 static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
 {
     srs_srec_t           *srec = (srs_srec_t *)notify_data;
@@ -454,30 +515,23 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
                 break;
 
             case SRS_SREC_RESULT_UNRECOGNIZED: {
-                struct {
-                    int         isfile;
-                    const char *data;
-                } effects[] = {
-                    { 0, "Sorry, I did not understand that." },
-                    { 0, "Sorry, I did not get that."        },
-                    { 0, "Say what ?"                        },
-                    { 0, "Excuse me ?"                       },
-                    { 1, "./effects/effect-duh-0.wav"       },
-                    { 1, "./effects/effect-repeat.wav"      },
-                    { 1, "./effects/effect-what-0.wav"      }
-                }, *effect;
+                static effect_t *effects = NULL;
+                static int       neffect = -1;
 
-                int neffect = MRP_ARRAY_SIZE(effects);
-                int idx     = (1.0 * neffect * rand()) / RAND_MAX;
+                effect_t *effect;
+                int       idx = (1.0 * neffect * rand()) / RAND_MAX;
+
+                if (neffect < 0)
+                    neffect = get_effect_config(srec->srs, &effects);
 
                 mrp_log_error("Unrecognized command.");
 
                 effect = effects + idx;
 
                 mrp_log_info("Trying to render feedback %s '%s'...",
-                             effect->isfile ? "file" : "TTS", effect->data);
+                             effect->tts ? "TTS" : "effect", effect->data);
 
-                if (effect->isfile)
+                if (!effect->tts)
                     srs_play_sound_file(srec->srs, effect->data, NULL, NULL);
                 else
                     srs_say_msg(srec->srs, effect->data, NULL, NULL);
