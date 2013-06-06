@@ -57,7 +57,18 @@ struct plugin_s {
 
 int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt)
 {
-    int32_t length = utt->length ? utt->length : -1;
+    plugin_t *pl;
+    srs_srec_notify_t notify;
+    int32_t length;
+
+    if (!(pl = ctx->plugin) || !(notify = pl->notify.callback))
+        length = -1;
+    else {
+        length = notify(utt, pl->notify.data);
+
+        if (length < 0 && utt->length)
+            length = utt->length;
+    }
 
     return length;
 }
