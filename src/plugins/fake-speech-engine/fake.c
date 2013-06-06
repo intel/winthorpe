@@ -40,9 +40,9 @@
 
 
 typedef struct {
-    char     *token;                     /* token */
-    double    next;                      /* time (in secs) till next token */
-} fake_token_t;
+    char **tokens;
+    int    ntoken;
+} fake_candidate_t;
 
 
 typedef struct {
@@ -50,20 +50,20 @@ typedef struct {
     srs_srec_notify_t  notify;           /* recognition notification callback */
     void              *notify_data;      /* notification callback data */
     int                active;           /* have been activated */
-    fake_token_t      *tokens;           /* fake tokens to push */
-    int                tokidx;           /* next token index */
+    fake_candidate_t  *cand;             /* fake candidates to push */
+    int                candidx;          /* next candidate index */
     mrp_timer_t       *toktmr;           /* timer for next token */
 } fake_t;
 
 
-static fake_token_t tokens[] = {
-    { "hal"  , 1.0 },
-    { "open" , 0.5 },
-    { "the"  , 0.3 },
-    { "pod"  , 0.2 },
-    { "bay"  , 0.5 },
-    { "doors", 1.0 },
-    { NULL   , 0.0 }
+static const char *cmd_hal[]  = { "Hal", "open", "the", "pod", "bay", "doors" };
+static const char *cmd_cant[] = { "I", "am", "afraid", "I", "can't", "do",
+                                  "that", "Dave" };
+
+static fake_candidate_t commands[] = {
+    { tokens: (char **)cmd_hal , ntoken: MRP_ARRAY_SIZE(cmd_hal)  },
+    { tokens: (char **)cmd_cant, ntoken: MRP_ARRAY_SIZE(cmd_cant) },
+    { NULL, 0 }
 };
 
 
@@ -87,37 +87,64 @@ static int arm_token_timer(fake_t *fake, double delay)
 
 static void push_token_cb(mrp_timer_t *t, void *user_data)
 {
+    static int            cnt  = 0;
+    static struct timeval prev = { 0, 0 };
+    struct timeval        now;
+    uint32_t              diff;
+
     fake_t               *fake  = (fake_t *)user_data;
-    fake_token_t         *token = fake->tokens + fake->tokidx++;
-    srs_srec_token_t      tok;
-    srs_srec_candidate_t  cand;
+    fake_candidate_t     *fcnd  = fake->cand + fake->candidx++;
+    srs_srec_token_t      tokens[fcnd->ntoken];
+    srs_srec_candidate_t  cand, *candptr;
     srs_srec_utterance_t  utt;
+    int                   i;
+
+    if (!prev.tv_sec) {
+        gettimeofday(&prev, NULL);
+        diff = 0;
+    }
+    else {
+        gettimeofday(&now, NULL);
+
+        diff  = (now.tv_sec - prev.tv_sec) * 1000;
+        if (now.tv_usec < prev.tv_usec)
+            diff -= (prev.tv_usec + now.tv_usec) / 1000;
+        else
+            diff += (now.tv_usec - prev.tv_usec) / 1000;
+
+        prev = now;
+    }
+
+    mrp_debug("counter: %d (diff: %u)", cnt++, diff);
 
     mrp_del_timer(t);
     fake->toktmr = NULL;
 
-    if (token->token == NULL) {
-        fake->tokidx = 0;
+    if (fcnd->tokens == NULL) {
+        fake->candidx = 0;
+        arm_token_timer(fake, 3);
         return;
     }
 
-    arm_token_timer(fake, token->next);
+    arm_token_timer(fake, 1);
 
-    tok.token = token->token;
-    tok.score = 1;
-    tok.start = token - fake->tokens;
-    tok.end   = tok.start + 1;
+    for (i = 0; i < fcnd->ntoken; i++) {
+        tokens[i].token = fcnd->tokens[i];
+        tokens[i].score = 1;
+        tokens[i].start = 2 * i;
+        tokens[i].end   = 2 + i + 1;
+    }
 
     cand.score  = 1;
-    cand.ntoken = 1;
-    cand.tokens = &tok;
+    cand.tokens = &tokens[0];
+    cand.ntoken = fcnd->ntoken;
+    candptr     = &cand;
 
     utt.id     = "fake backend utterance";
     utt.score  = 1;
-    utt.length = 1;
-    utt.length = tok.end - tok.start;
+    utt.length = fcnd->ntoken * 2;
     utt.ncand  = 1;
-    utt.cands  = &cand;
+    utt.cands  = &candptr;
 
     fake->notify(&utt, fake->notify_data);
 }
@@ -132,10 +159,10 @@ static int fake_activate(void *user_data)
 
     mrp_debug("activating fake backend");
 
-    fake->tokens = tokens;
-    fake->tokidx = 0;
+    fake->cand    = &commands[0];
+    fake->candidx = 0;
 
-    if (arm_token_timer(fake, fake->tokens->next)) {
+    if (arm_token_timer(fake, 1)) {
         fake->active = TRUE;
         return TRUE;
     }
