@@ -75,7 +75,7 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
                     mrp_free((void *)decs->dict);
                     decs->dict = mrp_strdup(value);
                 }
-                else if (!strcmp(key, "decoder")) {
+                else if (!strncmp(key, "decoder", 7)) {
                     add_decoder(ncfg, cfgs, value, &ndec, &decs);
                 }
                 break;
