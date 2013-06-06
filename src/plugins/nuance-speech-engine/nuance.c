@@ -97,19 +97,28 @@ static int nuance_rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *nuance_sampledup(uint32_t start, uint32_t end, size_t *size,
-                              void *user_data)
+static srs_audiobuf_t *nuance_sampledup(uint32_t start, uint32_t end,
+                                        void *user_data)
 {
-    nuance_t *nua = (nuance_t *)user_data;
+    nuance_t          *nua = (nuance_t *)user_data;
+    srs_audioformat_t  format;
+    uint32_t           rate;
+    uint8_t            channels;
+    size_t             samples;
+    uint32_t           buf[2];
 
     MRP_UNUSED(nua);
 
     mrp_debug("duplicating Nuance backend sample (%u - %u)", start, end);
 
-    if (size != NULL)
-        *size = sizeof(void *);
+    format   = SRS_AUDIO_S32LE;
+    rate     = 16000;
+    channels = 2;
+    samples  = 1;
+    buf[0]   = start;
+    buf[1]   = end;
 
-    return mrp_allocz(sizeof(void *));
+    return srs_create_audiobuf(format, rate, channels, samples, buf);
 }
 
 
