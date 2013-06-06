@@ -610,10 +610,37 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
         res->type = SRS_SREC_RESULT_MATCH;
         mrp_list_init(&res->result.matches);
 
+    search_clients:
         mrp_list_foreach(&node->children, p, n) {
             child = mrp_list_entry(p, typeof(*child), hook);
 
+            /*
+             * Notes:
+             *   This is a kludge to get wildcard match also 0 tokens.
+             *
+             *   If we don't find an immediate client node, see if we can
+             *   get to a client node by traversing the tree further but
+             *   without consume any tokens (which we do not have). This
+             *   can be accomplished in two ways:
+             *     1) via an immediate wildcard node followed by a client
+             *     2) via a dictionary and a wildcard node followed by a
+             *        client
+             */
             if (child->type != NODE_TYPE_CLIENT) {
+                prnt = NULL;
+
+                if (child->type == NODE_TYPE_TOKEN) {
+                    if (!strcmp(child->data.token, SRS_TOKEN_WILDCARD))
+                        prnt = child;
+                }
+                else if (child->type == NODE_TYPE_DICTIONARY)
+                    prnt = get_token_node(child, SRS_TOKEN_WILDCARD, FALSE);
+
+                if (prnt != NULL) {
+                    node = prnt;
+                    goto search_clients;
+                }
+
                 mrp_log_error("Unexpected non-client node type 0x%x.",
                               node->type);
                 continue;
