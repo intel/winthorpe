@@ -45,10 +45,12 @@
 
 
 static const char *default_commands[] = {
-    "hal open the pod bay doors",        /* I'm sorry, Dave... */
-    "hal play music",                    /* command to play music */
-    "hal stop music",                    /* command to stop music */
-    "hal exit",                          /* command to exit */
+    "hal open the pod bay doors",
+    "hal play music",
+    "hal stop music",
+    "hal exit",
+    "hal dial __push_dict__(digits) *",
+    "hal play artist __push_dict__(artists) *"
 };
 
 
