@@ -120,16 +120,26 @@ static int rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *sampledup(uint32_t start, uint32_t end, void *user_data)
+static void *sampledup(uint32_t start, uint32_t end, size_t *sizep,
+                       void *user_data)
 {
-    context_t *ctx = (context_t *)user_data;
+    context_t *ctx  = (context_t *)user_data;
+    size_t     size = 2 * sizeof(uint32_t);
+    void      *fake = mrp_allocz(size);
 
     MRP_UNUSED(ctx);
 
     mrp_debug("duplicating CMU Sphinx backend samples (%u - %u)", start, end);
 
+    if (fake != NULL) {
+        if (sizep != NULL)
+            *sizep = size;
 
-    return (void *)4;
+        ((uint32_t *)fake)[0] = start;
+        ((uint32_t *)fake)[1] = end;
+    }
+
+    return fake;
 }
 
 
