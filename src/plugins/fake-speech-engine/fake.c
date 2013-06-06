@@ -53,6 +53,7 @@ typedef struct {
     fake_candidate_t  *cand;             /* fake candidates to push */
     int                candidx;          /* next candidate index */
     mrp_timer_t       *toktmr;           /* timer for next token */
+    char               decoder[256];     /* current decoder */
 } fake_t;
 
 
@@ -105,7 +106,7 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     srs_srec_token_t      tokens[fcnd->ntoken];
     srs_srec_candidate_t  cand, *cands[2];
     srs_srec_utterance_t  utt;
-    int                   i;
+    int                   flush, i;
 
     if (!prev.tv_sec) {
         gettimeofday(&prev, NULL);
@@ -134,13 +135,9 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
         return;
     }
 
-    arm_token_timer(fake, 5);
-
     for (i = 0; i < fcnd->ntoken; i++) {
         tokens[i].token = fcnd->tokens[i];
         tokens[i].score = 1;
-        tokens[i].start = 2 * i;
-        tokens[i].end   = 2 + i + 1;
     }
 
     cand.score  = 1;
@@ -156,7 +153,28 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     utt.ncand  = 1;
     utt.cands  = cands;
 
-    fake->notify(&utt, fake->notify_data);
+ rescan:
+    for (i = 0; i < (int)cand.ntoken; i++) {
+        cand.tokens[i].start = 2 * i;
+        cand.tokens[i].end   = 2 * i + 1;
+    }
+
+    flush = fake->notify(&utt, fake->notify_data);
+
+    if (flush != SRS_SREC_FLUSH_ALL) {
+        mrp_log_info("Trying to flush fake backend buffer till %d.", flush);
+        for (i = 0; i < fcnd->ntoken; i++) {
+            if (tokens[i].start == (uint32_t)flush) {
+                cand.tokens = tokens + i;
+                cand.ntoken = fcnd->ntoken - i;
+                utt.length -= flush;
+                mrp_log_info("Rescan, removed %d fake backend tokens.", i);
+                goto rescan;
+            }
+        }
+    }
+
+    arm_token_timer(fake, 5);
 }
 
 
@@ -219,7 +237,8 @@ static int fake_rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *fake_sampledup(uint32_t start, uint32_t end, void *user_data)
+static void *fake_sampledup(uint32_t start, uint32_t end, size_t *size,
+                            void *user_data)
 {
     fake_t   *fake = (fake_t *)user_data;
     uint32_t *buf  = mrp_allocz(2 * sizeof(*buf));
@@ -230,6 +249,9 @@ static void *fake_sampledup(uint32_t start, uint32_t end, void *user_data)
 
     buf[0] = start;
     buf[1] = end;
+
+    if (size != NULL)
+        *size = 2;
 
     return (void *)buf;
 }
@@ -250,12 +272,27 @@ static int fake_check_decoder(const char *decoder, void *user_data)
 static int fake_select_decoder(const char *decoder, void *user_data)
 {
     fake_t *fake = (fake_t *)user_data;
+    int     max;
 
     MRP_UNUSED(fake);
 
     mrp_debug("selecting decoder '%s' for fake backend", decoder);
 
+    mrp_log_info("switching fake backend to decoder '%s'", decoder);
+
+    max = sizeof(fake->decoder) - 1;
+    strncpy(fake->decoder, decoder, max);
+    fake->decoder[max] = '\0';
+
     return TRUE;
+}
+
+
+const char *fake_active_decoder(void *user_data)
+{
+    fake_t *fake = (fake_t *)user_data;
+
+    return &fake->decoder[0];
 }
 
 
@@ -269,6 +306,7 @@ static int create_fake(srs_plugin_t *plugin)
     sampledup:        fake_sampledup,
     check_decoder:    fake_check_decoder,
     select_decoder:   fake_select_decoder,
+    active_decoder:   fake_active_decoder,
     };
 
     srs_context_t *srs = plugin->srs;
@@ -281,6 +319,7 @@ static int create_fake(srs_plugin_t *plugin)
 
     if (fake != NULL) {
         fake->self = plugin;
+        strcpy(fake->decoder, "default");
 
         if (srs_register_srec(srs, FAKE_NAME, &fake_api, fake,
                               &fake->notify, &fake->notify_data) == 0) {
