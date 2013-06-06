@@ -230,6 +230,7 @@ static void fsg_processor(context_t *ctx,
         return;
 
     lmath = ps_get_logmath(dec->ps);
+    ps_get_hyp(dec->ps, &score, &uttid);
     prob = logmath_exp(lmath, score);
 
     cand = cands;
