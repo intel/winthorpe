@@ -3,10 +3,11 @@
 
 #include "sphinx-plugin.h"
 
-#define CANDIDATE_WORD_MAX  50
-#define CANDIDATE_MAX       1000
+#define CANDIDATE_TOKEN_MAX  50
+#define CANDIDATE_MAX        1000
 
 
+#if 0
 struct word_s {
     const char *word;
     int32_t start;
@@ -26,7 +27,7 @@ struct utternace_s {
     size_t ncand;
     candidate_t **cands;
 };
-
+#endif
 
 void utterance_start(context_t *ctx);
 void utterance_end(context_t *ctx);

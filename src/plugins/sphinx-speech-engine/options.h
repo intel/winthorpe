@@ -5,6 +5,8 @@
 
 #include "sphinx-plugin.h"
 
+#define SPHINX_PREFIX "sphinx."
+
 struct options_s {
     const char *hmm;
     const char *lm;

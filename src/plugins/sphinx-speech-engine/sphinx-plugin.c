@@ -33,9 +33,6 @@
 #include <pulse/pulseaudio.h>
 #include <pulse/mainloop.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/recognizer.h"
-
 #include "options.h"
 #include "decoder-set.h"
 #include "utterance.h"
@@ -48,7 +45,6 @@
 #define SPHINX_DESCRIPTION "A CMU Sphinx-based speech engine backend plugin."
 #define SPHINX_AUTHORS     "Janos Kovacs <janos.kovacs@intel.com>"
 #define SPHINX_VERSION     "0.0.1"
-#define SPHINX_PREFIX      "sphinx."
 
 struct plugin_s {
     srs_plugin_t *self;               /* us, the backend plugin */
@@ -59,7 +55,7 @@ struct plugin_s {
 };
 
 
-int32_t plugin_utterance_handler(context_t *ctx, utterance_t *utt)
+int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt)
 {
     int32_t length = utt->length ? utt->length : -1;
 

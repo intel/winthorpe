@@ -143,7 +143,10 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
     cmd_ln_set_str_r(cfg, "-dict", dict);
     cmd_ln_set_int_r(cfg, "-topn", topn);
     cmd_ln_set_float_r(cfg, "-samprate", (double)opts->rate);
-    cmd_ln_set_str_r(cfg, "-logfn", opts->logfn);
+    cmd_ln_set_boolean_r(cfg, "-verbose", ctx->verbose);
+
+    if (opts->logfn)
+        cmd_ln_set_str_r(cfg, "-logfn", opts->logfn);
 
     if (fsg)
         cmd_ln_set_str_r(cfg, "-fsg", opts->fsg);

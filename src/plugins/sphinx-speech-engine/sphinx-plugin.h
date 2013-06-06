@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "src/daemon/plugin.h"
+#include "src/daemon/recognizer.h"
+
 typedef enum utterance_processor_e  utterance_processor_t;
 
 typedef struct context_s            context_t;
@@ -36,7 +39,7 @@ struct context_s {
 };
 
 
-int32_t plugin_utterance_handler(context_t *ctx, utterance_t *utt);
+int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt);
 
 
 #endif /* __SRS_POCKET_SPHINX_PLUGIN_H__ */

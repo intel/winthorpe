@@ -63,10 +63,10 @@ typedef struct {
  * a single speech token
  */
 typedef struct {
-    char     *token;                     /* recognized tokens */
-    double    score;                     /* correctness probability */
-    uint32_t  start;                     /* start in audio buffer */
-    uint32_t  end;                       /* end in audio buffer */
+    const char *token;                     /* recognized tokens */
+    double      score;                     /* correctness probability */
+    uint32_t    start;                     /* start in audio buffer */
+    uint32_t    end;                       /* end in audio buffer */
 } srs_srec_token_t;
 
 /*

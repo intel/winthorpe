@@ -95,7 +95,7 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     fake_t               *fake  = (fake_t *)user_data;
     fake_candidate_t     *fcnd  = fake->cand + fake->candidx++;
     srs_srec_token_t      tokens[fcnd->ntoken];
-    srs_srec_candidate_t  cand, *candptr;
+    srs_srec_candidate_t  cand, *cands[2];
     srs_srec_utterance_t  utt;
     int                   i;
 
@@ -138,13 +138,15 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     cand.score  = 1;
     cand.tokens = &tokens[0];
     cand.ntoken = fcnd->ntoken;
-    candptr     = &cand;
+
+    cands[0] = &cand;
+    cands[1] = NULL;
 
     utt.id     = "fake backend utterance";
     utt.score  = 1;
     utt.length = fcnd->ntoken * 2;
     utt.ncand  = 1;
-    utt.cands  = &candptr;
+    utt.cands  = cands;
 
     fake->notify(&utt, fake->notify_data);
 }

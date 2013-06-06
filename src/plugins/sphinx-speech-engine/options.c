@@ -25,11 +25,14 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
     bool verbose;
     int i;
     int sts;
+    size_t pfxlen;
 
     if (!ctx) {
         errno = EINVAL;
         return -1;
     }
+
+    pfxlen = strlen(SPHINX_PREFIX);
 
     if (!(opts = mrp_allocz(sizeof(options_t))))
         return -1;
@@ -50,84 +53,85 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
 
     for (i = 0;  i < ncfg;  i++) {
         cfg = cfgs + i;
-        key = cfg->key;
+        key = cfg->key + pfxlen;
         value = cfg->value;
 
-        switch (key[0]) {
+        if (!strncmp(cfg->key, SPHINX_PREFIX, pfxlen)) {
 
-        case 'd':
-            if (!strcmp(key, "dict")) {
-                mrp_free((void *)opts->lm);
-                opts->dict = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
+            switch (key[0]) {
 
-        case 'f':
-            if (!strcmp(key, "fsg")) {
-                mrp_free((void *)opts->fsg);
-                opts->fsg = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
-
-        case 'h':
-            if (!strcmp(key, "hmm")) {
-                mrp_free((void *)opts->hmm);
-                opts->hmm = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
-
-        case 'l':
-            if (!strcmp(key, "lm")) {
-                mrp_free((void *)opts->lm);
-                opts->lm = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
-
-        case 'p':
-            if (!strcmp(key, "pulsesrc")) {
-                mrp_free((void *)opts->srcnam);
-                opts->srcnam = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
-
-        case 'r':
-            if (!strcmp(key, "record")) {
-                mrp_free((void *)opts->audio);
-                opts->audio = mrp_strdup(value);
-                cfg->used = TRUE;
-            }
-            break;
-
-        case 's':
-            if (!strcmp(key, "samplerate")) {
-                opts->rate = strtoul(value, &e, 10);
-                if (e[0] || e == value ||
-                    opts->rate < 8000 || opts->rate > 4800)
-                {
-                    mrp_log_error("invalid value %s for samplerate", value);
-                    sts = -1;
+            case 'd':
+                if (!strcmp(key, "dict")) {
+                    mrp_free((void *)opts->dict);
+                    opts->dict = mrp_strdup(value);
                 }
-                cfg->used = TRUE;
-            }
-            break;
+                break;
 
-        case 't':
-            if (!strcmp(key, "topn")) {
-                opts->topn = strtoul(value, &e, 10);
-                if (e[0] || e == value || opts->topn < 1 || opts->topn > 100) {
-                    mrp_log_error("invalid value %s for topn", value);
-                    sts = -1;
+            case 'f':
+                if (!strcmp(key, "fsg")) {
+                    mrp_free((void *)opts->fsg);
+                    opts->fsg = mrp_strdup(value);
                 }
-                cfg->used = TRUE;
-            }
-            break;
+                break;
 
-        } /* switch key */
+            case 'h':
+                if (!strcmp(key, "hmm")) {
+                    mrp_free((void *)opts->hmm);
+                    opts->hmm = mrp_strdup(value);
+                }
+                break;
+
+            case 'l':
+                if (!strcmp(key, "lm")) {
+                    mrp_free((void *)opts->lm);
+                    opts->lm = mrp_strdup(value);
+                }
+                break;
+
+            case 'p':
+                if (!strcmp(key, "pulsesrc")) {
+                    mrp_free((void *)opts->srcnam);
+                    opts->srcnam = mrp_strdup(value);
+                }
+                break;
+
+            case 'r':
+                if (!strcmp(key, "record")) {
+                    mrp_free((void *)opts->audio);
+                    opts->audio = mrp_strdup(value);
+                }
+                break;
+
+            case 's':
+                if (!strcmp(key, "samplerate")) {
+                    opts->rate = strtoul(value, &e, 10);
+                    if (e[0] || e == value ||
+                        opts->rate < 8000 || opts->rate > 4800)
+                    {
+                        mrp_log_error("invalid value %s for samplerate",value);
+                        sts = -1;
+                    }
+                }
+                break;
+
+            case 't':
+                if (!strcmp(key, "topn")) {
+                    opts->topn = strtoul(value, &e, 10);
+                    if (e[0] || e == value ||
+                        opts->topn < 1 || opts->topn > 100)
+                    {
+                        mrp_log_error("invalid value %s for topn", value);
+                        sts = -1;
+                    }
+                }
+                break;
+
+            default:
+                cfg->used = FALSE;
+                break;
+
+            } /* switch key */
+        }
     } /* for cfg */
 
     if (sts == 0) {

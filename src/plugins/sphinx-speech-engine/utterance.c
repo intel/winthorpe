@@ -19,17 +19,18 @@
 
 
 static void process_utterance(context_t *);
-static void acoustic_processor(context_t *, utterance_t *,
-                               candidate_t *, candidate_t **);
-static void fsg_processor(context_t *, utterance_t *,
-                          candidate_t *, candidate_t **);
-static void print_utterance(context_t *, utterance_t *);
+static void acoustic_processor(context_t *, srs_srec_utterance_t *,
+                               srs_srec_candidate_t *,srs_srec_candidate_t **);
+static void fsg_processor(context_t *, srs_srec_utterance_t *,
+                          srs_srec_candidate_t *, srs_srec_candidate_t **);
+static void print_utterance(context_t *, srs_srec_utterance_t *);
 
-static candidate_t *candidate_equal(candidate_t *, candidate_t *);
-static double candidate_quality(candidate_t *);
-static uint32_t candidate_sort(candidate_t *, candidate_t **);
+static srs_srec_candidate_t *candidate_equal(srs_srec_candidate_t *,
+                                             srs_srec_candidate_t *);
+static double candidate_score(srs_srec_candidate_t *);
+static uint32_t candidate_sort(srs_srec_candidate_t *,srs_srec_candidate_t **);
 
-static bool wdeq(const char *, const char *);
+static bool tkneq(const char *, const char *);
 
 
 void utterance_start(context_t *ctx)
@@ -65,12 +66,17 @@ static void process_utterance(context_t *ctx)
 {
     decoder_set_t *decset;
     decoder_t *dec;
-    utterance_t utt;
-    candidate_t cands[CANDIDATE_MAX + 1];
-    candidate_t *sorted[CANDIDATE_MAX + 1];
+    srs_srec_utterance_t utt;
+    srs_srec_token_t token_pool[CANDIDATE_MAX * (CANDIDATE_TOKEN_MAX + 1)];
+    srs_srec_candidate_t cands[CANDIDATE_MAX + 1];
+    srs_srec_candidate_t *sorted[CANDIDATE_MAX + 1];
     int32_t purgelen;
+    int i;
 
     if (ctx && (decset = ctx->decset) && (dec = decset->curdec)) {
+
+        for (i = 0;  i < CANDIDATE_MAX;  i++)
+            cands[i].tokens = token_pool + (i * (CANDIDATE_TOKEN_MAX + 1));
 
         switch (dec->utproc) {
 
@@ -96,9 +102,9 @@ static void process_utterance(context_t *ctx)
 }
 
 static void acoustic_processor(context_t *ctx,
-                               utterance_t *utt,
-                               candidate_t *cands,
-                               candidate_t **sorted)
+                               srs_srec_utterance_t *utt,
+                               srs_srec_candidate_t *cands,
+                               srs_srec_candidate_t **sorted)
 {
     decoder_set_t *decset;
     decoder_t *dec;
@@ -115,8 +121,8 @@ static void acoustic_processor(context_t *ctx,
     ps_latnode_t *nod;
     int32 start, end;
     size_t ncand, nsort;
-    candidate_t *cand;
-    word_t *wd;
+    srs_srec_candidate_t *cand;
+    srs_srec_token_t *tkn;
     int32_t length, purgelen;
 
     if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec))
@@ -151,18 +157,18 @@ static void acoustic_processor(context_t *ctx,
                 
             cand = cands + ncand;
                 
-            cand->quality = logmath_exp(lmath, score) / prob;
-            cand->nword = 0;
+            cand->score = logmath_exp(lmath, score) / prob;
+            cand->ntoken = 0;
                 
             length = 0;
                 
             while ((seg = ps_seg_next(seg))) {
                 if ((hyp = ps_seg_word(seg))) {
                     if (!strcmp(hyp, "</s>") ||
-                        cand->nword >= CANDIDATE_WORD_MAX)
+                        cand->ntoken >= CANDIDATE_TOKEN_MAX)
                     {
                         ncand++;
-                        memset(cand+1, 0, sizeof(candidate_t));
+                        memset(cand+1, 0, sizeof(srs_srec_candidate_t));
                         ps_seg_frames(seg, &start, &end);
                         ps_seg_free(seg);
                         //printf("hyp=</s> ncand=%d\n", ncand);
@@ -174,39 +180,39 @@ static void acoustic_processor(context_t *ctx,
                         //printf("hyp=<sil> skip it\n");
                     }
                     else {
-                        wd = cand->words + cand->nword++;
-                        wd->word = hyp;
-                        ps_seg_frames(seg, &wd->start, &wd->end);
-                        //printf("hyp=%s (%d, %d) wd count %d\n",
-                        //      wd->word, wd->start,wd->end, cand->nword); 
+                        tkn = cand->tokens + cand->ntoken++;
+                        tkn->token = hyp;
+                        ps_seg_frames(seg, &tkn->start, &tkn->end);
+                        //printf("hyp=%s (%d, %d) tkn count %d\n",
+                        //      tkn->word, tkn->start,tkn->end, cand->ntoken); 
                     }
                 }
             } /* while seg */
             
-            if (!seg && cand->nword > 0) {
+            if (!seg && cand->ntoken > 0) {
                 ncand++;
-                cand->quality *= 0.9; /* some penalty */
-                memset(cand+1, 0, sizeof(candidate_t));
+                cand->score *= 0.9; /* some penalty */
+                memset(cand+1, 0, sizeof(srs_srec_candidate_t));
             }
             
             if (!length) {
-                wd = cand->words + (cand->nword - 1);
-                length = wd->end;
+                tkn = cand->tokens + (cand->ntoken - 1);
+                length = tkn->end;
             }
         }
     } /* for nb */
     
     utt->id = uttid;
-    utt->quality = prob;
+    utt->score = prob;
     utt->length = length;
     utt->ncand = candidate_sort(cands, sorted);
     utt->cands = sorted;
 }
 
 static void fsg_processor(context_t *ctx,
-                          utterance_t *utt,
-                          candidate_t *cands,
-                          candidate_t **sorted)
+                          srs_srec_utterance_t *utt,
+                          srs_srec_candidate_t *cands,
+                          srs_srec_candidate_t **sorted)
 {
     decoder_set_t *decset;
     decoder_t *dec;
@@ -215,12 +221,12 @@ static void fsg_processor(context_t *ctx,
     const char *uttid;
     int32_t score;
     double prob;
-    candidate_t *cand;
-    word_t *wd;
+    srs_srec_candidate_t *cand;
+    srs_srec_token_t *tkn;
     ps_lattice_t *dag;
     ps_latlink_t *lnk;
     ps_latnode_t *nod;
-    const char *word;
+    const char *token;
     int32_t start;
     int16 fef, lef;
     int32_t purgelen;
@@ -233,10 +239,10 @@ static void fsg_processor(context_t *ctx,
     prob  = logmath_exp(lmath, score);
 
     cand = cands;
-    cand->quality = 1.0;
-    cand->nword = 0;
+    cand->score = 1.0;
+    cand->ntoken = 0;
 
-    wd = NULL;
+    tkn = NULL;
 
     if ((dag = ps_get_lattice(dec->ps))) {
 
@@ -244,11 +250,11 @@ static void fsg_processor(context_t *ctx,
 
             ps_latlink_nodes(lnk, &nod);
 
-            if (nod && (word = ps_latnode_word(dag, nod)) && *word != '<') {
-                wd = cand->words + cand->nword++;
-                wd->word = word;
-                wd->start = ps_latnode_times(nod, &fef, &lef);
-                wd->end = (fef + lef) / 2;
+            if (nod && (token = ps_latnode_word(dag, nod)) && *token != '<') {
+                tkn = cand->tokens + cand->ntoken++;
+                tkn->token = token;
+                tkn->start = ps_latnode_times(nod, &fef, &lef);
+                tkn->end = (fef + lef) / 2;
             }
 
             goto handle_destination_node;
@@ -258,17 +264,18 @@ static void fsg_processor(context_t *ctx,
               handle_destination_node:
                 nod = ps_latlink_nodes(lnk, NULL);
 
-                if (nod && (word = ps_latnode_word(dag, nod)) && *word != '<'){
+                if (nod && (token = ps_latnode_word(dag,nod)) && *token != '<')
+                {
                     start = ps_latnode_times(nod, &fef, &lef);
 
-                    if (wd && start < wd->end)
+                    if (tkn && start < tkn->end)
                         break;  /* just take one candidate */
 
-                    if (!wd || !wdeq(word, wd->word)) {
-                        wd = cand->words + cand->nword++;
-                        wd->word = word;
-                        wd->start = start;
-                        wd->end = fef;
+                    if (!tkn || !tkneq(token, tkn->token)) {
+                        tkn = cand->tokens + cand->ntoken++;
+                        tkn->token = token;
+                        tkn->start = start;
+                        tkn->end = fef;
                     }
                 }
             }
@@ -279,91 +286,93 @@ static void fsg_processor(context_t *ctx,
     sorted[1] = NULL;
 
     utt->id = uttid;
-    utt->quality = prob < 0.00001 ? 0.00001 : prob;
+    utt->score = prob < 0.00001 ? 0.00001 : prob;
     utt->length = dag ? ps_lattice_n_frames(dag) : 0;
     utt->ncand = 1;
     utt->cands = sorted;
 }
 
 
-static void print_utterance(context_t *ctx, utterance_t *utt)
+static void print_utterance(context_t *ctx, srs_srec_utterance_t *utt)
 {
     decoder_set_t *decset;
     decoder_t *dec;
-    candidate_t *cand;
-    word_t *wd;
+    srs_srec_candidate_t *cand;
+    srs_srec_token_t *tkn;
     size_t i,j;
 
     if (ctx && (decset = ctx->decset) && (dec = decset->curdec)) {
         mrp_log_info("*** %15s  (%.4lf) %u candidates, length %u",
-                     utt->id, utt->quality, utt->ncand, utt->length);
+                     utt->id, utt->score, utt->ncand, utt->length);
 
         for (i = 0; cand = utt->cands[i];  i++) {
-            mrp_log_info("  (%.4lf) ----------------------", cand->quality);
+            mrp_log_info("  (%.4lf) ----------------------", cand->score);
 
-            for (j = 0;  j < cand->nword;  j++) {
-                wd = cand->words + j;
-                mrp_log_info("           %d - %d  %s\n",
-                             wd->start, wd->end, wd->word);
+            for (j = 0;  j < cand->ntoken;  j++) {
+                tkn = cand->tokens + j;
+                mrp_log_info("           %d - %d  %s",
+                             tkn->start, tkn->end, tkn->token);
             }
         }
 
-        mrp_log_info("           ----------------------\n");
+        mrp_log_info("           ----------------------");
     }
 }
 
-static candidate_t *candidate_equal(candidate_t *a, candidate_t *b)
+static srs_srec_candidate_t *candidate_equal(srs_srec_candidate_t *a,
+                                             srs_srec_candidate_t *b)
 {
-    word_t *aw,*bw;
+    srs_srec_token_t *at,*bt;
     size_t i,n;
 
     if (!a || !b)
         return NULL;
 
-    if ((n = a->nword) != b->nword)
+    if ((n = a->ntoken) != b->ntoken)
         return false;
 
     for (i = 0;  i < n;  i++) {
-        aw = a->words + i;
-        bw = b->words + i;
+        at = a->tokens + i;
+        bt = b->tokens + i;
 
-        if (!wdeq(aw->word, bw->word))
+        if (!tkneq(at->token, bt->token))
             return NULL;
     }
 
-    return (a->quality > b->quality) ? a : b;
+    return (a->score > b->score) ? a : b;
 }
 
-static double candidate_quality(candidate_t *cand)
+static double candidate_score(srs_srec_candidate_t *cand)
 {
-    return cand ? cand->quality : 0.0;
+    return cand ? cand->score : 0.0;
 }
 
 
-static uint32_t candidate_sort(candidate_t *cands, candidate_t **sorted)
+static uint32_t candidate_sort(srs_srec_candidate_t *cands,
+                               srs_srec_candidate_t **sorted)
 {
-    candidate_t *c, **s;
-    candidate_t *better_quality;
+    srs_srec_candidate_t *c, **s;
+    srs_srec_candidate_t *better_score;
     size_t i,j,n;
 
-    memset(sorted, 0, sizeof(candidate_t *) * (CANDIDATE_MAX + 1));
+    memset(sorted, 0, sizeof(srs_srec_candidate_t *) * (CANDIDATE_MAX + 1));
 
     for (i = n = 0;  i < CANDIDATE_MAX;  i++) {
-        if (!(c = cands + i)->nword)
+        if (!(c = cands + i)->ntoken)
             break;
 
         for (j = 0;   j <= n;   j++) {
             s = sorted + j;
 
-            if ((better_quality = candidate_equal(c, *s))) {
-                *s = better_quality;
+            if ((better_score = candidate_equal(c, *s))) {
+                *s = better_score;
                 break;
             }
 
-            if (candidate_quality(c) > candidate_quality(*s)) {
+            if (candidate_score(c) > candidate_score(*s)) {
                 if (j < n) {
                     memmove(sorted + j+1, sorted + j,
-                            sizeof(candidate_t *) * (n - j));
+                            sizeof(srs_srec_candidate_t *) * (n - j));
                 }
                 *s = c;
                 n++;
@@ -375,27 +384,27 @@ static uint32_t candidate_sort(candidate_t *cands, candidate_t **sorted)
     return n;
 }
 
-static bool wdeq(const char *wd1, const char *wd2)
+static bool tkneq(const char *tkn1, const char *tkn2)
 {
     const char *e1, *e2;
     int l1, l2, l;
 
-    if (!wd1 || !wd2)
+    if (!tkn1 || !tkn2)
         return false;
 
-    if (!strcmp(wd1, wd2))
+    if (!strcmp(tkn1, tkn2))
         return true;
 
-    if (*wd1 == *wd2) {
-        l1 = (e1 = strchr(wd1, '(')) ? e1 - wd1 : 0;
-        l2 = (e2 = strchr(wd2, '(')) ? e2 - wd2 : 0;
+    if (*tkn1 == *tkn2) {
+        l1 = (e1 = strchr(tkn1, '(')) ? e1 - tkn1 : 0;
+        l2 = (e2 = strchr(tkn2, '(')) ? e2 - tkn2 : 0;
 
         if (l1 || l2) {
-            if (l1 == l2 && !strncmp(wd1, wd2, l1))
+            if (l1 == l2 && !strncmp(tkn1, tkn2, l1))
                 return true;
-            if (l1 && !l2 && !strncmp(wd1, wd2, l1))
+            if (l1 && !l2 && !strncmp(tkn1, tkn2, l1))
                 return true;
-            if (!l1 && l2 && !strncmp(wd1, wd2, l2))
+            if (!l1 && l2 && !strncmp(tkn1, tkn2, l2))
                 return true;
         }
     }
