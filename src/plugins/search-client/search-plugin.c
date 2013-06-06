@@ -160,17 +160,17 @@ static int command_cb(srs_client_t *c, int idx, int ntoken, char **tokens,
     ntoken -= 2;
 
     if (url_encode(qry, sizeof(qry), ntoken, tokens) > 0) {
-        mrp_log_info("*** search query: '%s'", qry);
+        mrp_log_info("search-client got query: '%s'", qry);
 
         l = snprintf(cmd, sizeof(cmd), sch->cmd, qry);
 
         if (l < (int)sizeof(cmd)) {
-            mrp_log_info("*** executing '%s'", cmd);
+            mrp_log_info("search-client executing '%s'", cmd);
             system(cmd);
         }
     }
     else
-        mrp_log_error("*** URL encoding failed");
+        mrp_log_error("search-client: URL encoding failed");
 
     return TRUE;
 }
