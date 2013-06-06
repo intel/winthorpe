@@ -405,8 +405,8 @@ static void name_follow_cb(mrp_dbus_t *dbus,
 }
 
 static void property_query_cb(mrp_dbus_t *dbus,
-                             DBusMessage *msg,
-                             void *user_data)
+                              DBusMessage *msg,
+                              void *user_data)
 {
     player_t *player = (player_t *)user_data;
     context_t *ctx;
