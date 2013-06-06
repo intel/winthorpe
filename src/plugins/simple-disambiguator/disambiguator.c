@@ -15,8 +15,8 @@
 #define DISAMB_AUTHORS  "Krisztian Litkey <kli@iki.fi>"
 #define DISAMB_VERSION  "0.0.1"
 
-#define MAX_DICT  256
-#define MAX_DEPTH 256
+#define MAX_DICT  256                    /* max. dictionary name length */
+#define MAX_DEPTH 256                    /* max. token tree depth */
 
 
 typedef enum {
@@ -34,8 +34,8 @@ typedef union {
         int           index;             /*     command index */
     } client;
     struct {                             /* for NODE_TYPE_DICTIONARY */
-        srs_dict_op_t op;                /*     operation */
-        char          dict[MAX_DICT];    /*     dictionary to switch or push */
+        srs_dict_op_t  op;               /*     operation */
+        char          *dict;             /*     dictionary to switch or push */
     } dict;
 } node_data_t;
 
@@ -204,7 +204,12 @@ static node_t *get_dictionary_node(node_t *prnt, const char *token, int insert)
     mrp_list_init(&node->children);
     node->type = NODE_TYPE_DICTIONARY;
     node->data.dict.op = op;
-    strcpy(node->data.dict.dict, dict);
+    node->data.dict.dict = mrp_strdup(dict);
+
+    if (node->data.dict.dict == NULL) {
+        mrp_free(node);
+        return NULL;
+    }
 
     mrp_list_append(&prnt->children, &node->hook);
 
@@ -406,8 +411,12 @@ static void free_all_nodes(node_t *root)
 
         switch (node->type) {
         case NODE_TYPE_TOKEN:
-            mrp_debug("freeing token node %s", node->data.token);
+            mrp_debug("freeing token node '%s'", node->data.token);
             mrp_free(node->data.token);
+            break;
+
+        case NODE_TYPE_DICTIONARY:
+            mrp_debug("freeing dictionary node '%s'", node->data.dict.dict);
             break;
 
         default:
@@ -458,8 +467,6 @@ static int disambiguate(srs_srec_utterance_t *utt, mrp_list_hook_t *results,
     mrp_list_hook_t      *p, *n;
     node_t               *node, *child;
     int                   i, j, match;
-
-    MRP_UNUSED(dis);
 
     mrp_list_init(results);
 
@@ -563,9 +570,11 @@ static int config_disamb(srs_plugin_t *plugin, srs_cfg_t *settings)
     mrp_debug("configuring disambiguator");
 
     n = srs_collect_config(settings, "disambiguator.", &cfg);
+
     mrp_debug("found %d configuration keys%s", n, n ? ":" : "");
     for (i = 0; i < n; i++)
         mrp_debug("    %s = %s", cfg[i].key, cfg[i].value);
+
     srs_free_config(cfg);
 
     return TRUE;
