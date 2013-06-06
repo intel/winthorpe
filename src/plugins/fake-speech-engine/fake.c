@@ -147,13 +147,13 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     cands[0] = &cand;
     cands[1] = NULL;
 
-    utt.id     = "fake backend utterance";
-    utt.score  = 1;
-    utt.length = fcnd->ntoken * 2;
-    utt.ncand  = 1;
-    utt.cands  = cands;
+    utt.id    = "fake backend utterance";
+    utt.score = 1;
+    utt.ncand = 1;
+    utt.cands = cands;
 
  rescan:
+    utt.length = cand.ntoken * 2;
     for (i = 0; i < (int)cand.ntoken; i++) {
         cand.tokens[i].start = 2 * i;
         cand.tokens[i].end   = 2 * i + 1;
