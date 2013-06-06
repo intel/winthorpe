@@ -236,7 +236,7 @@ static void fsg_processor(context_t *ctx,
 
     lmath = ps_get_logmath(dec->ps);
     hyp = ps_get_hyp(dec->ps, &score, &uttid);
-    prob  = logmath_exp(lmath, score);
+    prob = logmath_exp(lmath, score);
 
     cand = cands;
     cand->score = 1.0;
@@ -259,7 +259,7 @@ static void fsg_processor(context_t *ctx,
 
             goto handle_destination_node;
 
-            while ((lnk  = ps_lattice_traverse_next(dag, NULL))) {
+            while ((lnk = ps_lattice_traverse_next(dag, NULL))) {
 
               handle_destination_node:
                 nod = ps_latlink_nodes(lnk, NULL);
