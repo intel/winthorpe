@@ -65,9 +65,7 @@ int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt)
         length = -1;
     else {
         length = notify(utt, pl->notify.data);
-
-        if (length < 0 && utt->length)
-            length = utt->length;
+        mrp_log_info("buffer processed till %d", length);
     }
 
     return length;

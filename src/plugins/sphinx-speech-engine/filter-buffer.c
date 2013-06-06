@@ -22,6 +22,8 @@
 #include "decoder-set.h"
 #include "utterance.h"
 
+#define INJECTED_SILENCE 10     /* injected silence in frames */
+
 static int open_file_for_recording(const char *);
 
 
@@ -77,6 +79,7 @@ void filter_buffer_initialize(context_t *ctx,
     uint32_t rate;
     int32_t frlen;
     int32_t hwm;
+    size_t silence;
 
     if (!ctx || !(opts = ctx->opts) || !(filtbuf = ctx->filtbuf))
         return;
@@ -85,8 +88,9 @@ void filter_buffer_initialize(context_t *ctx,
     frlen = filtbuf->frlen;
     bufsiz = (bufsiz + (frlen - 1)) / frlen * frlen;
     hwm = (highwater_mark + (frlen - 1)) / frlen * frlen;
+    silence = INJECTED_SILENCE * frlen;
 
-    filtbuf->buf = mrp_alloc(bufsiz * sizeof(int16_t));
+    filtbuf->buf = mrp_alloc((bufsiz + silence) * sizeof(int16_t));
     filtbuf->max = bufsiz;
     filtbuf->hwm = hwm;
     filtbuf->silen = silen;    
@@ -118,7 +122,7 @@ bool filter_buffer_is_empty(context_t *ctx)
 void filter_buffer_purge(context_t *ctx, int32_t length)
 {
     filter_buf_t *filtbuf;
-    size_t offset, size, origlen;
+    size_t size, offset, origlen, sillen;
 
     if (!ctx || !(filtbuf = ctx->filtbuf))
         return;
@@ -137,8 +141,9 @@ void filter_buffer_purge(context_t *ctx, int32_t length)
                 mrp_debug("purging buffer. nothing preserved");
         }
         else {
+            sillen = INJECTED_SILENCE * filtbuf->frlen;
             origlen = filtbuf->len;
-            filtbuf->len -= length;
+            filtbuf->len = filtbuf->len - length + sillen;
 
             if (ctx->verbose) {
                 mrp_debug("purging buffer. %d samples preserved out of %u",
@@ -148,7 +153,8 @@ void filter_buffer_purge(context_t *ctx, int32_t length)
             offset = length;
             size = (origlen - offset) * sizeof(int16);
 
-            memmove(filtbuf->buf, filtbuf->buf + offset,  size);
+            memmove(filtbuf->buf + sillen, filtbuf->buf + offset, size);
+            memset(filtbuf->buf, 0, sillen * sizeof(int16_t));
         }
     }
 }
@@ -217,6 +223,8 @@ void filter_buffer_utter(context_t *ctx, bool full_utterance)
         !(filtbuf = ctx->filtbuf))
         return;
 
+    printf("*** utter %d\n", filtbuf->len);
+
     if (filtbuf->len > 0) {
         if (filtbuf->fdrec >= 0) {
             size = filtbuf->len * sizeof(int16);
@@ -281,7 +289,7 @@ static int open_file_for_recording(const char *path)
     if (!path)
         fd = -1;
     else {
-        fd = open(path, O_RDWR | O_CREAT, 0644);
+        fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0644);
 
         if (fd < 0)
             mrp_log_error("can't open file '%s': %s", path, strerror(errno));

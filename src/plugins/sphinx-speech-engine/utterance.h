@@ -4,7 +4,7 @@
 #include "sphinx-plugin.h"
 
 #define CANDIDATE_TOKEN_MAX  50
-#define CANDIDATE_MAX        1000
+#define CANDIDATE_MAX        5
 
 
 void utterance_start(context_t *ctx);

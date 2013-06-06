@@ -65,6 +65,7 @@ void utterance_end(context_t *ctx)
 
 static void process_utterance(context_t *ctx)
 {
+    filter_buf_t *filtbuf;
     decoder_set_t *decset;
     decoder_t *dec;
     srs_srec_utterance_t utt;
@@ -74,39 +75,43 @@ static void process_utterance(context_t *ctx)
     int32_t purgelen;
     int i;
 
-    if (ctx && (decset = ctx->decset) && (dec = decset->curdec)) {
+    if (!ctx || !(decset = ctx->decset) || !(dec = decset->curdec) ||
+        !(filtbuf = ctx->filtbuf))
+        return;
 
-        for (i = 0;  i < CANDIDATE_MAX;  i++)
-            cands[i].tokens = token_pool + (i * (CANDIDATE_TOKEN_MAX + 1));
+    for (i = 0;  i < CANDIDATE_MAX;  i++)
+        cands[i].tokens = token_pool + (i * (CANDIDATE_TOKEN_MAX + 1));
 
-        switch (dec->utproc) {
+    switch (dec->utproc) {
 
-        case UTTERANCE_PROCESSOR_ACOUSTIC:
-            acoustic_processor(ctx, &utt, cands, sorted);
-            goto processed;
+    case UTTERANCE_PROCESSOR_ACOUSTIC:
+        acoustic_processor(ctx, &utt, cands, sorted);
+        goto processed;
 
-        case UTTERANCE_PROCESSOR_FSG:
-            fsg_processor(ctx, &utt, cands, sorted);
-            goto processed;
+    case UTTERANCE_PROCESSOR_FSG:
+        fsg_processor(ctx, &utt, cands, sorted);
+        goto processed;
 
-        processed:
-            if (ctx->verbose || 1)
-                print_utterance(ctx, &utt);
+    processed:
+        if (ctx->verbose || 1)
+            print_utterance(ctx, &utt);
 
-            purgelen = plugin_utterance_handler(ctx, &utt);
-            filter_buffer_purge(ctx, purgelen);
+        purgelen = plugin_utterance_handler(ctx, &utt);
 
-            if (!filter_buffer_is_empty(ctx)) {
-                mrp_log_info("processing what is left in filter buffer");
-                utterance_start(ctx);
-                filter_buffer_utter(ctx, true);
-                utterance_end(ctx);
-            }
-            break;
+        if (purgelen > 0)
+            purgelen += 20 * filtbuf->frlen;
+        filter_buffer_purge(ctx, purgelen);
 
-        default:
-            break;
+        if (!filter_buffer_is_empty(ctx)) {
+            mrp_log_info("processing what is left in filter buffer");
+            utterance_start(ctx);
+            filter_buffer_utter(ctx, true);
+            utterance_end(ctx);
         }
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -177,11 +182,11 @@ static void acoustic_processor(context_t *ctx,
                         cand->ntoken >= CANDIDATE_TOKEN_MAX)
                     {
                         ncand++;
-                        memset(cand+1, 0, sizeof(srs_srec_candidate_t));
+                        //memset(cand+1, 0, sizeof(srs_srec_candidate_t));
                         ps_seg_frames(seg, &start, &end);
                         ps_seg_free(seg);
                         //printf("hyp=</s> ncand=%d\n", ncand);
-                        length = end * frlen;
+                        length = (end + 1) * frlen;
                         break;
                     }
                     else if (!strcmp(hyp, "<sil>")) {
@@ -193,7 +198,7 @@ static void acoustic_processor(context_t *ctx,
                         tkn->token = tknbase(hyp);
                         ps_seg_frames(seg, &start, &end);
                         tkn->start = start * frlen;
-                        tkn->end = end * frlen;
+                        tkn->end = (end + 1) * frlen;
                         //printf("hyp=%s (%d, %d) tkn count %d\n",
                         //      tkn->token, tkn->start,tkn->end, cand->ntoken);
                     }
@@ -203,7 +208,7 @@ static void acoustic_processor(context_t *ctx,
             if (!seg && cand->ntoken > 0) {
                 ncand++;
                 cand->score *= 0.9; /* some penalty */
-                memset(cand+1, 0, sizeof(srs_srec_candidate_t));
+                //memset(cand+1, 0, sizeof(srs_srec_candidate_t));
             }
             
             if (!length) {
@@ -212,10 +217,13 @@ static void acoustic_processor(context_t *ctx,
             }
         }
     } /* for nb */
+
+    memset(cand+1, 0, sizeof(srs_srec_candidate_t));
     
     utt->id = uttid;
     utt->score = prob;
-    utt->length = length;
+    //utt->length = length;
+    utt->length = filtbuf->len;
     utt->ncand = candidate_sort(cands, sorted);
     utt->cands = sorted;
 }
@@ -289,7 +297,7 @@ static void fsg_processor(context_t *ctx,
                         tkn = cand->tokens + cand->ntoken++;
                         tkn->token = tknbase(token);
                         tkn->start = start;
-                        tkn->end = end;
+                        tkn->end = end + frlen;
                     }
                 }
             }
@@ -301,7 +309,8 @@ static void fsg_processor(context_t *ctx,
 
     utt->id = uttid;
     utt->score = prob < 0.00001 ? 0.00001 : prob;
-    utt->length = dag ? ps_lattice_n_frames(dag) * frlen : 0;
+    //utt->length = dag ? ps_lattice_n_frames(dag) * frlen : 0;
+    utt->length = filtbuf->len;
     utt->ncand = 1;
     utt->cands = sorted;
 }
