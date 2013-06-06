@@ -116,8 +116,11 @@ static srs_dict_op_t parse_dictionary(const char *tkn, char *dict, size_t size)
 static node_t *get_token_node(node_t *prnt, const char *token, int insert)
 {
     mrp_list_hook_t *p, *n;
-    node_t          *node;
+    node_t          *node, *any;
+    int              cnt;
 
+    cnt = 0;
+    any = NULL;
     mrp_list_foreach(&prnt->children, p, n) {
         node = mrp_list_entry(p, typeof(*node), hook);
 
@@ -130,10 +133,33 @@ static node_t *get_token_node(node_t *prnt, const char *token, int insert)
             mrp_debug("found token node %s", token);
             return node;
         }
+
+        if (!strcmp(node->data.token, SRS_TOKEN_WILDCARD))
+            any = node;
+
+        cnt++;
     }
 
+    /*
+     * wildcard node matches all tokens but only for pure lookups
+     */
+
     if (!insert) {
-        errno = ENOENT;
+        if (any != NULL)
+            return any;
+        else {
+            errno = ENOENT;
+            return NULL;
+        }
+    }
+
+    /*
+     * a wildcard node must be the only child of its parent
+     */
+
+    if (any != NULL || (cnt > 0 && !strcmp(token, SRS_TOKEN_WILDCARD))) {
+        mrp_log_error("Wildcard/non-wildcard token conflict.");
+        errno = EILSEQ;
         return NULL;
     }
 
@@ -168,11 +194,19 @@ static node_t *get_dictionary_node(node_t *prnt, const char *token, int insert)
     mrp_list_hook_t *p, *n;
     node_t          *node;
 
-    op = parse_dictionary(token, dict, sizeof(dict));
+    if (token != NULL) {
+        op = parse_dictionary(token, dict, sizeof(dict));
 
-    if (op == SRS_DICT_OP_UNKNOWN) {
-        errno = EINVAL;
-        return NULL;
+        if (op == SRS_DICT_OP_UNKNOWN) {
+            errno = EINVAL;
+            return NULL;
+        }
+    }
+    else {
+        if (insert) {
+            errno = EINVAL;
+            return NULL;
+        }
     }
 
     if (prnt->type != NODE_TYPE_TOKEN) {
@@ -182,6 +216,10 @@ static node_t *get_dictionary_node(node_t *prnt, const char *token, int insert)
 
     mrp_list_foreach(&prnt->children, p, n) {
         node = mrp_list_entry(p, typeof(*node), hook);
+
+        if (!insert && token == NULL)
+            if (node->type == NODE_TYPE_DICTIONARY)
+                return node;
 
         if (node->type != NODE_TYPE_DICTIONARY || node->data.dict.op != op ||
             strcmp(dict, node->data.dict.dict) != 0) {
@@ -457,63 +495,126 @@ static void disamb_del_client(srs_client_t *client, void *api_data)
 }
 
 
-static int disambiguate(srs_srec_utterance_t *utt, mrp_list_hook_t *results,
+static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                         void *api_data)
 {
     disamb_t             *dis = (disamb_t *)api_data;
     srs_srec_candidate_t *src;
     srs_srec_result_t    *res;
+    srs_srec_match_t     *m;
     const char           *tkn;
     mrp_list_hook_t      *p, *n;
-    node_t               *node, *child;
-    int                   i, j, match;
-
-    mrp_list_init(results);
+    node_t               *node, *child, *prnt;
+    int                   i, j, end, match;
 
     mrp_debug("should disambiguate utterance %p", utt);
 
-    for (i = 0; i < (int)utt->ncand; i++) {
-        src  = utt->cands[i];
+    /* XXX handling multiple candidates currently not implemented */
+    if (utt->ncand > 1) {
+        mrp_log_error("handling multiple candidates not implemented");
+        return -1;
+    }
+
+    src = utt->cands[0];
+    res = *result;
+
+    if (res != NULL) {
+        if (res->type == SRS_SREC_RESULT_DICT)
+            node = res->result.dict.state;
+    }
+    else {
         node = dis->root;
+        res  = mrp_allocz(sizeof(*res));
 
-        for (j = 0, match = TRUE; j < (int)src->ntoken && match; j++) {
-            tkn = src->tokens[j].token;
+        if (res == NULL)
+            return -1;
 
-            node = get_token_node(node, tkn, FALSE);
+        mrp_list_init(&res->hook);
+        mrp_list_init(&res->result.matches);
+    }
 
-            if (node == NULL)
-                match = FALSE;
-            else
-                mrp_debug("found matching node for %s", tkn);
-        }
+    for (i = 0, match = TRUE; i < (int)src->ntoken && match; i++) {
+        tkn = src->tokens[i].token;
 
-        if (match) {
-            mrp_list_foreach(&node->children, p, n) {
-                child = mrp_list_entry(p, typeof(*child), hook);
+        prnt = node;
+        node = get_token_node(prnt, tkn, FALSE);
 
-                if (child->type != NODE_TYPE_CLIENT) {
-                    mrp_log_error("Unexpected non-client node type 0x%x.",
-                                  node->type);
-                    continue;
-                }
+        if (node == NULL)
+            node = get_token_node(prnt, SRS_TOKEN_WILDCARD, FALSE);
 
-                res = mrp_allocz(sizeof(*res));
+        if (node == NULL) {
+            node = get_dictionary_node(prnt, NULL, FALSE);
 
-                if (res == NULL)
-                    return -1;
+            if (node != NULL) {
+                printf("*** found dictionary node %s ***\n",
+                       node->data.dict.dict);
 
-                mrp_list_init(&res->hook);
-                res->client = child->data.client.client;
-                res->index  = child->data.client.index;
-                res->fuzz   = 0;
-                res->score  = src->score;
+                res->type = SRS_SREC_RESULT_DICT;
+                res->result.dict.op    = node->data.dict.op;
+                res->result.dict.dict  = node->data.dict.dict;
+                res->result.dict.state = node;
 
-                mrp_list_append(results, &res->hook);
+                *result = res;
 
-                mrp_log_info("Found matching command %s/#%d.",
-                             res->client->id, res->index);
+                return 0;
             }
+            else
+                match = FALSE;
         }
+        else {
+            mrp_debug("found matching node for %s", tkn);
+
+            if (strcmp(node->data.token, SRS_TOKEN_WILDCARD))
+                end = i;
+            else
+                end = (int)src->ntoken - 1;
+
+            for (j = i; j <= end; j++) {
+                if (mrp_reallocz(res->tokens, res->ntoken, res->ntoken + 1)) {
+                    res->tokens[res->ntoken] = mrp_strdup(tkn);
+
+                    if (res->tokens[res->ntoken] == NULL)
+                        return -1;
+                    else
+                        res->ntoken++;
+                }
+            }
+
+            i = end;
+        }
+    }
+
+    if (match && i == (int)src->ntoken) {
+        res->type = SRS_SREC_RESULT_MATCH;
+
+        mrp_list_foreach(&node->children, p, n) {
+            child = mrp_list_entry(p, typeof(*child), hook);
+
+            if (child->type != NODE_TYPE_CLIENT) {
+                mrp_log_error("Unexpected non-client node type 0x%x.",
+                              node->type);
+                continue;
+            }
+
+            m = mrp_allocz(sizeof(*m));
+
+            if (m == NULL)
+                return -1;
+
+            mrp_list_init(&m->hook);
+            m->client = child->data.client.client;
+            m->index  = child->data.client.index;
+            m->score  = src->score;
+            m->fuzz   = 0;
+            m->tokens = NULL;
+
+            mrp_list_append(&res->result.matches, &m->hook);
+
+            mrp_log_info("Found matching command %s/#%d.",
+                         m->client->id, m->index);
+        }
+
+        *result = res;
     }
 
     return 0;

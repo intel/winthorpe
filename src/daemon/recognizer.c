@@ -40,11 +40,12 @@
  */
 
 typedef struct {
-    srs_context_t   *srs;                /* main context */
-    char            *name;               /* recognizer name */
-    mrp_list_hook_t  hook;               /* to list of recognizers */
-    srs_srec_api_t   api;                /* backend API */
-    void            *api_data;           /* opaque backend data */
+    srs_context_t     *srs;              /* main context */
+    char              *name;             /* recognizer name */
+    mrp_list_hook_t    hook;             /* to list of recognizers */
+    srs_srec_api_t     api;              /* backend API */
+    void              *api_data;         /* opaque backend data */
+    srs_srec_result_t *result;           /* result being processed, if any */
 } srs_srec_t;
 
 
@@ -210,10 +211,63 @@ static srs_srec_t *find_srec(srs_context_t *srs, const char *name)
 }
 
 
+static void free_match(srs_srec_match_t *m)
+{
+    mrp_free(m);
+}
+
+
 static void free_srec_result(srs_srec_result_t *res)
 {
+    srs_srec_match_t *m;
+    mrp_list_hook_t  *p, *n;
+
+    switch (res->type) {
+    case SRS_SREC_RESULT_MATCH:
+        mrp_list_foreach(&res->result.matches, p, n) {
+            m = mrp_list_entry(p, typeof(*m), hook);
+            mrp_list_delete(&m->hook);
+            free_match(m);
+        }
+        break;
+
+    case SRS_SREC_RESULT_DICT:
+        break;
+
+    case SRS_SREC_RESULT_AMBIGUOUS:
+        break;
+
+    default:
+        break;
+    }
+
     mrp_list_delete(&res->hook);
     mrp_free(res);
+}
+
+
+static void process_match_result(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    mrp_list_hook_t  *p, *n;
+    srs_srec_match_t *match;
+
+    mrp_list_foreach(&res->result.matches, p, n) {
+        match = mrp_list_entry(p, typeof(*match), hook);
+        client_notify_command(match->client, match->index);
+    }
+}
+
+
+static void process_dict_result(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    printf("*** should process dictionary operation ***\n");
+    return;
+}
+
+
+static void process_ambiguity(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    return;
 }
 
 
@@ -222,7 +276,6 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
     srs_srec_t           *srec = (srs_srec_t *)notify_data;
     srs_disamb_t         *dis;
     srs_srec_candidate_t *c;
-    mrp_list_hook_t       results, *p, *n;
     srs_srec_result_t    *res;
     srs_srec_token_t     *t;
     int                   i, j;
@@ -241,22 +294,33 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
     dis = find_disamb(srec->srs, SRS_DEFAULT_DISAMBIGUATOR);
 
     if (dis != NULL) {
-        mrp_list_init(&results);
+        res = srec->result;
 
-        if (dis->api.disambiguate(utt, &results, dis->api_data) == 0) {
+        if (dis->api.disambiguate(utt, &res, dis->api_data) == 0 && res) {
             mrp_log_info("Disambiguation succeeded.");
 
-            mrp_list_foreach(&results, p, n) {
-                res = mrp_list_entry(p, typeof(*res), hook);
+            switch (res->type) {
+            case SRS_SREC_RESULT_MATCH:
+                process_match_result(srec, res);
+                break;
 
-                client_notify_command(res->client, res->index);
+            case SRS_SREC_RESULT_DICT:
+                process_dict_result(srec, res);
+                break;
 
-                free_srec_result(res);
+            case SRS_SREC_RESULT_AMBIGUOUS:
+                process_ambiguity(srec, res);
+                break;
+
+            default:
+                break;
             }
+
+            free_srec_result(res);
         }
     }
 
-    return -1;
+    return SRS_SREC_FLUSH_ALL;
 }
 
 

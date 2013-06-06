@@ -58,11 +58,14 @@ typedef struct {
     /** Schedule a rescan of the given portion of the audio buffer. */
     int (*rescan)(uint32_t start, uint32_t end, void *user_data);
     /** Get a copy of the audio samples in the buffer. */
-    void *(*sampledup)(uint32_t start, uint32_t end, void *user_data);
+    void *(*sampledup)(uint32_t start, uint32_t end, size_t *size,
+                       void *user_data);
     /** Check if the given language model exists/is usable. */
     int (*check_decoder)(const char *decoder, void *user_data);
     /** Set language model to be used. */
     int (*select_decoder)(const char *decoder, void *user_data);
+    /** Get the used language model. */
+    const char *(*get_decoder)(void *user_data);
 } srs_srec_api_t;
 
 /*
@@ -138,32 +141,39 @@ typedef enum {
     SRS_DISAMB_AMBIGUOUS,                /* failed to (fully) disambiguate */
 } srs_disamb_type_t;
 
+typedef enum {
+    SRS_SREC_RESULT_UNKNOWN = 0,         /* unknown result */
+    SRS_SREC_RESULT_MATCH,               /* full command match */
+    SRS_SREC_RESULT_DICT,                /* dictionary switch required */
+    SRS_SREC_RESULT_AMBIGUOUS,           /* further disambiguation needed */
+} srs_srec_result_type_t;
+
 typedef struct {
-    srs_disamb_type_t type;
-    union {
-        struct {
-            srs_client_t *clients;
-            int           indices;
-            int           nclient;
-        } match;
-        struct {
-            uint32_t      flush_start;
-            uint32_t      flush_end;
-        } rescan;
-        struct {
-            srs_client_t *clients;
-            int           indices;
-            int           nclient;
-        } ambiguity;
-    } result;
-} srs_disamb_result_t;
+    mrp_list_hook_t   hook;              /* to more commands */
+    srs_client_t     *client;            /* actual client */
+    int               index;             /* client command index */
+    double            score;             /* backend score */
+    int               fuzz;              /* disambiguation fuzz */
+    char            **tokens;            /* command tokens */
+} srs_srec_match_t;
 
 struct srs_srec_result_s {
-    srs_client_t    *client;             /* client */
-    int              index;              /* command index */
-    double           score;              /* recognition backend score */
-    int              fuzz;               /* disambiguation fuzz */
-    mrp_list_hook_t  hook;               /* to more results */
+    srs_srec_result_type_t   type;       /* result type */
+    mrp_list_hook_t          hook;       /* to list of results */
+    char                   **tokens;     /* matched tokens */
+    int                      ntoken;     /* number of tokens */
+    char                   **dicts;      /* dictionary stack */
+    int                      ndict;      /* stack depth */
+
+    union {                              /* type specific data */
+        mrp_list_hook_t    matches;      /* full match(es) */
+        struct {
+            srs_dict_op_t  op;           /* push/pop/switch */
+            char          *dict;         /* dictionary for switch/push */
+            int            rescan;       /* rescan starting at this token */
+            void          *state;        /* disambiguator continuation */
+        } dict;
+    } result;
 };
 
 
@@ -177,7 +187,7 @@ typedef struct {
     /** Unregister the commands of a client. */
     void (*del_client)(srs_client_t *client, void *api_data);
     /** Disambiguate an utterance with candidates. */
-    int (*disambiguate)(srs_srec_utterance_t *utt, mrp_list_hook_t *results,
+    int (*disambiguate)(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                         void *api_data);
 } srs_disamb_api_t;
 
