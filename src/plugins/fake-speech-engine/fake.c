@@ -56,13 +56,17 @@ typedef struct {
 } fake_t;
 
 
-static const char *cmd_hal[]  = { "Hal", "open", "the", "pod", "bay", "doors" };
+static const char *cmd_hal[]  = { "hal", "open", "the", "pod", "bay", "doors" };
 static const char *cmd_cant[] = { "I", "am", "afraid", "I", "can't", "do",
                                   "that", "Dave" };
+static const char *cmd_music[] = { "hal", "play", "music" };
+static const char *cmd_exit[]  = { "hal", "exit" };
 
 static fake_candidate_t commands[] = {
-    { tokens: (char **)cmd_hal , ntoken: MRP_ARRAY_SIZE(cmd_hal)  },
-    { tokens: (char **)cmd_cant, ntoken: MRP_ARRAY_SIZE(cmd_cant) },
+    { tokens: (char **)cmd_hal  , ntoken: MRP_ARRAY_SIZE(cmd_hal)   },
+    { tokens: (char **)cmd_cant , ntoken: MRP_ARRAY_SIZE(cmd_cant)  },
+    { tokens: (char **)cmd_music, ntoken: MRP_ARRAY_SIZE(cmd_music) },
+    { tokens: (char **)cmd_exit , ntoken: MRP_ARRAY_SIZE(cmd_exit)  },
     { NULL, 0 }
 };
 
@@ -122,11 +126,11 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
 
     if (fcnd->tokens == NULL) {
         fake->candidx = 0;
-        arm_token_timer(fake, 3);
+        arm_token_timer(fake, 5);
         return;
     }
 
-    arm_token_timer(fake, 1);
+    arm_token_timer(fake, 5);
 
     for (i = 0; i < fcnd->ntoken; i++) {
         tokens[i].token = fcnd->tokens[i];
