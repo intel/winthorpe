@@ -1,4 +1,4 @@
-SUBDIRS  = . utils
+SUBDIRS  = . utils src
 doc_DATA = AUTHORS ChangeLog COPYING INSTALL NEWS README
 
 # This is the only way with automake I know of to force 'install-git-hooks'

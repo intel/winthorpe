@@ -202,6 +202,7 @@ AC_CONFIG_FILES([build-aux/shave
 		 build-aux/shave-libtool
 		 Makefile
                  utils/Makefile
+                 src/Makefile
 		 ])
 AC_OUTPUT
 
