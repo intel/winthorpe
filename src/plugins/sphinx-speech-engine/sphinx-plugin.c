@@ -147,13 +147,16 @@ static srs_audiobuf_t *sampledup(uint32_t start, uint32_t end, void *user_data)
 static int check_decoder(const char *decoder, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
-
-    MRP_UNUSED(ctx);
+    int available;
 
     mrp_debug("checking availability of decoder '%s' for CMU Sphinx backend",
               decoder);
 
-    return TRUE;
+    available = decoder_set_contains(ctx, decoder);
+
+    mrp_debug("decoder %s %savailable", decoder, available ? "" : "un");
+
+    return available;
 }
 
 
@@ -161,9 +164,10 @@ static int select_decoder(const char *decoder, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
 
-    MRP_UNUSED(ctx);
-
     mrp_debug("selecting decoder '%s' for CMU Sphinx backend", decoder);
+
+    if (decoder_set_use(ctx, decoder) < 0)
+        return FALSE;
 
     return TRUE;
 }
@@ -172,12 +176,15 @@ static int select_decoder(const char *decoder, void *user_data)
 static const char *active_decoder(void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
+    const char *decoder;
 
-    MRP_UNUSED(ctx);
+    mrp_debug("querying active CMU Sphinx backend decoder");
 
-    mrp_debug("returning hardcoded CMU Sphinx backend decoder string");
+    decoder = decoder_set_name(ctx);
 
-    return "<active-sphinx-decoder-name>";
+    mrp_debug("active decoder is '%s'", decoder);
+
+    return decoder;
 }
 
 

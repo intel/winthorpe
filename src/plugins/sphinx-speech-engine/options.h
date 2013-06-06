@@ -8,16 +8,22 @@
 #define SPHINX_PREFIX "sphinx."
 
 struct options_s {
-    const char *hmm;
-    const char *lm;
-    const char *dict;
-    const char *fsg;
+    size_t ndec;
+    options_decoder_t *decs;
     const char *srcnam;
     const char *audio;
     const char *logfn;
     uint32_t rate;
     uint32_t topn;
     double silen;
+};
+
+struct options_decoder_s {
+    const char *name;
+    const char *hmm;
+    const char *lm;
+    const char *dict;
+    const char *fsg;
 };
 
 

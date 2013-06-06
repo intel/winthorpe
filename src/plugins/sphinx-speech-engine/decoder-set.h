@@ -32,6 +32,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
                     const char *hmm, const char *lm,
                     const char *dict, const char *fsg,
                     uint32_t topn);
+bool decoder_set_contains(context_t *ctx, const char *decoder_name);
 int decoder_set_use(context_t *ctx, const char *decoder_name);
 const char *decoder_set_name(context_t *ctx);
 

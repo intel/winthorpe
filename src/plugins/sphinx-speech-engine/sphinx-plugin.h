@@ -12,6 +12,7 @@ typedef enum utterance_processor_e  utterance_processor_t;
 typedef struct context_s            context_t;
 typedef struct plugin_s             plugin_t;
 typedef struct options_s            options_t;
+typedef struct options_decoder_s    options_decoder_t;
 typedef struct context_s            context_t;
 typedef struct decoder_set_s        decoder_set_t;
 typedef struct decoder_s            decoder_t;

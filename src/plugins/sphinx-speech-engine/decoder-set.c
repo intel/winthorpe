@@ -23,8 +23,10 @@
 int decoder_set_create(context_t *ctx)
 {
     options_t *opts;
+    options_decoder_t *dec;
     decoder_set_t *decset;
-    int sts;
+    size_t i;
+    int sts, retval;
 
     if (!ctx || !(opts = ctx->opts)) {
         errno = EINVAL;
@@ -36,17 +38,21 @@ int decoder_set_create(context_t *ctx)
 
     ctx->decset = decset;
 
-    sts = decoder_set_add(ctx, "default", opts->hmm, opts->lm,
-                          opts->dict, opts->fsg, opts->topn);
-    if (sts  < 0) {
-        mrp_log_error("failed to create default decoder");
-        errno = EIO;
-        return -1;
+    for (i = 0, retval = 0;  i < opts->ndec;  i++) {
+        dec = opts->decs + i;
+
+        sts = decoder_set_add(ctx, dec->name, dec->hmm, dec->lm,
+                              dec->dict, dec->fsg, opts->topn);
+        if (sts  < 0) {
+            mrp_log_error("failed to create '%s' decoder", dec->name);
+            errno = EIO;
+            retval= -1;
+        }
     }
 
     decset->curdec = decset->decs;
 
-    return 0;
+    return retval;
 }
 
 void decoder_set_destroy(context_t *ctx)
@@ -115,7 +121,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
     }
 
     if (!hmm)
-        hmm = opts->hmm;
+        hmm = opts->decs[0].hmm;
 
     curidx = decset->curdec - decset->decs;
     new_size = sizeof(decoder_t) * (decset->ndec + 2);
@@ -125,7 +131,6 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
     {
         return -1;
     }
-
 
     memset(decset->decs + sizeof(decoder_t) * decset->ndec, 0,
            sizeof(decoder_t) * 2);
@@ -149,7 +154,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
         cmd_ln_set_str_r(cfg, "-logfn", opts->logfn);
 
     if (fsg)
-        cmd_ln_set_str_r(cfg, "-fsg", opts->fsg);
+        cmd_ln_set_str_r(cfg, "-fsg", fsg);
     
     if (!(ps = ps_init(cfg)))
         return -1;
@@ -204,6 +209,22 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
     return 0;
 
 #undef FSG_NAMES_MAX
+}
+
+bool decoder_set_contains(context_t *ctx, const char *decoder_name)
+{
+    decoder_set_t *decset;
+    decoder_t *d;
+
+    if (!ctx || !(decset = ctx->decset))
+        return false;
+
+    for (d = decset->decs;  d->name;  d++) {
+        if (!strcmp(decoder_name, d->name))
+            return true;
+    }
+
+    return false;
 }
 
 int decoder_set_use(context_t *ctx, const char *decoder_name)
