@@ -109,49 +109,26 @@ static void *nuance_sampledup(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static int nuance_check_model(const char *model, void *user_data)
+static int nuance_check_decoder(const char *decoder, void *user_data)
 {
     nuance_t *nua = (nuance_t *)user_data;
 
     MRP_UNUSED(nua);
 
-    mrp_debug("checking model '%s' for Nuance backend", model);
+    mrp_debug("checking availability of decoder '%s' for Nuance backend",
+              decoder);
 
     return TRUE;
 }
 
 
-static int nuance_check_dictionary(const char *dictionary, void *user_data)
+static int nuance_select_decoder(const char *decoder, void *user_data)
 {
     nuance_t *nua = (nuance_t *)user_data;
 
     MRP_UNUSED(nua);
 
-    mrp_debug("checking dictionary '%s' for Nuance backend", dictionary);
-
-    return TRUE;
-}
-
-
-static int nuance_set_model(const char *model, void *user_data)
-{
-    nuance_t *nua = (nuance_t *)user_data;
-
-    MRP_UNUSED(nua);
-
-    mrp_debug("setting model '%s' for Nuance backend", model);
-
-    return TRUE;
-}
-
-
-static int nuance_set_dictionary(const char *dictionary, void *user_data)
-{
-    nuance_t *nua = (nuance_t *)user_data;
-
-    MRP_UNUSED(nua);
-
-    mrp_debug("setting dictionary '%s' for Nuance backend", dictionary);
+    mrp_debug("setting decoder '%s' for Nuance backend", decoder);
 
     return TRUE;
 }
@@ -165,10 +142,8 @@ static int create_nuance(srs_plugin_t *plugin)
     flush:            nuance_flush,
     rescan:           nuance_rescan,
     sampledup:        nuance_sampledup,
-    check_model:      nuance_check_model,
-    check_dictionary: nuance_check_dictionary,
-    set_model:        nuance_set_model,
-    set_dictionary:   nuance_set_dictionary,
+    check_decoder:    nuance_check_decoder,
+    select_decoder:   nuance_select_decoder,
     };
 
     srs_context_t *srs = plugin->srs;

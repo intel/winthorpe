@@ -42,8 +42,7 @@ typedef struct {
 } srs_srec_t;
 
 static srs_srec_t *find_srec(srs_context_t *srs, const char *name);
-static void srec_notify_cb(srs_srec_token_t *tokens, int ntoken,
-                           void *notify_data);
+static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data);
 
 int srs_register_srec(srs_context_t *srs, const char *name,
                       srs_srec_api_t *api, void *api_data,
@@ -131,47 +130,24 @@ void srs_deactivate_srec(srs_context_t *srs, const char *name)
 }
 
 
-int srs_check_model(srs_context_t *srs, const char *name, const char *model)
+int srs_check_decoder(srs_context_t *srs, const char *name,
+                      const char *decoder)
 {
     srs_srec_t *srec = find_srec(srs, name);
 
     if (srec != NULL)
-        return srec->api.check_model(model, srec->api_data);
+        return srec->api.check_decoder(decoder, srec->api_data);
     else
         return FALSE;
 }
 
 
-int srs_check_dictionary(srs_context_t *srs, const char *name,
-                         const char *dictionary)
+int srs_set_decoder(srs_context_t *srs, const char *name, const char *decoder)
 {
     srs_srec_t *srec = find_srec(srs, name);
 
     if (srec != NULL)
-        return srec->api.check_dictionary(dictionary, srec->api_data);
-    else
-        return FALSE;
-}
-
-
-int srs_set_model(srs_context_t *srs, const char *name, const char *model)
-{
-    srs_srec_t *srec = find_srec(srs, name);
-
-    if (srec != NULL)
-        return srec->api.set_model(model, srec->api_data);
-    else
-        return FALSE;
-}
-
-
-int srs_set_dictionary(srs_context_t *srs, const char *name,
-                       const char *dictionary)
-{
-    srs_srec_t *srec = find_srec(srs, name);
-
-    if (srec != NULL)
-        return srec->api.set_dictionary(dictionary, srec->api_data);
+        return srec->api.select_decoder(decoder, srec->api_data);
     else
         return FALSE;
 }
@@ -199,14 +175,22 @@ static srs_srec_t *find_srec(srs_context_t *srs, const char *name)
 }
 
 
-static void srec_notify_cb(srs_srec_token_t *tokens, int ntoken,
-                           void *notify_data)
+static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
 {
-    srs_srec_t *srec = (srs_srec_t *)notify_data;
-    int         i;
+    srs_srec_t           *srec = (srs_srec_t *)notify_data;
+    srs_srec_candidate_t *c;
+    srs_srec_token_t     *t;
+    int                   i, j;
 
-    mrp_log_info("Got %d tokens from %s backend:", ntoken, srec->name);
+    mrp_log_info("Got %zd recognition candidates in from %s backend:",
+                 utt->ncand, srec->name);
 
-    for (i = 0; i < ntoken; i++)
-        mrp_log_info("    #%d: '%s'", i, tokens[i].token);
+    for (i = 0, c = utt->cands; i < (int)utt->ncand; i++, c++) {
+        mrp_log_info("Candidate #%d:", i);
+        for (j = 0, t = c->tokens; j < (int)c->ntoken; j++, t++) {
+            mrp_log_info("    token #%d: '%s'", j, t->token);
+        }
+    }
+
+    return -1;
 }

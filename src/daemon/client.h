@@ -99,9 +99,9 @@ struct srs_client_s {
 
 /** Create a new client. */
 srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
-                        const char *name, const char *appclass,
-                        char **commands, int ncommand,
-                        const char *id, srs_client_ops_t *ops);
+                            const char *name, const char *appclass,
+                            char **commands, int ncommand,
+                            const char *id, srs_client_ops_t *ops);
 
 /** Destroy a client. */
 void client_destroy(srs_client_t *c);

@@ -87,9 +87,11 @@ static int arm_token_timer(fake_t *fake, double delay)
 
 static void push_token_cb(mrp_timer_t *t, void *user_data)
 {
-    fake_t           *fake  = (fake_t *)user_data;
-    fake_token_t     *token = fake->tokens + fake->tokidx++;
-    srs_srec_token_t  tok;
+    fake_t               *fake  = (fake_t *)user_data;
+    fake_token_t         *token = fake->tokens + fake->tokidx++;
+    srs_srec_token_t      tok;
+    srs_srec_candidate_t  cand;
+    srs_srec_utterance_t  utt;
 
     mrp_del_timer(t);
     fake->toktmr = NULL;
@@ -105,9 +107,19 @@ static void push_token_cb(mrp_timer_t *t, void *user_data)
     tok.score = 1;
     tok.start = token - fake->tokens;
     tok.end   = tok.start + 1;
-    tok.flush = FALSE;
 
-    fake->notify(&tok, 1, fake->notify_data);
+    cand.score  = 1;
+    cand.ntoken = 1;
+    cand.tokens = &tok;
+
+    utt.id     = "fake backend utterance";
+    utt.score  = 1;
+    utt.length = 1;
+    utt.length = tok.end - tok.start;
+    utt.ncand  = 1;
+    utt.cands  = &cand;
+
+    fake->notify(&utt, fake->notify_data);
 }
 
 
@@ -186,49 +198,25 @@ static void *fake_sampledup(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static int fake_check_model(const char *model, void *user_data)
+static int fake_check_decoder(const char *decoder, void *user_data)
 {
     fake_t *fake = (fake_t *)user_data;
 
     MRP_UNUSED(fake);
 
-    mrp_debug("checking model '%s' for fake backend", model);
+    mrp_debug("checking availibilty of decoder '%s' for fake backend", decoder);
 
     return TRUE;
 }
 
 
-static int fake_check_dictionary(const char *dictionary, void *user_data)
+static int fake_select_decoder(const char *decoder, void *user_data)
 {
     fake_t *fake = (fake_t *)user_data;
 
     MRP_UNUSED(fake);
 
-    mrp_debug("checking dictionary '%s' for fake backend", dictionary);
-
-    return TRUE;
-}
-
-
-static int fake_set_model(const char *model, void *user_data)
-{
-    fake_t *fake = (fake_t *)user_data;
-
-    MRP_UNUSED(fake);
-
-    mrp_debug("setting model '%s' for fake backend", model);
-
-    return TRUE;
-}
-
-
-static int fake_set_dictionary(const char *dictionary, void *user_data)
-{
-    fake_t *fake = (fake_t *)user_data;
-
-    MRP_UNUSED(fake);
-
-    mrp_debug("setting dictionary '%s' for fake backend", dictionary);
+    mrp_debug("selecting decoder '%s' for fake backend", decoder);
 
     return TRUE;
 }
@@ -242,10 +230,8 @@ static int create_fake(srs_plugin_t *plugin)
     flush:            fake_flush,
     rescan:           fake_rescan,
     sampledup:        fake_sampledup,
-    check_model:      fake_check_model,
-    check_dictionary: fake_check_dictionary,
-    set_model:        fake_set_model,
-    set_dictionary:   fake_set_dictionary,
+    check_decoder:    fake_check_decoder,
+    select_decoder:   fake_select_decoder,
     };
 
     srs_context_t *srs = plugin->srs;

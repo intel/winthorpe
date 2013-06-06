@@ -67,6 +67,8 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
            "The possible options are:\n"
            "  -c, --config-file=PATH         main configuration file to use\n"
            "      The default configuration file is '%s'.\n"
+           "  -B, --dbus=BUS                 D-BUS type or address to use\n"
+           "      The default D-BUS is 'session'.\n"
            "  -P, --plugin-dir=PATH          use DIR to search for plugins\n"
            "      The default plugin directory is '%s'.\n"
            "  -L, --load-plugin=NAME         load the given plugin\n"

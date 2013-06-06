@@ -31,11 +31,10 @@
 #define __SRS_DAEMON_RECOGNIZER_H__
 
 /** Type for tokens recognized by a speech recognition backend. */
-typedef struct srs_srec_token_s srs_srec_token_t;
+typedef struct srs_srec_utterance_s srs_srec_utterance_t;
 
 /** Type for a backend recognition notification callback. */
-typedef void (*srs_srec_notify_t)(srs_srec_token_t *tokens, int ntoken,
-                                  void *notify_data);
+typedef int (*srs_srec_notify_t)(srs_srec_utterance_t *utt, void *notify_data);
 
 /*
  * API to a speech recognition backend.
@@ -52,26 +51,42 @@ typedef struct {
     /** Get a copy of the audio samples in the buffer. */
     void *(*sampledup)(uint32_t start, uint32_t end, void *user_data);
     /** Check if the given language model exists/is usable. */
-    int (*check_model)(const char *model, void *user_data);
-    /** Check if the given dictionary exists/is usable. */
-    int (*check_dictionary)(const char *dictionary, void *user_data);
+    int (*check_decoder)(const char *decoder, void *user_data);
     /** Set language model to be used. */
-    int (*set_model)(const char *model, void *user_data);
-    /** Set dictionary to be used. */
-    int (*set_dictionary)(const char *dictionary, void *user_data);
+    int (*select_decoder)(const char *decoder, void *user_data);
 } srs_srec_api_t;
 
 /*
  * a single speech token
  */
-struct srs_srec_token_s {
+typedef struct {
     char     *token;                     /* recognized tokens */
     double    score;                     /* correctness probability */
     uint32_t  start;                     /* start in audio buffer */
     uint32_t  end;                       /* end in audio buffer */
-    int       flush : 1;                 /* flush from audio buffer */
-};
+} srs_srec_token_t;
 
+
+/*
+ * a single candidate
+ */
+typedef struct {
+    double            score;
+    size_t            ntoken;
+    srs_srec_token_t *tokens;
+} srs_srec_candidate_t;
+
+
+/*
+ * an utterance with a set of candidates
+ */
+struct srs_srec_utterance_s {
+    const char           *id;
+    double                score;
+    uint32_t              length;
+    size_t                ncand;
+    srs_srec_candidate_t *cands;
+};
 
 /** Register a speech recognition backend. */
 int srs_register_srec(srs_context_t *srs, const char *name,
@@ -87,18 +102,11 @@ int srs_activate_srec(srs_context_t *srs, const char *name);
 /** Deactivate the specified speech recognition backend. */
 void srs_deactivate_srec(srs_context_t *srs, const char *name);
 
-/** Check if a given model exists for a recognition backend. */
-int srs_check_model(srs_context_t *srs, const char *name, const char *model);
+/** Check if a decoder (model/dictionary combination) exists for a backend. */
+int srs_check_decoder(srs_context_t *srs, const char *name,
+                      const char *decoder);
 
-/** Check if a given dictionary exists for a recognition backend. */
-int srs_check_dictionary(srs_context_t *srs, const char *name,
-                          const char *dictionary);
-
-/** Check if a given model exists for a recognition backend. */
-int srs_set_model(srs_context_t *srs, const char *name, const char *model);
-
-/** Check if a given dictionary exists for a recognition backend. */
-int srs_set_dictionary(srs_context_t *srs, const char *name,
-                       const char *dictionary);
+/** Select a decoder for a backend. */
+int srs_set_decoder(srs_context_t *srs, const char *name, const char *decoder);
 
 #endif /* __SRS_DAEMON_RECOGNIZER_H__ */
