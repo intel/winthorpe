@@ -304,11 +304,11 @@ void client_resource_event(srs_client_t *c, srs_resset_event_t e)
 
 void client_notify_command(srs_client_t *c, int index,
                            int ntoken, const char **tokens,
-                           void *samplebuf, size_t samplelen,
-                           uint32_t *start, uint32_t *end)
+                           uint32_t *start, uint32_t *end,
+                           srs_audiobuf_t *audio)
 {
     if (c->enabled && /*c->allowed && */ 0 <= index && index < c->ncommand) {
         c->ops.notify_command(c, index, ntoken, (char **)tokens,
-                              samplebuf, samplelen, start, end);
+                              start, end, audio);
     }
 }

@@ -34,6 +34,7 @@ typedef struct srs_client_s srs_client_t;
 
 #include "src/daemon/context.h"
 #include "src/daemon/resourceif.h"
+#include "src/daemon/audiobuf.h"
 
 
 /*
@@ -119,9 +120,15 @@ typedef enum {
 
 typedef struct {
     int (*notify_focus)(srs_client_t *c, srs_voice_focus_t focus);
+#if 1
+    int (*notify_command)(srs_client_t *c, int idx, int ntoken,
+                          char **tokens, uint32_t *start, uint32_t *end,
+                          srs_audiobuf_t *audio);
+#else
     int (*notify_command)(srs_client_t *c, int idx, int ntoken,
                           char **tokens, void *samplebuf, size_t samplelen,
                           uint32_t *start, uint32_t *end);
+#endif
 } srs_client_ops_t;
 
 
@@ -172,7 +179,7 @@ void client_resource_event(srs_client_t *c, srs_resset_event_t event);
 
 /** Deliver a command notification event to the client. */
 void client_notify_command(srs_client_t *c, int idx, int ntoken,
-                           const char **tokens, void *samplebuf,
-                           size_t samplelen, uint32_t *start, uint32_t *end);
+                           const char **tokens, uint32_t *start, uint32_t *end,
+                           srs_audiobuf_t *audio);
 
 #endif /* __SRS_DAEMON_CLIENT_H__ */

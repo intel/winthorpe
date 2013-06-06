@@ -31,6 +31,7 @@
 #define __SRS_DAEMON_RECOGNIZER_H__
 
 #include "src/daemon/client.h"
+#include "src/daemon/audiobuf.h"
 
 /*
  * speech recognition backend interface
@@ -45,6 +46,7 @@ typedef int (*srs_srec_notify_t)(srs_srec_utterance_t *utt, void *notify_data);
 /** Notification callback return value for flushing the full audio buffer. */
 #define SRS_SREC_FLUSH_ALL -1
 
+
 /*
  * API to a speech recognition backend.
  */
@@ -58,8 +60,7 @@ typedef struct {
     /** Schedule a rescan of the given portion of the audio buffer. */
     int (*rescan)(uint32_t start, uint32_t end, void *user_data);
     /** Get a copy of the audio samples in the buffer. */
-    void *(*sampledup)(uint32_t start, uint32_t end, size_t *size,
-                       void *user_data);
+    srs_audiobuf_t *(*sampledup)(uint32_t start, uint32_t end, void *user_data);
     /** Check if the given language model exists/is usable. */
     int (*check_decoder)(const char *decoder, void *user_data);
     /** Set language model to be used. */
@@ -160,9 +161,8 @@ typedef struct {
 struct srs_srec_result_s {
     srs_srec_result_type_t   type;       /* result type */
     mrp_list_hook_t          hook;       /* to list of results */
-    void                    *samplebuf;  /* utterance audio */
-    size_t                   samplelen;  /* audio buffer length */
-    uint32_t                 sampleoffs; /* extra audio offset */
+    srs_audiobuf_t          *samplebuf;  /* audio sample buffer */
+    uint32_t                 sampleoffs; /* extra audio sample offset */
     char                   **tokens;     /* matched tokens */
     uint32_t                *start;      /* token start offset */
     uint32_t                *end;        /* token end offsets */

@@ -46,8 +46,8 @@ static int focus_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus);
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
-                          void *samplebuf, size_t samplelen, uint32_t *start,
-                          uint32_t *end);
+                          uint32_t *start, uint32_t *end,
+                          srs_audiobuf_t *audio);
 
 #define reply_register   simple_reply
 #define reply_unregister simple_reply
@@ -417,8 +417,7 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 
 
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
-                          void *samplebuf, size_t samplelen, uint32_t *start,
-                          uint32_t *end)
+                          uint32_t *start, uint32_t *end, srs_audiobuf_t *audio)
 {
     srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
@@ -430,10 +429,9 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
     int            i, n, l;
 
     MRP_UNUSED(idx);
-    MRP_UNUSED(samplebuf);
-    MRP_UNUSED(samplelen);
     MRP_UNUSED(start);
     MRP_UNUSED(end);
+    MRP_UNUSED(audio);
 
     p = cmd = buf;
     l = sizeof(buf) - 1;

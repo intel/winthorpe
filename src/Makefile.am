@@ -12,6 +12,7 @@ QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 # SRS daemon
 srs_daemon_PUBLIC_SYMBOLS =			\
 		daemon/context.h		\
+		daemon/audiobuf.h		\
 		daemon/recognizer.h		\
 		daemon/plugin.h
 
@@ -22,6 +23,7 @@ srs_daemon_SOURCES =				\
 		daemon/resourceif.c		\
 		daemon/client.c			\
 		daemon/plugin.c			\
+		daemon/audiobuf.c		\
 		daemon/recognizer.c
 
 srs_daemon_CFLAGS = 				\

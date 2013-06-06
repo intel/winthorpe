@@ -248,7 +248,7 @@ static void free_srec_result(srs_srec_result_t *res)
 
     mrp_free(res->start);
     mrp_free(res->end);
-    mrp_free(res->samplebuf);
+    srs_unref_audiobuf(res->samplebuf);
 
     for (i = 0; i < res->ndict; i++)
         mrp_free(res->dicts[i]);
@@ -325,8 +325,7 @@ static void process_match_result(srs_srec_t *srec, srs_srec_result_t *res)
 
         client_notify_command(match->client, match->index,
                               res->ntoken, (const char **)res->tokens,
-                              res->samplebuf, res->samplelen,
-                              res->start, res->end);
+                              res->start, res->end, res->samplebuf);
 
         while (res->ndict > 0)
             pop_dict(srec, res);
@@ -424,8 +423,7 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
             start = 0;
             end   = utt->length;
 
-            res->samplebuf = srec->api.sampledup(start, end, &res->samplelen,
-                                                 srec->api_data);
+            res->samplebuf = srec->api.sampledup(start, end, srec->api_data);
         }
 
         res = srec->result;
