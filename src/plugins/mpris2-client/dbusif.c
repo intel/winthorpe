@@ -10,6 +10,18 @@
 
 #define PLAYLIST_MAX 20
 
+#define MAKE_DBUS_VERSION(major, minor, patch)  \
+    (((major) << 16) | ((minor) << 8) | (patch))
+
+#if DBUS_VERSION < MAKE_DBUS_VERSION(1, 7, 0)
+/* For old versions, we define DBusBasicValue with the member we use... */
+typedef union {
+    char        *str;
+    double       dbl;
+    dbus_bool_t  bool_val;
+} DBusBasicValue;
+#endif
+
 struct dbusif_s {
     const char *bustype;
     mrp_dbus_t *dbus;
@@ -188,7 +200,7 @@ void dbusif_set_playlist(player_t *player, const char *id)
     DBusMessage *msg;
     int success;
 
-    printf("playlist id: %s\n");
+    printf("playlist id: %s\n", id);
 
     if (!player || !player->address ||
         !(ctx = player->ctx) || !(dbusif = ctx->dbusif))
@@ -344,20 +356,20 @@ static void playlist_query_cb(mrp_dbus_t *dbus,
         return;
 
     dbus_message_iter_recurse(&mit, &ait);
-    
+
     nlist = 0;
 
     while (dbus_message_iter_get_arg_type(&ait) == DBUS_TYPE_STRUCT) {
         list = lists + nlist++;
 
         dbus_message_iter_recurse(&ait, &sit);
-        
+
         dbus_message_iter_get_basic(&sit, &list->id);
         dbus_message_iter_next(&sit);
         dbus_message_iter_get_basic(&sit, &list->name);
 
-        printf("*** %d: '%s' '%s'\n", nlist-1, list->id, list->name);
-        
+        printf("*** %zd: '%s' '%s'\n", nlist-1, list->id, list->name);
+
         dbus_message_iter_next(&ait);
     }
 
