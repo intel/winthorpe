@@ -84,6 +84,22 @@ void pulse_interface_destroy(context_t *ctx)
     }
 }
 
+void pulse_interface_cork_input_stream(context_t *ctx, bool cork)
+{
+    pulse_interface_t *pulseif;
+
+    if (!ctx || !(pulseif = ctx->pulseif))
+        return;
+
+    if ((cork && !pulseif->corked) || (!cork && pulseif->corked)) {
+        pulseif->corked = cork;
+
+        if (pulseif->stream && pulseif->conup)
+            pa_stream_cork(pulseif->stream, cork, NULL, NULL);
+    }
+
+    return;
+}
 
 static void connect_to_server(context_t *ctx)
 {
@@ -285,7 +301,7 @@ static void read_callback(pa_stream *stream, size_t bytes, void *userdata)
 
     pa_stream_peek(stream, &data, &size);
 
-    if (data && size)
+    if (data && size && !pulseif->corked)
         input_buffer_process_data(ctx, data, size);
 
     if (size)

@@ -23,6 +23,8 @@ void input_buffer_destroy(context_t *ctx);
 
 int  input_buffer_initialize(context_t *ctx, size_t size, size_t minreq);
 
+void input_buffer_purge(context_t *ctx);
+
 void input_buffer_process_data(context_t *ctx, const void *buf, size_t len);
 
 

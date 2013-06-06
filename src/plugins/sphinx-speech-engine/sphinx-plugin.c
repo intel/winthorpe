@@ -79,6 +79,8 @@ static int activate(void *user_data)
 
     mrp_log_info("Activating CMU Sphinx backend.");
 
+    pulse_interface_cork_input_stream(ctx, false);
+
     return TRUE;
 }
 
@@ -90,6 +92,10 @@ static void deactivate(void *user_data)
     MRP_UNUSED(ctx);
 
     mrp_log_info("Deactivating CMU Sphinx backend.");
+
+    pulse_interface_cork_input_stream(ctx, true);
+    filter_buffer_purge(ctx, -1);
+    input_buffer_purge(ctx);
 }
 
 
@@ -189,14 +195,14 @@ static const char *active_decoder(void *user_data)
 static int create_sphinx(srs_plugin_t *plugin)
 {
     srs_srec_api_t api = {
-    activate:         activate,
-    deactivate:       deactivate,
-    flush:            flush,
-    rescan:           rescan,
-    sampledup:        sampledup,
-    check_decoder:    check_decoder,
-    select_decoder:   select_decoder,
-    active_decoder:   active_decoder,
+        activate:         activate,
+        deactivate:       deactivate,
+        flush:            flush,
+        rescan:           rescan,
+        sampledup:        sampledup,
+        check_decoder:    check_decoder,
+        select_decoder:   select_decoder,
+        active_decoder:   active_decoder,
     };
 
     srs_context_t *srs = plugin->srs;

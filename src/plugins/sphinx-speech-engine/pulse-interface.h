@@ -11,11 +11,13 @@ struct pulse_interface_s {
     pa_context *pactx;
     pa_stream *stream;
     bool conup;
+    bool corked;
 };
 
 int  pulse_interface_create(context_t *ctx, pa_mainloop *mloop);
 void pulse_interface_destroy(context_t *ctx);
 
+void pulse_interface_cork_input_stream(context_t *ctx, bool cork);
 
 #endif /* __SRS_POCKET_SPHINX_PULSE_INTERFACE_H__ */
 

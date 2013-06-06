@@ -88,6 +88,15 @@ int input_buffer_initialize(context_t *ctx, size_t size, size_t minreq)
     return 0;
 }
 
+void input_buffer_purge(context_t *ctx)
+{
+    input_buf_t *inpbuf;
+
+    if (!ctx || !!(inpbuf = ctx->inpbuf))
+        return;
+
+    inpbuf->len = 0;
+}
 
 void input_buffer_process_data(context_t *ctx, const void *buf, size_t len)
 {
