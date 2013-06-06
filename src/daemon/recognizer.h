@@ -147,6 +147,7 @@ typedef enum {
     SRS_SREC_RESULT_MATCH,               /* full command match */
     SRS_SREC_RESULT_DICT,                /* dictionary switch required */
     SRS_SREC_RESULT_AMBIGUOUS,           /* further disambiguation needed */
+    SRS_SREC_RESULT_UNRECOGNIZED,        /* did not recognize */
 } srs_srec_result_type_t;
 
 typedef struct {

@@ -27,11 +27,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include <errno.h>
 
 #include <murphy/common/list.h>
 
 #include "src/daemon/context.h"
+#include "src/daemon/voice.h"
 #include "src/daemon/recognizer.h"
 
 
@@ -447,12 +449,57 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
             case SRS_SREC_RESULT_AMBIGUOUS:
                 process_ambiguity(srec, res);
                 free_srec_result(res);
+                srec->result = NULL;
                 flush = SRS_SREC_FLUSH_ALL;
+                break;
+
+            case SRS_SREC_RESULT_UNRECOGNIZED: {
+                struct {
+                    int         isfile;
+                    const char *data;
+                } effects[] = {
+                    { 0, "Sorry, I did not understand that." },
+                    { 0, "Sorry, I did not get that."        },
+                    { 0, "Say what ?"                        },
+                    { 0, "Excuse me ?"                       },
+                    { 1, "./effects/effect-duh-0.wav"       },
+                    { 1, "./effects/effect-repeat.wav"      },
+                    { 1, "./effects/effect-what-0.wav"      }
+                }, *effect;
+
+                int neffect = MRP_ARRAY_SIZE(effects);
+                int idx     = (1.0 * neffect * rand()) / RAND_MAX;
+
+                mrp_log_error("Unrecognized command.");
+
+                effect = effects + idx;
+
+                mrp_log_info("Trying to render feedback %s '%s'...",
+                             effect->isfile ? "file" : "TTS", effect->data);
+
+                if (effect->isfile)
+                    srs_play_sound_file(srec->srs, effect->data, NULL, NULL);
+                else
+                    srs_say_msg(srec->srs, effect->data, NULL, NULL);
+
+                free_srec_result(res);
+                srec->result = NULL;
+                flush = SRS_SREC_FLUSH_ALL;
+            }
                 break;
 
             default:
                 flush = SRS_SREC_FLUSH_ALL;
+                free_srec_result(res);
+                srec->result = NULL;
                 break;
+            }
+        }
+        else {
+            if (res) {
+                flush = SRS_SREC_FLUSH_ALL;
+                free_srec_result(res);
+                srec->result = NULL;
             }
         }
     }
