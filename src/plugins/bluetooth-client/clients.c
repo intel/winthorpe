@@ -1,8 +1,12 @@
+#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #include <murphy/common/debug.h>
@@ -233,6 +237,8 @@ static int play_samples(context_t *ctx, size_t nsample, int16_t *samples)
     device_t *device;
     modem_t *modem;
     card_t *card;
+    int16_t *dup;
+    size_t len;
 
     if (!ctx || !nsample || !samples || !(clients = ctx->clients))
         return -1;
@@ -253,8 +259,18 @@ static int play_samples(context_t *ctx, size_t nsample, int16_t *samples)
         return -1;
     }
 
+    len = nsample * sizeof(int16_t);
+
+    if (!(dup = mrp_alloc(len)))
+        return -1;
+    else
+        memcpy(dup, samples, len);
+
     device->nsample = nsample;
-    device->samples = samples;
+    device->samples = dup;
+
+    mrp_log_info("bluetooth plugin: forwarding %u samples to device", nsample);
+
 
     if (dbusif_set_voice_recognition(modem, VOICE_RECOGNITION_ON) < 0 ||
         pulseif_add_input_stream_to_card(card)                    < 0  )
@@ -308,7 +324,7 @@ static int notify_command(srs_client_t *srs_client, int idx,
 
     mrp_log_info("Bluetooth client got command '%s'\n", cmd);
 
-    play_samples(ctx, samplelen / sizeof(int16_t), samplebuf);
+    play_samples(ctx, samplelen, samplebuf);
 
     return TRUE;
 }

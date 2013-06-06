@@ -25,7 +25,8 @@ void filter_buffer_purge(context_t *ctx, int32_t length);
 void filter_buffer_process_data(context_t *ctx);
 void filter_buffer_utter(context_t *ctx, bool full_utterance);
 
-int16_t *filter_buffer_dup(context_t *ctx, int32_t start, int32_t end);
+int16_t *filter_buffer_dup(context_t *ctx, int32_t start, int32_t end,
+                           size_t *ret_length);
 
 #endif /* __SRS_POCKET_SPHINX_FILTER_BUFFER_H__ */
 

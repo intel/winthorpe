@@ -122,23 +122,23 @@ static int rescan(uint32_t start, uint32_t end, void *user_data)
 
 static srs_audiobuf_t *sampledup(uint32_t start, uint32_t end, void *user_data)
 {
-    context_t         *ctx  = (context_t *)user_data;
-    srs_audioformat_t  format;
-    uint32_t           rate;
-    uint8_t            channels;
-    size_t             samples;
-    uint32_t           buf[2];
+    context_t *ctx  = (context_t *)user_data;
+    options_t *opts;
+    srs_audioformat_t format;
+    uint32_t rate;
+    uint8_t channels;
+    size_t  samples;
+    int16_t *buf;
 
-    MRP_UNUSED(ctx);
+    if (!ctx || !(opts = ctx->opts))
+        return NULL;
 
     mrp_debug("duplicating CMU Sphinx backend sample (%u - %u)", start, end);
 
-    format   = SRS_AUDIO_S32LE;
-    rate     = 16000;
-    channels = 2;
-    samples  = 1;
-    buf[0]   = start;
-    buf[1]   = end;
+    format = SRS_AUDIO_S16LE;
+    rate = opts->rate;
+    channels = 1;
+    buf = filter_buffer_dup(ctx, start, end, &samples);
 
     return srs_create_audiobuf(format, rate, channels, samples, buf);
 }
