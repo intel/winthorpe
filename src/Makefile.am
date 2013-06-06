@@ -192,7 +192,21 @@ plugin_simple_voice_la_LDFLAGS =				\
 
 plugin_simple_voice_la_LIBADD  =
 
+# input plugin
+plugin_LTLIBRARIES += plugin-input-handler.la
 
+plugin_input_handler_la_SOURCES =				\
+		plugins/input-handler/input-plugin.c
+
+plugin_input_handler_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_input_handler_la_LDFLAGS =				\
+		$(UDEV_CFLAGS)					\
+		-module -avoid-version
+
+plugin_input_handler_la_LIBADD  =				\
+		$(UDEV_LIBS)
 
 # cleanup
 clean-local::
