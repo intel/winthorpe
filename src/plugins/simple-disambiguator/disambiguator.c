@@ -555,8 +555,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
             node = get_dictionary_node(prnt, NULL, FALSE);
 
             if (node != NULL) {
-                printf("*** found dictionary node %s ***\n",
-                       node->data.dict.dict);
+                mrp_debug("found dictionary node %s", node->data.dict.dict);
 
                 res->type = SRS_SREC_RESULT_DICT;
                 res->result.dict.op     = node->data.dict.op;
@@ -633,8 +632,24 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                     if (!strcmp(child->data.token, SRS_TOKEN_WILDCARD))
                         prnt = child;
                 }
-                else if (child->type == NODE_TYPE_DICTIONARY)
+                else if (child->type == NODE_TYPE_DICTIONARY) {
+#if 1
+                    mrp_debug("found dictionary node %s",
+                              child->data.dict.dict);
+
+                    res->type = SRS_SREC_RESULT_DICT;
+                    res->result.dict.op     = child->data.dict.op;
+                    res->result.dict.dict   = child->data.dict.dict;
+                    res->result.dict.state  = child;
+                    res->result.dict.rescan = (int)src->tokens[i-1].end;
+
+                    *result = res;
+
+                    return 0;
+#else
                     prnt = get_token_node(child, SRS_TOKEN_WILDCARD, FALSE);
+#endif
+                }
 
                 if (prnt != NULL) {
                     node = prnt;
