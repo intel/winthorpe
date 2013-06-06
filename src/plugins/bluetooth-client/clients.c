@@ -24,6 +24,7 @@ struct clients_s {
 static char *commands[] = {
     "call",
     "listen to",
+    "siri",
     NULL
 };
 static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
@@ -35,66 +36,6 @@ static int notify_command(srs_client_t *, int, int, char **, uint32_t *,
 static device_t *device_find(clients_t *, const char *);
 static void device_free(void *, void *);
 
-/*****************************************************************/
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <fcntl.h>
-
-static void *samples;
-static size_t nsample;
-
-static void init_samples(const char *file)
-{
-    struct stat buf;
-    size_t size, len;
-    int l;
-    int fd;
-
-    if (stat(file, &buf) < 0) {
-        printf("*** could not stat sample file '%s'\n", file);
-        return;
-    }
-
-    if ((size = buf.st_size) > 500000) {
-        printf("*** file too length %zd exceeds the max 500000\n", size);
-        return;
-    }
-
-    if (!(samples = mrp_alloc(size))) {
-        printf("*** failed to allocate memory for samples\n");
-        return;
-    }
-
-
-    if ((fd = open(file, O_RDWR)) < 0) {
-        printf("*** could not open file %s: %s\n", file, strerror(errno));
-        return;
-    }
-
-    for (len = 0;  len < size;  len += l) {
-        l = size - len;
-
-        if ((l = read(fd, samples + len, l)) <  0) {
-            if (errno == EINTR) {
-                l = 0;
-                continue;
-            }
-            printf("*** failed to read samples: %s\n", strerror(errno));
-            return;
-        }
-
-        if (l == 0)
-            break;
-    }
-
-    nsample = len / sizeof(int16_t);
-
-    printf("*** succesfully read %zd samples\n", nsample);
-}
-
-
-/*****************************************************************/
 
 int clients_create(context_t *ctx)
 {
@@ -118,9 +59,6 @@ int clients_create(context_t *ctx)
     clients->current = NULL;
 
     ctx->clients = clients;
-
-    init_samples("/home/jko/Sources/protos/srec/hmm/wav/speaker_05/"
-                 "play_music.wav");
 
     return 0;
 }
@@ -370,11 +308,7 @@ static int notify_command(srs_client_t *srs_client, int idx,
 
     mrp_log_info("Bluetooth client got command '%s'\n", cmd);
 
-    { /* !!! TEMPORARY !!! */
-        int16_t *buf = mrp_alloc(sizeof(int16_t)* nsample);
-        memcpy(buf, samples, sizeof(int16_t) * nsample);
-        play_samples(ctx, nsample, buf);
-    } /* !!! TEMPORARY !!! */
+    play_samples(ctx, samplelen / sizeof(int16_t), samplebuf);
 
     return TRUE;
 }
