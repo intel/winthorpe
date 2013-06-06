@@ -63,6 +63,7 @@ static const char *cmd_cant[] = { "I", "am", "afraid", "I", "can't", "do",
 static const char *cmd_music[] = { "hal", "play", "music" };
 static const char *cmd_exit[] = { "hal", "exit" };
 static const char *cmd_dial[] = { "hal", "dial", "nine", "one", "one" };
+static const char *cmd_dial1[] = { "hal", "dial" };
 static const char *cmd_artist[] = { "hal", "play", "artist", "foobar" };
 
 static fake_candidate_t commands[] = {
@@ -72,6 +73,7 @@ static fake_candidate_t commands[] = {
     { tokens: (char **)cmd_exit  , ntoken: MRP_ARRAY_SIZE(cmd_exit)   },
     { tokens: (char **)cmd_dial  , ntoken: MRP_ARRAY_SIZE(cmd_dial)   },
     { tokens: (char **)cmd_artist, ntoken: MRP_ARRAY_SIZE(cmd_artist) },
+    { tokens: (char **)cmd_dial1 , ntoken: MRP_ARRAY_SIZE(cmd_dial1)  },
     { NULL, 0 }
 };
 
