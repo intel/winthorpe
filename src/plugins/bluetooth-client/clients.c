@@ -292,6 +292,7 @@ static int notify_command(srs_client_t *srs_client, int idx,
     clients_t *clients;
     device_t *device;
     char cmd[2048];
+    uint32_t from;
     char *e, *p, *sep;
     int i;
 
@@ -312,7 +313,9 @@ static int notify_command(srs_client_t *srs_client, int idx,
 
     mrp_log_info("Bluetooth client got command '%s'\n", cmd);
 
-    if (play_samples(ctx, 0, audio->samples, audio) < 0)
+    from = strcmp(tokens[0], "siri") ? 0 : end[0];
+
+    if (play_samples(ctx, from, audio->samples, audio) < 0)
         return FALSE;
 
     return TRUE;
