@@ -407,7 +407,8 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
         }
     }
 
-    dis = find_disamb(srec->srs, SRS_DEFAULT_DISAMBIGUATOR);
+    flush = SRS_SREC_FLUSH_ALL;
+    dis   = find_disamb(srec->srs, SRS_DEFAULT_DISAMBIGUATOR);
 
     if (dis != NULL) {
         if (srec->result == NULL) {
