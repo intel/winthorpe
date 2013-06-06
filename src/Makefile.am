@@ -74,18 +74,25 @@ plugin_fake_speech_la_LDFLAGS =			\
 plugin_fake_speech_la_LIBADD  =
 
 # SRS CMU Sphinx speech engine plugin
+if SPHINX_ENABLED
 plugin_LTLIBRARIES += plugin-sphinx-speech.la
 
 plugin_sphinx_speech_la_SOURCES =			\
 		plugins/sphinx-speech-engine/sphinx.c
 
 plugin_sphinx_speech_la_CFLAGS  =			\
-		$(AM_CFLAGS)
+		$(AM_CFLAGS) 				\
+		$(PULSE_CFLAGS) 			\
+		$(SPHINX_CFLAGS)
 
 plugin_sphinx_speech_la_LDFLAGS =			\
 		-module -avoid-version
 
-plugin_sphinx_speech_la_LIBADD  =
+plugin_sphinx_speech_la_LIBADD  =			\
+		$(PULSE_LIBS)				\
+		$(SPHINX_LIBS)
+endif
+
 
 # SRS Nuance speech engine plugin
 plugin_LTLIBRARIES += plugin-nuance-speech.la
