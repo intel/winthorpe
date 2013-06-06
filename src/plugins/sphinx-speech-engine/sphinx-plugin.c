@@ -120,26 +120,27 @@ static int rescan(uint32_t start, uint32_t end, void *user_data)
 }
 
 
-static void *sampledup(uint32_t start, uint32_t end, size_t *sizep,
-                       void *user_data)
+static srs_audiobuf_t *sampledup(uint32_t start, uint32_t end, void *user_data)
 {
-    context_t *ctx  = (context_t *)user_data;
-    size_t     size = 2 * sizeof(uint32_t);
-    void      *fake = mrp_allocz(size);
+    context_t         *ctx  = (context_t *)user_data;
+    srs_audioformat_t  format;
+    uint32_t           rate;
+    uint8_t            channels;
+    size_t             samples;
+    uint32_t           buf[2];
 
     MRP_UNUSED(ctx);
 
-    mrp_debug("duplicating CMU Sphinx backend samples (%u - %u)", start, end);
+    mrp_debug("duplicating CMU Sphinx backend sample (%u - %u)", start, end);
 
-    if (fake != NULL) {
-        if (sizep != NULL)
-            *sizep = size;
+    format   = SRS_AUDIO_S32LE;
+    rate     = 16000;
+    channels = 2;
+    samples  = 1;
+    buf[0]   = start;
+    buf[1]   = end;
 
-        ((uint32_t *)fake)[0] = start;
-        ((uint32_t *)fake)[1] = end;
-    }
-
-    return fake;
+    return srs_create_audiobuf(format, rate, channels, samples, buf);
 }
 
 
@@ -167,6 +168,19 @@ static int select_decoder(const char *decoder, void *user_data)
     return TRUE;
 }
 
+
+static const char *active_decoder(void *user_data)
+{
+    context_t *ctx = (context_t *)user_data;
+
+    MRP_UNUSED(ctx);
+
+    mrp_debug("returning hardcoded CMU Sphinx backend decoder string");
+
+    return "<active-sphinx-decoder-name>";
+}
+
+
 static int create_sphinx(srs_plugin_t *plugin)
 {
     srs_srec_api_t api = {
@@ -177,6 +191,7 @@ static int create_sphinx(srs_plugin_t *plugin)
     sampledup:        sampledup,
     check_decoder:    check_decoder,
     select_decoder:   select_decoder,
+    active_decoder:   active_decoder,
     };
 
     srs_context_t *srs = plugin->srs;
