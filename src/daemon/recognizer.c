@@ -221,6 +221,7 @@ static void free_srec_result(srs_srec_result_t *res)
 {
     srs_srec_match_t *m;
     mrp_list_hook_t  *p, *n;
+    int               i;
 
     switch (res->type) {
     case SRS_SREC_RESULT_MATCH:
@@ -241,8 +242,70 @@ static void free_srec_result(srs_srec_result_t *res)
         break;
     }
 
+    for (i = 0; i < res->ntoken; i++)
+        mrp_free(res->tokens[i]);
+    mrp_free(res->tokens);
+
+    mrp_free(res->start);
+    mrp_free(res->end);
+    mrp_free(res->samplebuf);
+
+    for (i = 0; i < res->ndict; i++)
+        mrp_free(res->dicts[i]);
+    mrp_free(res->dicts);
+
+
     mrp_list_delete(&res->hook);
     mrp_free(res);
+}
+
+
+static int switch_dict(srs_srec_t *srec, const char *dict)
+{
+    return srec->api.select_decoder(dict, srec->api_data) ? 0 : -1;
+}
+
+
+static int push_dict(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    const char *active, *next;
+
+    active = srec->api.active_decoder(srec->api_data);
+    next   = res->result.dict.dict;
+
+    if (mrp_reallocz(res->dicts, res->ndict, res->ndict + 1) == NULL ||
+        (res->dicts[res->ndict] = mrp_strdup(active))        == NULL)
+        return -1;
+
+    if (res->dicts[res->ndict] == NULL)
+        return -1;
+
+    res->ndict++;
+
+    return switch_dict(srec, next);
+}
+
+
+static int pop_dict(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    char *prev;
+
+    if (res->ndict <= 0) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    prev = res->dicts[res->ndict - 1];
+
+    if (switch_dict(srec, prev) == 0) {
+        mrp_reallocz(res->dicts, res->ndict, res->ndict - 1);
+        res->ndict--;
+        mrp_free(prev);
+
+        return 0;
+    }
+    else
+        return -1;
 }
 
 
@@ -250,23 +313,75 @@ static void process_match_result(srs_srec_t *srec, srs_srec_result_t *res)
 {
     mrp_list_hook_t  *p, *n;
     srs_srec_match_t *match;
+    int               i;
 
     mrp_list_foreach(&res->result.matches, p, n) {
         match = mrp_list_entry(p, typeof(*match), hook);
-        client_notify_command(match->client, match->index);
+
+        for (i = 0; i < res->ntoken; i++) {
+            mrp_log_info("  #%d token ('%s'): %u - %u", i,
+                         res->tokens[i], res->start[i], res->end[i]);
+        }
+
+        client_notify_command(match->client, match->index,
+                              res->ntoken, (const char **)res->tokens,
+                              res->samplebuf, res->samplelen,
+                              res->start, res->end);
+
+        while (res->ndict > 0)
+            pop_dict(srec, res);
     }
 }
 
 
-static void process_dict_result(srs_srec_t *srec, srs_srec_result_t *res)
+static int process_dict_result(srs_srec_t *srec, srs_srec_result_t *res)
 {
-    printf("*** should process dictionary operation ***\n");
-    return;
+    if (srec->result != NULL && srec->result != res) {
+        mrp_log_error("Conflicting results (%p != %p) for dictionary switch.",
+                      res, srec->result);
+        return 0;
+    }
+
+    switch (res->result.dict.op) {
+    case SRS_DICT_OP_POP:
+        if (pop_dict(srec, res) < 0) {
+            mrp_log_error("Failed to pop dictionary.");
+            return 0;
+        }
+        break;
+
+    case SRS_DICT_OP_PUSH:
+        if (push_dict(srec, res) < 0) {
+            mrp_log_error("Failed to push dictionary '%s'.",
+                          res->result.dict.dict);
+            return 0;
+        }
+        break;
+
+    case SRS_DICT_OP_SWITCH:
+        if (switch_dict(srec, res->result.dict.dict) < 0) {
+            mrp_log_error("Failed to switch to dictionary '%s'.",
+                          res->result.dict.dict);
+            return 0;
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    srec->result     = res;
+    res->sampleoffs += res->result.dict.rescan;
+
+    return res->result.dict.rescan;
 }
 
 
 static void process_ambiguity(srs_srec_t *srec, srs_srec_result_t *res)
 {
+    MRP_UNUSED(srec);
+    MRP_UNUSED(res);
+
     return;
 }
 
@@ -278,7 +393,8 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
     srs_srec_candidate_t *c;
     srs_srec_result_t    *res;
     srs_srec_token_t     *t;
-    int                   i, j;
+    int                   flush, i, j;
+    uint32_t              start, end;
 
     mrp_log_info("Got %zd recognition candidates in from %s backend:",
                  utt->ncand, srec->name);
@@ -287,13 +403,31 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
         c = utt->cands[i];
         mrp_log_info("Candidate #%d:", i);
         for (j = 0, t = c->tokens; j < (int)c->ntoken; j++, t++) {
-            mrp_log_info("    token #%d: '%s'", j, t->token);
+            mrp_log_info("    token #%d: '%s' (%u - %u)", j, t->token,
+                         t->start, t->end);
         }
     }
 
     dis = find_disamb(srec->srs, SRS_DEFAULT_DISAMBIGUATOR);
 
     if (dis != NULL) {
+        if (srec->result == NULL) {
+            res = srec->result = mrp_allocz(sizeof(*srec->result));
+
+            if (res == NULL)
+                return SRS_SREC_FLUSH_ALL;
+
+            mrp_list_init(&res->hook);
+            mrp_list_init(&res->result.matches);
+
+            c     = utt->cands[0];
+            start = c->tokens[0].start;
+            end   = c->tokens[c->ntoken-1].end;
+
+            res->samplebuf = srec->api.sampledup(start, end, &res->samplelen,
+                                                 srec->api_data);
+        }
+
         res = srec->result;
 
         if (dis->api.disambiguate(utt, &res, dis->api_data) == 0 && res) {
@@ -302,25 +436,29 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
             switch (res->type) {
             case SRS_SREC_RESULT_MATCH:
                 process_match_result(srec, res);
+                free_srec_result(res);
+                srec->result = NULL;
+                flush = SRS_SREC_FLUSH_ALL;
                 break;
 
             case SRS_SREC_RESULT_DICT:
-                process_dict_result(srec, res);
+                flush = process_dict_result(srec, res);
                 break;
 
             case SRS_SREC_RESULT_AMBIGUOUS:
                 process_ambiguity(srec, res);
+                free_srec_result(res);
+                flush = SRS_SREC_FLUSH_ALL;
                 break;
 
             default:
+                flush = SRS_SREC_FLUSH_ALL;
                 break;
             }
-
-            free_srec_result(res);
         }
     }
 
-    return SRS_SREC_FLUSH_ALL;
+    return flush;
 }
 
 

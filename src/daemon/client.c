@@ -302,18 +302,13 @@ void client_resource_event(srs_client_t *c, srs_resset_event_t e)
 }
 
 
-void client_notify_command(srs_client_t *c, int index)
+void client_notify_command(srs_client_t *c, int index,
+                           int ntoken, const char **tokens,
+                           void *samplebuf, size_t samplelen,
+                           uint32_t *start, uint32_t *end)
 {
-    srs_command_t *cmd;
-    char          *tokens[SRS_MAX_TOKENS];
-    int            ntoken;
-
     if (c->enabled && /*c->allowed && */ 0 <= index && index < c->ncommand) {
-        cmd = c->commands + index;
-
-        for (ntoken = 0; ntoken < cmd->ntoken; ntoken++)
-            tokens[ntoken] = cmd->tokens[ntoken];
-
-        c->ops.notify_command(c, ntoken, tokens);
+        c->ops.notify_command(c, index, ntoken, (char **)tokens,
+                              samplebuf, samplelen, start, end);
     }
 }

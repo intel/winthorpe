@@ -65,7 +65,7 @@ typedef struct {
     /** Set language model to be used. */
     int (*select_decoder)(const char *decoder, void *user_data);
     /** Get the used language model. */
-    const char *(*get_decoder)(void *user_data);
+    const char *(*active_decoder)(void *user_data);
 } srs_srec_api_t;
 
 /*
@@ -160,7 +160,12 @@ typedef struct {
 struct srs_srec_result_s {
     srs_srec_result_type_t   type;       /* result type */
     mrp_list_hook_t          hook;       /* to list of results */
+    void                    *samplebuf;  /* utterance audio */
+    size_t                   samplelen;  /* audio buffer length */
+    uint32_t                 sampleoffs; /* extra audio offset */
     char                   **tokens;     /* matched tokens */
+    uint32_t                *start;      /* token start offset */
+    uint32_t                *end;        /* token end offsets */
     int                      ntoken;     /* number of tokens */
     char                   **dicts;      /* dictionary stack */
     int                      ndict;      /* stack depth */

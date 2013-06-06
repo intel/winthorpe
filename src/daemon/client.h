@@ -119,7 +119,9 @@ typedef enum {
 
 typedef struct {
     int (*notify_focus)(srs_client_t *c, srs_voice_focus_t focus);
-    int (*notify_command)(srs_client_t *c, int ntoken, char **tokens);
+    int (*notify_command)(srs_client_t *c, int idx, int ntoken,
+                          char **tokens, void *samplebuf, size_t samplelen,
+                          uint32_t *start, uint32_t *end);
 } srs_client_ops_t;
 
 
@@ -169,6 +171,8 @@ void client_reset_resources(srs_context_t *srs);
 void client_resource_event(srs_client_t *c, srs_resset_event_t event);
 
 /** Deliver a command notification event to the client. */
-void client_notify_command(srs_client_t *c, int index);
+void client_notify_command(srs_client_t *c, int idx, int ntoken,
+                           const char **tokens, void *samplebuf,
+                           size_t samplelen, uint32_t *start, uint32_t *end);
 
 #endif /* __SRS_DAEMON_CLIENT_H__ */
