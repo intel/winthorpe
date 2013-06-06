@@ -57,6 +57,9 @@ static int focus_cb(srs_client_t *c, srs_voice_focus_t focus)
     search_t      *sch = c->user_data;
     const char    *state;
 
+    MRP_UNUSED(srs);
+    MRP_UNUSED(sch);
+
     switch (focus) {
     case SRS_VOICE_FOCUS_NONE:      state = "none";      break;
     case SRS_VOICE_FOCUS_SHARED:    state = "shared";    break;
@@ -73,7 +76,7 @@ static int focus_cb(srs_client_t *c, srs_voice_focus_t focus)
 static int url_encode(char *buf, size_t size, int ntoken, char **tokens)
 {
     unsigned char *p, *s, L, H;
-    int            l, n, i;
+    int            l, i;
 
     p = (unsigned char *)buf;
     l = size;
@@ -111,10 +114,10 @@ static int url_encode(char *buf, size_t size, int ntoken, char **tokens)
                 H = (*s & 0xf0) >> 4;
                 L =  *s & 0x0f;
 
-                if (0 <= H && H <= 9) H += '0';
-                else                  H += 'A' - 10;
-                if (0 <= L && L <= 9) L += '0';
-                else                  L += 'A' - 10;
+                if (/*0 <= H && */H <= 9) H += '0';
+                else                      H += 'A' - 10;
+                if (/*0 <= L && */L <= 9) L += '0';
+                else                      L += 'A' - 10;
 
                 p[0] = '%';
                 p[1] = H;
@@ -161,7 +164,7 @@ static int command_cb(srs_client_t *c, int idx, int ntoken, char **tokens,
 
         l = snprintf(cmd, sizeof(cmd), sch->cmd, qry);
 
-        if (l < sizeof(cmd)) {
+        if (l < (int)sizeof(cmd)) {
             mrp_log_info("*** executing '%s'", cmd);
             system(cmd);
         }
@@ -191,18 +194,16 @@ static int create_search(srs_plugin_t *plugin)
 
 static int config_search(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
-    static char    cmdbuf[1024];
-    search_t      *sch = (search_t *)plugin->plugin_data;
-    srs_context_t *srs = plugin->srs;
-    srs_cfg_t     *cfg = srs->settings;
-    const char    *dict, *cmd;
-    char          *p, *q;
-    int            l, n, nobg;
+    search_t    *sch = (search_t *)plugin->plugin_data;
+    static char  cmdbuf[1024];
+    const char  *dict, *cmd;
+    char        *p, *q;
+    int          l, n, nobg;
 
     mrp_debug("configure search plugin");
 
-    dict = srs_get_string_config(cfg, "search.dictionary", DICTIONARY);
-    cmd  = srs_get_string_config(cfg, "search.command"   , COMMAND);
+    dict = srs_get_string_config(settings, "search.dictionary", DICTIONARY);
+    cmd  = srs_get_string_config(settings, "search.command"   , COMMAND);
 
     q = (char *)cmd + strlen(cmd);
     while (q > cmd && (*q == ' ' || *q == '\t'))
@@ -313,6 +314,8 @@ static void destroy_search(srs_plugin_t *plugin)
 {
     srs_context_t *srs = plugin->srs;
     search_t      *sch = (search_t *)plugin->plugin_data;
+
+    MRP_UNUSED(srs);
 
     mrp_debug("destroy search plugin");
 
