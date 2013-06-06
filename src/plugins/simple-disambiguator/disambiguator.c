@@ -129,10 +129,8 @@ static node_t *get_token_node(node_t *prnt, const char *token, int insert)
             return NULL;
         }
 
-        if (!strcmp(node->data.token, token)) {
-            mrp_debug("found token node %s", token);
+        if (!strcmp(node->data.token, token))
             return node;
-        }
 
         if (!strcmp(node->data.token, SRS_TOKEN_WILDCARD))
             any = node;
@@ -551,8 +549,6 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                 res->result.dict.state  = node;
                 res->result.dict.rescan = (int)src->tokens[i].start;
 
-                *result = res;
-
                 return 0;
             }
             else
@@ -621,7 +617,6 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                         prnt = child;
                 }
                 else if (child->type == NODE_TYPE_DICTIONARY) {
-#if 1
                     mrp_debug("found dictionary node %s",
                               child->data.dict.dict);
 
@@ -631,12 +626,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                     res->result.dict.state  = child;
                     res->result.dict.rescan = (int)src->tokens[i-1].end;
 
-                    *result = res;
-
                     return 0;
-#else
-                    prnt = get_token_node(child, SRS_TOKEN_WILDCARD, FALSE);
-#endif
                 }
 
                 if (prnt != NULL) {
@@ -646,6 +636,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
 
                 mrp_log_error("Unexpected non-client node type 0x%x.",
                               node->type);
+                res->type = SRS_SREC_RESULT_UNRECOGNIZED;
                 continue;
             }
 
@@ -671,9 +662,10 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                              res->tokens[j]);
             }
         }
-
-        *result = res;
     }
+
+    if (!match)
+        res->type = SRS_SREC_RESULT_UNRECOGNIZED;
 
     return 0;
 }
