@@ -130,18 +130,36 @@ plugin_simple_disambiguator_la_LIBADD  =
 # Mpris2 client plugin
 plugin_LTLIBRARIES += plugin-mpris2-client.la
 
-plugin_mpris2_client_la_SOURCES =			\
-		plugins/mpris2-client/mpris2-plugin.c	\
-		plugins/mpris2-client/dbusif.c		\
+plugin_mpris2_client_la_SOURCES =				\
+		plugins/mpris2-client/mpris2-plugin.c		\
+		plugins/mpris2-client/dbusif.c			\
 		plugins/mpris2-client/clients.c
 
-plugin_mpris2_client_la_CFLAGS  =			\
+plugin_mpris2_client_la_CFLAGS  =				\
 		$(AM_CFLAGS)
 
-plugin_mpris2_client_la_LDFLAGS =			\
+plugin_mpris2_client_la_LDFLAGS =				\
 		-module -avoid-version
 
 plugin_mpris2_client_la_LIBADD  =
+
+
+# Bluetooth client plugin
+plugin_LTLIBRARIES += plugin-bluetooth-client.la
+
+plugin_bluetooth_client_la_SOURCES =				\
+		plugins/bluetooth-client/bluetooth-plugin.c	\
+		plugins/bluetooth-client/dbusif.c		\
+		plugins/bluetooth-client/pulseif.c		\
+		plugins/bluetooth-client/clients.c
+
+plugin_bluetooth_client_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_bluetooth_client_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_bluetooth_client_la_LIBADD  =
 
 
 # cleanup
