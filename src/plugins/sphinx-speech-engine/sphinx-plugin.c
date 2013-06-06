@@ -101,7 +101,7 @@ static int flush(uint32_t start, uint32_t end, void *user_data)
 
     MRP_UNUSED(ctx);
 
-    mrp_debug("flushing CMU Sphinx backend buffer (%u - %u)", start, end);
+    mrp_log_info("flushing CMU Sphinx backend buffer (%u - %u)", start, end);
 
     return TRUE;
 }
@@ -113,7 +113,7 @@ static int rescan(uint32_t start, uint32_t end, void *user_data)
 
     MRP_UNUSED(ctx);
 
-    mrp_debug("scheduling CMU Sphinx backend buffer rescan (%u - %u)",
+    mrp_log_info("scheduling CMU Sphinx backend buffer rescan (%u - %u)",
               start, end);
 
     return TRUE;
@@ -149,7 +149,7 @@ static int check_decoder(const char *decoder, void *user_data)
     context_t *ctx = (context_t *)user_data;
     int available;
 
-    mrp_debug("checking availability of decoder '%s' for CMU Sphinx backend",
+    mrp_log_info("checking availability of decoder '%s' for CMU Sphinx backend",
               decoder);
 
     available = decoder_set_contains(ctx, decoder);
@@ -164,7 +164,7 @@ static int select_decoder(const char *decoder, void *user_data)
 {
     context_t *ctx = (context_t *)user_data;
 
-    mrp_debug("selecting decoder '%s' for CMU Sphinx backend", decoder);
+    mrp_log_info("selecting decoder '%s' for CMU Sphinx backend", decoder);
 
     if (decoder_set_use(ctx, decoder) < 0)
         return FALSE;
@@ -178,7 +178,7 @@ static const char *active_decoder(void *user_data)
     context_t *ctx = (context_t *)user_data;
     const char *decoder;
 
-    mrp_debug("querying active CMU Sphinx backend decoder");
+    mrp_log_info("querying active CMU Sphinx backend decoder");
 
     decoder = decoder_set_name(ctx);
 

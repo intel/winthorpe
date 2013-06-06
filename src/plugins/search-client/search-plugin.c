@@ -40,7 +40,7 @@
 #define SEARCH_VERSION "0.0.1"
 
 #define DICTIONARY     "general"
-#define COMMAND        "chromium-browser \"http://google.com/search?q=__url__\""
+#define COMMAND        "google-chrome \"http://google.com/search?q=__url__\""
 
 typedef struct {
     srs_plugin_t *self;                  /* us */

@@ -19,6 +19,7 @@ struct clients_s {
         mrp_htbl_t *name;
         mrp_htbl_t *addr;
     } player;
+    player_t *deflt;
     player_t *current;
 };
 
@@ -153,8 +154,8 @@ int clients_register_player(context_t *ctx,
                  player->name, player->service ? player->service : "none",
                  player->object ? player->object : "none");
 
-    if (!clients->current) {
-        clients->current = player;
+    if (!clients->deflt) {
+        clients->current = clients->deflt = player;
         mrp_log_info("'%s' become the default player", player->name);
     }
 
@@ -243,8 +244,21 @@ void clients_player_disappeared(context_t *ctx, const char *name)
 
 void clients_player_state_changed(player_t *player, player_state_t state)
 {
-    if (player)
-        player->state = state;
+    context_t *ctx;
+    clients_t *clients;
+    player_state_t old_state;
+
+    if (!player || !(ctx = player->ctx) || !(clients = ctx->clients))
+        return;
+
+    old_state = player->state;
+    player->state = state;
+
+    if (old_state != PLAY && state == PLAY) {
+        if (clients->current != player)
+            clients->current = player;
+        return;
+    }
 }
 
 void clients_player_status_changed(player_t *player, bool ready)
@@ -358,8 +372,19 @@ void clients_player_show(player_t *player)
 
 void clients_player_quit(player_t *player)
 {
-    if (player && player->address)
+    context_t *ctx;
+    clients_t *clients;
+
+    if (!player || !(ctx = player->ctx) || !(clients = ctx->clients))
+        return;
+
+    if (clients->current == player)
+        clients->current = clients->deflt;
+
+    if (player->address) {
+        dbusif_set_player_state(player, STOP);
         dbusif_quit_player(player);
+    }
 }
 
 static int notify_focus(srs_client_t *srs_client, srs_voice_focus_t focus)
@@ -542,6 +567,7 @@ static void playlist_free(size_t nlist, playlist_t *lists)
         free((void *)lists);
     }
 }
+
 
 
 static uint64_t get_current_time(void)

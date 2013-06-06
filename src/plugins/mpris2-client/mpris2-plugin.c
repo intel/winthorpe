@@ -94,7 +94,7 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
     for (i = 0, success = TRUE;   i < n ;   i++) {
         c = cfgs + i;
 
-        if (!strcmp("player", c->key + pfxlen)) {
+        if (!strncmp("player", c->key + pfxlen, 6)) {
             snprintf(srv, sizeof(srv), "%s%s", c->value, ".service");
             snprintf(obj, sizeof(obj), "%s%s", c->value, ".object");
             for (j = 0, service = object = NULL;
