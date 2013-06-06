@@ -182,6 +182,8 @@ static void config_parse_settings(srs_context_t *srs, char *settings)
             val++;
             vlen--;
         }
+        while (vlen > 0 && val[vlen - 1] == ' ')
+            vlen--;
 
         if (klen >= sizeof(keybuf) || vlen >= sizeof(valbuf)) {
             mrp_log_error("Configuration setting %*.*s = %*.*s too long.",
