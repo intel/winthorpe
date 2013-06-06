@@ -39,12 +39,12 @@ static uint64_t get_current_time(void);
 static char *commands[] = {
     "play music",
     "stop music",
-    "play louder",
-    "play quieter",
     "play next",
     "play previous",
     "show player",
     "quit player",
+    "volume up",
+    "volume down",
     NULL
 };
 static int ncommand = (sizeof(commands) / sizeof(commands[0])) - 1;
@@ -411,14 +411,14 @@ static int notify_command(srs_client_t *srs_client, int idx,
         clients_player_request_track(player, NEXT_TRACK);
     else if (!strcmp(cmd, "play previous"))
         clients_player_request_track(player, PREVIOUS_TRACK);
-    else if (!strcmp(cmd, "play louder"))
-        clients_player_adjust_volume(player, +2);
-    else if (!strcmp(cmd, "play quieter"))
-        clients_player_adjust_volume(player, -2);
     else if (!strcmp(cmd, "show player"))
         clients_player_show(player);
     else if (!strcmp(cmd, "quit player"))
         clients_player_quit(player);
+    else if (!strcmp(cmd, "volume up"))
+        clients_player_adjust_volume(player, +2);
+    else if (!strcmp(cmd, "volume down"))
+        clients_player_adjust_volume(player, -2);
 
     return TRUE;
 }
