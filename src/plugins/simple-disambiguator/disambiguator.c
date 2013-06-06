@@ -506,6 +506,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
     mrp_list_hook_t      *p, *n;
     node_t               *node, *child, *prnt;
     int                   i, j, end, match;
+    uint32_t              offs;
 
     mrp_debug("should disambiguate utterance %p", utt);
 
@@ -521,7 +522,14 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
     if (res != NULL) {
         if (res->type == SRS_SREC_RESULT_DICT)
             node = res->result.dict.state;
+        else
+            node = dis->root;
     }
+    else {
+        mrp_log_error("Expected result buffer not found.");
+        return -1;
+    }
+#if 0
     else {
         node = dis->root;
         res  = mrp_allocz(sizeof(*res));
@@ -532,6 +540,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
         mrp_list_init(&res->hook);
         mrp_list_init(&res->result.matches);
     }
+#endif
 
     for (i = 0, match = TRUE; i < (int)src->ntoken && match; i++) {
         tkn = src->tokens[i].token;
@@ -550,9 +559,10 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                        node->data.dict.dict);
 
                 res->type = SRS_SREC_RESULT_DICT;
-                res->result.dict.op    = node->data.dict.op;
-                res->result.dict.dict  = node->data.dict.dict;
-                res->result.dict.state = node;
+                res->result.dict.op     = node->data.dict.op;
+                res->result.dict.dict   = node->data.dict.dict;
+                res->result.dict.state  = node;
+                res->result.dict.rescan = (int)src->tokens[i].start;
 
                 *result = res;
 
@@ -571,6 +581,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
 
             for (j = i; j <= end; j++) {
                 if (mrp_reallocz(res->tokens, res->ntoken, res->ntoken + 1)) {
+                    tkn = src->tokens[j].token;
                     res->tokens[res->ntoken] = mrp_strdup(tkn);
 
                     if (res->tokens[res->ntoken] == NULL)
@@ -578,6 +589,17 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
                     else
                         res->ntoken++;
                 }
+
+                offs = res->sampleoffs;
+                if (mrp_reallocz(res->start, res->ntoken, res->ntoken + 1))
+                    res->start[res->ntoken-1] = offs + src->tokens[j].start;
+                else
+                    return -1;
+
+                if (mrp_reallocz(res->end, res->ntoken, res->ntoken + 1))
+                    res->end[res->ntoken-1] = offs + src->tokens[j].end;
+                else
+                    return -1;
             }
 
             i = end;
@@ -586,6 +608,7 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
 
     if (match && i == (int)src->ntoken) {
         res->type = SRS_SREC_RESULT_MATCH;
+        mrp_list_init(&res->result.matches);
 
         mrp_list_foreach(&node->children, p, n) {
             child = mrp_list_entry(p, typeof(*child), hook);
@@ -612,6 +635,11 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
 
             mrp_log_info("Found matching command %s/#%d.",
                          m->client->id, m->index);
+
+            for (j = 0; j < res->ntoken; j++) {
+                mrp_log_info("    actual token #%d: '%s'", j,
+                             res->tokens[j]);
+            }
         }
 
         *result = res;
