@@ -243,6 +243,25 @@ void filter_buffer_utter(context_t *ctx, bool full_utterance)
     }
 }
 
+int16_t *filter_buffer_dup(context_t *ctx, int32_t start, int32_t end)
+{
+    filter_buf_t *filtbuf;
+    int16_t *dup;
+    size_t len;
+
+    if (!ctx || !(filtbuf = ctx->filtbuf))
+        return NULL;
+
+    if (start < 0 || end < 0 || start >= end || start >= filtbuf->len)
+        return NULL;
+
+    len = (end - start) * sizeof(int16_t);
+
+    if ((dup = mrp_alloc(len)))
+        memcpy(dup, filtbuf + start, len);
+
+    return dup;
+}
 
 
 
