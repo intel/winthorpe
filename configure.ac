@@ -91,6 +91,13 @@ fi
 
 AC_SUBST(WARNING_CFLAGS)
 
+# Check for the necessary Murphy components.
+PKG_CHECK_MODULES(MURPHY_COMMON,    murphy-common)
+PKG_CHECK_MODULES(MURPHY_DBUS,      murphy-dbus)
+PKG_CHECK_MODULES(MURPHY_PULSE,     murphy-pulse)
+PKG_CHECK_MODULES(MURPHY_RESOURCE,  murphy-resource)
+PKG_CHECK_MODULES(MURPHY_BREEDLINE, breedline-murphy)
+
 # Check for PulseAudio.
 PKG_CHECK_MODULES(PULSE, libpulse >= 0.9.22)
 AC_SUBST(PULSE_CFLAGS)
@@ -212,3 +219,25 @@ echo "----- configuration -----"
 echo "Extra C warnings flags: $WARNING_CFLAGS"
 echo "D-Bus support: $enable_dbus"
 echo "Sphinx support: $enable_sphinx"
+
+if test "$DUMP_LIB_FLAGS" = "yes"; then
+    echo "MURPHY_COMMON:"
+    echo "  CFLAGS: $MURPHY_COMMON_CFLAGS"
+    echo "  LIBS  : $MURPHY_COMMON_LIBS"
+
+    echo "MURPHY_DBUS:"
+    echo "  CFLAGS: $MURPHY_DBUS_CFLAGS"
+    echo "  LIBS  : $MURPHY_DBUS_LIBS"
+
+    echo "MURPHY_PULSE:"
+    echo "  CFLAGS: $MURPHY_PULSE_CFLAGS"
+    echo "  LIBS  : $MURPHY_PULSE_LIBS"
+
+    echo "MURPHY_RESOURCE:"
+    echo "  CFLAGS: $MURPHY_RESOURCE_CFLAGS"
+    echo "  LIBS  : $MURPHY_RESOURCE_LIBS"
+
+    echo "MURPHY_BREEDLINE:"
+    echo "  CFLAGS: $MURPHY_BREEDLINE_CFLAGS"
+    echo "  LIBS  : $MURPHY_BREEDLINE_LIBS"
+fi

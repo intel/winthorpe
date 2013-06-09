@@ -29,14 +29,18 @@ srs_daemon_SOURCES =				\
 
 srs_daemon_CFLAGS = 				\
 		$(AM_CFLAGS)			\
+		$(MURPHY_PULSE_CFLAGS)		\
+		$(MURPHY_DBUS_CFLAGS)		\
+		$(MURPHY_COMMON_CFLAGS)		\
+		$(MURPHY_RESOURCE_CFLAGS)	\
 		$(PULSE_CFLAGS)			\
 		$(DBUS_CFLAGS)
 
 srs_daemon_LDADD =				\
-		../src/libmurphy-pulse.la	\
-		../src/libmurphy-dbus.la	\
-		../src/libmurphy-common.la	\
-		../src/libmurphy-resource.la	\
+		$(MURPHY_PULSE_LIBS)		\
+		$(MURPHY_DBUS_LIBS)		\
+		$(MURPHY_RESOURCE_LIBS)		\
+		$(MURPHY_COMMON_LIBS)		\
 		$(PULSE_LIBS)			\
 		$(DBUS_LIBS)			\
 		-ldl
@@ -50,14 +54,17 @@ srs_client_SOURCES =				\
 
 srs_client_CFLAGS =				\
 		$(AM_CFLAGS)			\
+		$(MURPHY_PULSE_CFLAGS)		\
+		$(MURPHY_DBUS_CFLAGS)		\
+		$(MURPHY_BREEDLINE_CFLAGS)	\
+		$(MURPHY_COMMON_CFLAGS)		\
 		$(DBUS_CFLAGS)
 
 srs_client_LDADD =				\
-		../src/libmurphy-pulse.la	\
-		../src/libmurphy-dbus.la	\
-		../src/libbreedline-murphy.la	\
-		../src/libmurphy-common.la	\
-		../src/libbreedline.la		\
+		$(MURPHY_PULSE_LIBS)		\
+		$(MURPHY_DBUS_LIBS)		\
+		$(MURPHY_BREEDLINE_LIBS)	\
+		$(MURPHY_COMMON_LIBS)		\
 		$(PULSE_LIBS)			\
 		$(DBUS_LIBS)
 
