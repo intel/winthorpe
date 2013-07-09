@@ -132,8 +132,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
         return -1;
     }
 
-    memset(decset->decs + sizeof(decoder_t) * decset->ndec, 0,
-           sizeof(decoder_t) * 2);
+    memset(decset->decs + decset->ndec, 0, sizeof(decoder_t) * 2);
 
     dec = decset->decs + decset->ndec;
     decset->curdec = decset->decs + curidx;
