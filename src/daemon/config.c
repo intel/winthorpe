@@ -67,8 +67,6 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
            "The possible options are:\n"
            "  -c, --config-file=PATH         main configuration file to use\n"
            "      The default configuration file is '%s'.\n"
-           "  -B, --dbus=BUS                 D-BUS type or address to use\n"
-           "      The default D-BUS is 'session'.\n"
            "  -P, --plugin-dir=PATH          use DIR to search for plugins\n"
            "      The default plugin directory is '%s'.\n"
            "  -L, --load-plugin=NAME         load the given plugin\n"
@@ -94,11 +92,10 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
 
 static void config_set_defaults(srs_context_t *srs)
 {
-    srs->config_file  = SRS_DEFAULT_CONFIG_FILE;
-    srs->plugin_dir   = SRS_DEFAULT_PLUGIN_DIR;
-    srs->dbus_address = "session";
-    srs->log_mask     = MRP_LOG_MASK_ERROR;
-    srs->log_target   = MRP_LOG_TO_STDERR;
+    srs->config_file = SRS_DEFAULT_CONFIG_FILE;
+    srs->plugin_dir  = SRS_DEFAULT_PLUGIN_DIR;
+    srs->log_mask    = MRP_LOG_MASK_ERROR;
+    srs->log_target  = MRP_LOG_TO_STDERR;
 }
 
 
@@ -243,7 +240,6 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv)
         { "load-plugin"  , required_argument, NULL, 'L' },
         { "log-level"    , required_argument, NULL, 'l' },
         { "log-target"   , required_argument, NULL, 't' },
-        { "dbus"         , required_argument, NULL, 'B' },
         { "set"          , required_argument, NULL, 's' },
         { "verbose"      , optional_argument, NULL, 'v' },
         { "debug"        , required_argument, NULL, 'd' },
@@ -295,10 +291,6 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv)
 
         case 't':
             srs->log_target = optarg;
-            break;
-
-        case 'B':
-            srs->dbus_address = mrp_strdup(optarg);
             break;
 
         case 's':

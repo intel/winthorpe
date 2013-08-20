@@ -32,7 +32,6 @@
 
 #include <murphy/common/list.h>
 #include <murphy/common/pulse-glue.h>
-#include <murphy/common/dbus.h>
 #include <murphy/common/hashtbl.h>
 
 #include <murphy/plugins/resource-native/libmurphy-resource/resource-api.h>
@@ -49,7 +48,6 @@ typedef struct srs_context_s srs_context_t;
 struct srs_context_s {
     pa_mainloop       *pa;               /* pulseaudio mainloop */
     mrp_mainloop_t    *ml;               /* associated murphy mainloop */
-    mrp_dbus_t        *dbus;             /* D-BUS connection */
     mrp_list_hook_t    clients;          /* connected clients */
     mrp_list_hook_t    plugins;          /* loaded plugins */
     mrp_timer_t       *rtmr;             /* resource reconnect timer */
@@ -71,7 +69,6 @@ struct srs_context_s {
     const char      *log_target;         /* and where to log to */
 
     /* miscellaneous runtime settings and status */
-    const char      *dbus_address;       /* 'system', 'session', or address */
     int              foreground : 1;     /* whether to stay in foreground */
     int              exit_status;        /* mainloop exit status */
 

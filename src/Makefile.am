@@ -1,11 +1,11 @@
 sbin_PROGRAMS      = srs-daemon
-bin_PROGRAMS       = srs-client
+bin_PROGRAMS       =
 
 plugindir          = $(libdir)/src/plugins
 plugin_LTLIBRARIES =
 
 INCLUDES           = -I$(top_builddir)
-AM_CFLAGS          = $(INCLUDES) $(DBUS_CFLAGS)
+AM_CFLAGS          = $(INCLUDES)
 
 QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 
@@ -19,7 +19,6 @@ srs_daemon_PUBLIC_SYMBOLS =			\
 srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
 		daemon/config.c			\
-		daemon/dbusif.c			\
 		daemon/resourceif.c		\
 		daemon/client.c			\
 		daemon/plugin.c			\
@@ -30,25 +29,24 @@ srs_daemon_SOURCES =				\
 srs_daemon_CFLAGS = 				\
 		$(AM_CFLAGS)			\
 		$(MURPHY_PULSE_CFLAGS)		\
-		$(MURPHY_DBUS_CFLAGS)		\
 		$(MURPHY_COMMON_CFLAGS)		\
 		$(MURPHY_RESOURCE_CFLAGS)	\
-		$(PULSE_CFLAGS)			\
-		$(DBUS_CFLAGS)
+		$(PULSE_CFLAGS)
 
 srs_daemon_LDADD =				\
 		$(MURPHY_PULSE_LIBS)		\
-		$(MURPHY_DBUS_LIBS)		\
 		$(MURPHY_RESOURCE_LIBS)		\
 		$(MURPHY_COMMON_LIBS)		\
 		$(PULSE_LIBS)			\
-		$(DBUS_LIBS)			\
 		-ldl
 
 srs_daemon_LDFLAGS =				\
 		-rdynamic
 
+if DBUS_ENABLED
 # SRS command line test clinet
+bin_PROGRAMS += srs-client
+
 srs_client_SOURCES =				\
 		client/client.c
 
@@ -67,6 +65,27 @@ srs_client_LDADD =				\
 		$(MURPHY_COMMON_LIBS)		\
 		$(PULSE_LIBS)			\
 		$(DBUS_LIBS)
+endif
+
+
+if DBUS_ENABLED
+# D-Bus client interface plugin
+plugin_LTLIBRARIES += plugin-dbus-client.la
+
+plugin_dbus_client_la_SOURCES = 		\
+		plugins/dbus-client-interface/dbus-client.c
+
+plugin_dbus_client_la_CFLAGS =			\
+		$(AM_CFLAGS)			\
+		$(DBUS_CFLAGS)			\
+		$(MURPHY_DBUS_CFLAGS)
+
+plugin_dbus_client_la_LDFLAGS =			\
+		-module -avoid-version
+
+plugin_dbus_client_la_LIBADD =			\
+		$(MURPHY_DBUS_LIBS)
+endif
 
 # SRS fake speech engine plugin
 plugin_LTLIBRARIES += plugin-fake-speech.la
@@ -108,7 +127,6 @@ plugin_sphinx_speech_la_LIBADD  =			\
 		$(SPHINX_LIBS)
 endif
 
-
 # SRS Nuance speech engine plugin
 plugin_LTLIBRARIES += plugin-nuance-speech.la
 
@@ -137,6 +155,7 @@ plugin_simple_disambiguator_la_LDFLAGS =			\
 
 plugin_simple_disambiguator_la_LIBADD  =
 
+if DBUS_ENABLED
 # Mpris2 client plugin
 plugin_LTLIBRARIES += plugin-mpris2-client.la
 
@@ -146,14 +165,20 @@ plugin_mpris2_client_la_SOURCES =				\
 		plugins/mpris2-client/clients.c
 
 plugin_mpris2_client_la_CFLAGS  =				\
-		$(AM_CFLAGS)
+		$(AM_CFLAGS)					\
+		$(MURPHY_DBUS_CFLAGS)				\
+		$(DBUS_CFLAGS)
 
 plugin_mpris2_client_la_LDFLAGS =				\
 		-module -avoid-version
 
-plugin_mpris2_client_la_LIBADD  =
+plugin_mpris2_client_la_LIBADD  =				\
+		$(MURPHY_DBUS_LIBS)				\
+		$(DBUS_LIBS)
+endif
 
 
+if DBUS_ENABLED
 # Bluetooth client plugin
 plugin_LTLIBRARIES += plugin-bluetooth-client.la
 
@@ -164,12 +189,18 @@ plugin_bluetooth_client_la_SOURCES =				\
 		plugins/bluetooth-client/clients.c
 
 plugin_bluetooth_client_la_CFLAGS  =				\
-		$(AM_CFLAGS)
+		$(AM_CFLAGS)					\
+		$(MURPHY_DBUS_CFLAGS)				\
+		$(DBUS_CFLAGS)
 
 plugin_bluetooth_client_la_LDFLAGS =				\
 		-module -avoid-version
 
-plugin_bluetooth_client_la_LIBADD  =
+plugin_bluetooth_client_la_LIBADD  =				\
+		$(MURPHY_DBUS_LIBS)				\
+		$(DBUS_LIBS)
+
+endif
 
 # search plugin
 plugin_LTLIBRARIES += plugin-search-client.la

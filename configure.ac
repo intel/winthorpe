@@ -93,10 +93,17 @@ AC_SUBST(WARNING_CFLAGS)
 
 # Check for the necessary Murphy components.
 PKG_CHECK_MODULES(MURPHY_COMMON,    murphy-common)
-PKG_CHECK_MODULES(MURPHY_DBUS,      murphy-dbus)
 PKG_CHECK_MODULES(MURPHY_PULSE,     murphy-pulse)
 PKG_CHECK_MODULES(MURPHY_RESOURCE,  murphy-resource)
 PKG_CHECK_MODULES(MURPHY_BREEDLINE, breedline-murphy)
+AC_SUBST(MURPHY_COMMON_CFLAGS)
+AC_SUBST(MURPHY_COMMON_LIBS)
+AC_SUBST(MURPHY_PULSE_CFLAGS)
+AC_SUBST(MURPHY_PULSE_LIBS)
+AC_SUBST(MURPHY_RESOURCE_CFLAGS)
+AC_SUBST(MURPHY_RESOURCE_LIBS)
+AC_SUBST(MURPHY_BREEDLINE_CFLAGS)
+AC_SUBST(MURPHY_BREEDLINE_LIBS)
 
 # Check for PulseAudio.
 PKG_CHECK_MODULES(PULSE, libpulse >= 0.9.22)
@@ -118,9 +125,10 @@ if test "$enable_dbus" = "yes"; then
         AC_MSG_ERROR([D-Bus support requires the --enable-gpl option.])
     fi
     PKG_CHECK_MODULES(DBUS, dbus-1 >= 0.70)
-
     DBUS_SESSION_DIR="`pkg-config --variable session_bus_services_dir dbus-1`"
     AC_SUBST(DBUS_SESSION_DIR)
+
+    PKG_CHECK_MODULES(MURPHY_DBUS, murphy-dbus)
 else
     AC_MSG_NOTICE([D-Bus support is disabled.])
 fi
@@ -131,6 +139,8 @@ fi
 
 AM_CONDITIONAL(DBUS_ENABLED, [test "$enable_dbus" = "yes"])
 AC_SUBST(DBUS_ENABLED)
+AC_SUBST(MURPHY_DBUS_CFLAGS)
+AC_SUBST(MURPHY_DBUS_LIBS)
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
@@ -144,19 +154,6 @@ AC_SUBST(SRS_LIBS)
 AC_MSG_CHECKING([libdir])
 AC_MSG_RESULT([$libdir])
 AC_SUBST(LIBDIR, [$libdir])
-
-# Check for Check (unit test framework).
-PKG_CHECK_MODULES(CHECK, 
-                  check >= 0.9.4,
-                  [has_check="yes"], [has_check="no"])
-AM_CONDITIONAL(HAVE_CHECK, test "x$has_check" = "xyes")
-
-AC_SUBST(CHECK_CFLAGS)
-AC_SUBST(CHECK_LIBS)
-
-if test "x$has_check" = "xno"; then
-    AC_MSG_WARN([Check framework not found, unit tests are DISABLED.])
-fi
 
 # Check if sphinx was enabled.
 AC_ARG_ENABLE(sphinx,

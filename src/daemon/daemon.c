@@ -36,7 +36,6 @@
 
 #include "src/daemon/context.h"
 #include "src/daemon/config.h"
-#include "src/daemon/dbusif.h"
 #include "src/daemon/resourceif.h"
 #include "src/daemon/plugin.h"
 #include "src/daemon/client.h"
@@ -175,7 +174,6 @@ int main(int argc, char *argv[])
         setup_signals(srs);
         config_parse_cmdline(srs, argc, argv);
         setup_logging(srs);
-        dbusif_setup(srs);
 
         if (!srs_configure_plugins(srs)) {
             mrp_log_error("Some plugins failed to configure.");
@@ -198,7 +196,6 @@ int main(int argc, char *argv[])
         srs_stop_plugins(srs);
         srs_destroy_plugins(srs);
 
-        dbusif_cleanup(srs);
         cleanup_context(srs);
 
         exit(0);

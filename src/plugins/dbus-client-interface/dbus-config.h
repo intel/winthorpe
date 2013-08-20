@@ -27,13 +27,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __SRS_DAEMON_DBUSIF_H__
-#define __SRS_DAEMON_DBUSIF_H__
+#ifndef __SRS_DBUS_PLUGIN_CONFIG_H__
+#define __SRS_DBUS_PLUGIN_CONFIG_H__
 
-#include "src/daemon/context.h"
-#include "src/daemon/dbus-config.h"
+#define SRS_SERVICE_NAME      "org.tizen.srs"
+#define SRS_SERVICE_PATH      "/srs"
+#define SRS_SERVICE_INTERFACE "org.tizen.srs"
 
-void dbusif_setup(srs_context_t *srs);
-void dbusif_cleanup(srs_context_t *srs);
+#define SRS_METHOD_REGISTER   "Register"      /* register client */
+#define SRS_METHOD_UNREGISTER "Unregister"    /* unregister client */
+#define SRS_METHOD_FOCUS      "RequestFocus"  /* request voice focus */
 
-#endif /* __SRS_DAEMON_DBUSIF_H__ */
+#define SRS_SIGNAL_FOCUS      "FocusChanged"  /* voice focus notification */
+#define SRS_SIGNAL_COMMAND    "VoiceCommand"  /* voice command notification */
+
+#endif /* __SRS_DBUS_PLUGIN_CONFIG_H__ */

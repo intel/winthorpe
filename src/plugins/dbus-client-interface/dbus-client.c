@@ -32,11 +32,17 @@
 
 #include <murphy/common/log.h>
 #include <murphy/common/debug.h>
+#include <murphy/common/debug.h>
 #include <murphy/common/dbus.h>
 
-#include "src/daemon/context.h"
+#include "src/daemon/plugin.h"
 #include "src/daemon/client.h"
-#include "src/daemon/dbusif.h"
+#include "dbus-config.h"
+
+#define PLUGIN_NAME    "search-client"
+#define PLUGIN_DESCR   "A trivial search plugin for SRS."
+#define PLUGIN_AUTHORS "Krisztian Litkey <kli@iki.fi>"
+#define PLUGIN_VERSION "0.0.1"
 
 #define MAX_COMMANDS 256
 
@@ -53,42 +59,52 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
 #define reply_unregister simple_reply
 #define reply_focus      simple_reply
 
+typedef struct {
+    srs_plugin_t *self;                  /* our plugin instance */
+    const char   *address;               /* bus address */
+    mrp_dbus_t   *dbus;                  /* bus we're on */
+} dbusif_t;
 
-void dbusif_setup(srs_context_t *srs)
+
+static void dbusif_cleanup(dbusif_t *bus);
+
+
+static int dbusif_setup(dbusif_t *bus)
 {
-    const char *path, *iface, *method;
-    int       (*cb)(mrp_dbus_t *, DBusMessage *, void *);
+    srs_context_t  *srs = bus->self->srs;
+    const char     *path, *iface, *method;
+    int           (*cb)(mrp_dbus_t *, DBusMessage *, void *);
 
-    mrp_debug("setting up client D-BUS interface (%s)", srs->dbus_address);
+    mrp_debug("setting up client D-BUS interface (%s)", bus->address);
 
-    srs->dbus = mrp_dbus_get(srs->ml, srs->dbus_address, NULL);
+    bus->dbus = mrp_dbus_get(srs->ml, bus->address, NULL);
 
-    if (srs->dbus != NULL) {
+    if (bus->dbus != NULL) {
         path   = SRS_SERVICE_PATH;
         iface  = SRS_SERVICE_INTERFACE;
 
         method = SRS_METHOD_REGISTER;
         cb     = register_cb;
-        if (!mrp_dbus_export_method(srs->dbus, path, iface, method, cb, srs)) {
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
         method = SRS_METHOD_UNREGISTER;
         cb     = unregister_cb;
-        if (!mrp_dbus_export_method(srs->dbus, path, iface, method, cb, srs)) {
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
         method = SRS_METHOD_FOCUS;
         cb     = focus_cb;
-        if (!mrp_dbus_export_method(srs->dbus, path, iface, method, cb, srs)) {
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
-        if (!mrp_dbus_acquire_name(srs->dbus, SRS_SERVICE_NAME, NULL)) {
+        if (!mrp_dbus_acquire_name(bus->dbus, SRS_SERVICE_NAME, NULL)) {
             mrp_log_error("Failed to acquire D-BUS name '%s'.",
                           SRS_SERVICE_NAME);
             goto fail;
@@ -96,44 +112,46 @@ void dbusif_setup(srs_context_t *srs)
 
     }
     else {
-        mrp_log_error("Failed to connect to D-BUS (%s).", srs->dbus_address);
-        exit(1);
+        mrp_log_error("Failed to connect to D-BUS (%s).", bus->address);
+        goto fail;
     }
 
-    return;
+    return TRUE;
 
  fail:
-    dbusif_cleanup(srs);
+    dbusif_cleanup(bus);
+    return FALSE;
 }
 
 
-void dbusif_cleanup(srs_context_t *srs)
+static void dbusif_cleanup(dbusif_t *bus)
 {
-    const char *path, *iface, *method;
-    int       (*cb)(mrp_dbus_t *, DBusMessage *, void *);
+    srs_context_t  *srs = bus->self->srs;
+    const char     *path, *iface, *method;
+    int           (*cb)(mrp_dbus_t *, DBusMessage *, void *);
 
     mrp_debug("cleaning up client D-BUS interface");
 
-    if (srs->dbus != NULL) {
-        mrp_dbus_release_name(srs->dbus, SRS_SERVICE_NAME, NULL);
+    if (bus->dbus != NULL) {
+        mrp_dbus_release_name(bus->dbus, SRS_SERVICE_NAME, NULL);
 
         path   = SRS_SERVICE_PATH;
         iface  = SRS_SERVICE_INTERFACE;
 
         method = SRS_METHOD_REGISTER;
         cb     = register_cb;
-        mrp_dbus_remove_method(srs->dbus, path, iface, method, cb, srs);
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
         method = SRS_METHOD_UNREGISTER;
         cb     = unregister_cb;
-        mrp_dbus_remove_method(srs->dbus, path, iface, method, cb, srs);
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
         method = SRS_METHOD_FOCUS;
         cb     = focus_cb;
-        mrp_dbus_remove_method(srs->dbus, path, iface, method, cb, srs);
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
-        mrp_dbus_unref(srs->dbus);
-        srs->dbus = NULL;
+        mrp_dbus_unref(bus->dbus);
+        bus->dbus = NULL;
     }
 }
 
@@ -141,7 +159,8 @@ void dbusif_cleanup(srs_context_t *srs)
 static void name_change_cb(mrp_dbus_t *dbus, const char *name, int running,
                            const char *owner, void *user_data)
 {
-    srs_context_t *srs = (srs_context_t *)user_data;
+    dbusif_t      *bus = (dbusif_t *)user_data;
+    srs_context_t *srs = bus->self->srs;
     srs_client_t  *c;
 
     MRP_UNUSED(owner);
@@ -154,7 +173,7 @@ static void name_change_cb(mrp_dbus_t *dbus, const char *name, int running,
         if (c != NULL) {
             mrp_log_info("client %s disconnected from D-BUS", name);
             client_destroy(c);
-            mrp_dbus_forget_name(dbus, name, name_change_cb, user_data);
+            mrp_dbus_forget_name(dbus, name, name_change_cb, bus);
         }
     }
 }
@@ -248,7 +267,8 @@ static int register_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
         .notify_command = command_notify
     };
 
-    srs_context_t   *srs = (srs_context_t *)user_data;
+    dbusif_t        *bus = (dbusif_t *)user_data;
+    srs_context_t   *srs = bus->self->srs;
     const char      *id, *name, *appcls, *errmsg;
     char            *cmds[MAX_COMMANDS];
     int              ncmd, err;
@@ -269,7 +289,7 @@ static int register_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
                       id, &ops, NULL);
 
     if (c != NULL) {
-        if (mrp_dbus_follow_name(dbus, id, name_change_cb, srs)) {
+        if (mrp_dbus_follow_name(dbus, id, name_change_cb, bus)) {
             err    = 0;
             errmsg = NULL;
         }
@@ -305,7 +325,8 @@ static int parse_unregister(DBusMessage *req, const char **id,
 
 static int unregister_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 {
-    srs_context_t *srs = (srs_context_t *)user_data;
+    dbusif_t      *bus = (dbusif_t *)user_data;
+    srs_context_t *srs = bus->self->srs;
     const char    *id, *errmsg;
     srs_client_t  *c;
     int            err;
@@ -318,7 +339,7 @@ static int unregister_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
         c = client_lookup_by_id(srs, id);
 
         if (c != NULL) {
-            mrp_dbus_forget_name(dbus, c->id, name_change_cb, srs);
+            mrp_dbus_forget_name(dbus, c->id, name_change_cb, bus);
             client_destroy(c);
             reply_unregister(dbus, req, 0, NULL);
         }
@@ -367,7 +388,8 @@ static int parse_focus(DBusMessage *req, const char **id, int *focus,
 
 static int focus_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 {
-    srs_context_t *srs = (srs_context_t *)user_data;
+    dbusif_t      *bus = (dbusif_t *)user_data;
+    srs_context_t *srs = bus->self->srs;
     const char    *id, *errmsg;
     int            focus, err;
     srs_client_t  *c;
@@ -397,6 +419,7 @@ static int focus_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 {
+    dbusif_t      *bus   = c->user_data;
     srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
     const char    *path  = SRS_SERVICE_PATH;
@@ -411,7 +434,7 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
     default:                        return FALSE;
     }
 
-    return mrp_dbus_signal(srs->dbus, dest, path, iface, sig,
+    return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
                            DBUS_TYPE_STRING, &state, DBUS_TYPE_INVALID);
 }
 
@@ -419,6 +442,7 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
                           uint32_t *start, uint32_t *end, srs_audiobuf_t *audio)
 {
+    dbusif_t      *bus   = c->user_data;
     srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
     const char    *path  = SRS_SERVICE_PATH;
@@ -448,6 +472,81 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
         t  = " ";
     }
 
-    return mrp_dbus_signal(srs->dbus, dest, path, iface, sig,
+    return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
                            DBUS_TYPE_STRING, &cmd, DBUS_TYPE_INVALID);
 }
+
+
+static int create_dbusif(srs_plugin_t *plugin)
+{
+    dbusif_t *bus;
+
+    mrp_debug("creating D-Bus client interface plugin");
+
+    bus = mrp_allocz(sizeof(*bus));
+
+    if (bus != NULL) {
+        bus->self = plugin;
+        plugin->plugin_data = bus;
+        return TRUE;
+    }
+    else
+        return FALSE;
+}
+
+
+static int config_dbusif(srs_plugin_t *plugin, srs_cfg_t *settings)
+{
+    dbusif_t *bus = (dbusif_t *)plugin->plugin_data;
+
+    MRP_UNUSED(settings);
+
+    mrp_debug("configure D-Bus client interface plugin");
+
+    bus->address = srs_get_string_config(settings, "dbus.address", "session");
+
+    mrp_log_info("Client interface D-Bus address: '%s'", bus->address);
+
+    return dbusif_setup(bus);
+}
+
+
+static int start_dbusif(srs_plugin_t *plugin)
+{
+    dbusif_t *bus = (dbusif_t *)plugin->plugin_data;
+
+    MRP_UNUSED(bus);
+
+    mrp_debug("start D-Bus client interface plugin");
+
+    return TRUE;
+}
+
+
+static void stop_dbusif(srs_plugin_t *plugin)
+{
+    dbusif_t *bus = (dbusif_t *)plugin->plugin_data;
+
+    mrp_debug("stop D-Bus client interface plugin");
+
+    return;
+}
+
+
+static void destroy_dbusif(srs_plugin_t *plugin)
+{
+    srs_context_t *srs = plugin->srs;
+    dbusif_t      *dbus = (dbusif_t *)plugin->plugin_data;
+
+    MRP_UNUSED(srs);
+
+    mrp_debug("destroy D-Bus client interface plugin");
+
+    dbusif_cleanup(dbus);
+    mrp_free(dbus);
+}
+
+
+SRS_DECLARE_PLUGIN(PLUGIN_NAME, PLUGIN_DESCR, PLUGIN_AUTHORS, PLUGIN_VERSION,
+                   create_dbusif, config_dbusif, start_dbusif, stop_dbusif,
+                   destroy_dbusif)
