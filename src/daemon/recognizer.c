@@ -448,6 +448,31 @@ static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
 }
 
 
+static void process_unrecognized(srs_srec_t *srec, srs_srec_result_t *res)
+{
+    static effect_t *effects = NULL;
+    static int       neffect = -1;
+    effect_t        *e;
+    int              i;
+
+    if (MRP_UNLIKELY(neffect < 0))
+        neffect = get_effect_config(srec->srs, &effects);
+
+    if (neffect <= 0)                    /* no effects */
+        return;
+
+    i = ((1.0 * neffect * rand()) / RAND_MAX);
+    e = effects + i;
+
+    mrp_debug("Chosen feedback %s: '%s'", e->tts ? "TTS" : "effect", e->data);
+
+    if (!e->tts)
+        srs_play_sound_file(srec->srs, e->data, NULL, NULL);
+    else
+        srs_say_msg(srec->srs, e->data, NULL, NULL);
+}
+
+
 static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
 {
     srs_srec_t           *srec = (srs_srec_t *)notify_data;
@@ -514,7 +539,15 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
                 flush = SRS_SREC_FLUSH_ALL;
                 break;
 
-            case SRS_SREC_RESULT_UNRECOGNIZED: {
+            case SRS_SREC_RESULT_UNRECOGNIZED:
+                mrp_log_error("Unrecognized command.");
+                process_unrecognized(srec, res);
+                free_srec_result(res);
+                srec->result = NULL;
+                flush = SRS_SREC_FLUSH_ALL;
+                break;
+
+ {
                 static effect_t *effects = NULL;
                 static int       neffect = -1;
 
