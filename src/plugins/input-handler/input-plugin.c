@@ -258,7 +258,7 @@ static int add_input(context_t *ctx,
 
     srs_plugin_t *plugin = ctx->plugin;
     srs_context_t *srs = plugin->srs;
-    pa_mainloop_api *mlapi = pa_mainloop_get_api(srs->pa);
+    pa_mainloop_api *mlapi = srs->pa;
     char id[512];
     size_t idx;
     input_t *inp;
@@ -311,7 +311,7 @@ static int remove_input(context_t *ctx,
 {
     srs_plugin_t *plugin = ctx->plugin;
     srs_context_t *srs = plugin->srs;
-    pa_mainloop_api *mlapi = pa_mainloop_get_api(srs->pa);
+    pa_mainloop_api *mlapi = srs->pa;
     input_t *inp, *inputs;
     size_t i, ninput, size;
 

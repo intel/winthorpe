@@ -33,20 +33,17 @@ static void event_callback(pa_context *, pa_subscription_event_type_t,
                            uint32_t, void *);
 
 
-int pulse_interface_create(context_t *ctx, pa_mainloop *mloop)
+int pulse_interface_create(context_t *ctx, pa_mainloop_api *api)
 {
     pulse_interface_t *pulseif;
-    pa_mainloop_api *api = NULL;
 
     if (!(pulseif = mrp_allocz(sizeof(pulse_interface_t))))
         goto failed;
 
-    api = pa_mainloop_get_api(mloop);
-
     if (pa_signal_init(api) < 0)
         goto failed;
 
-    pulseif->mloop = mloop;
+    pulseif->api = api;
 
     ctx->pulseif = pulseif;
 
@@ -104,7 +101,7 @@ void pulse_interface_cork_input_stream(context_t *ctx, bool cork)
 static void connect_to_server(context_t *ctx)
 {
     pulse_interface_t *pulseif = ctx->pulseif;
-    pa_mainloop_api *api = pa_mainloop_get_api(pulseif->mloop);
+    pa_mainloop_api *api = pulseif->api;
     pa_context *pactx;
 
     if (pulseif->pactx) {

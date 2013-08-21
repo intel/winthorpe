@@ -5,7 +5,7 @@ plugindir          = $(libdir)/src/plugins
 plugin_LTLIBRARIES =
 
 INCLUDES           = -I$(top_builddir)
-AM_CFLAGS          = $(INCLUDES)
+AM_CFLAGS          = $(INCLUDES) $(GLIB_CFLAGS)
 
 QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 
@@ -31,13 +31,19 @@ srs_daemon_CFLAGS = 				\
 		$(MURPHY_PULSE_CFLAGS)		\
 		$(MURPHY_COMMON_CFLAGS)		\
 		$(MURPHY_RESOURCE_CFLAGS)	\
-		$(PULSE_CFLAGS)
+		$(PULSE_CFLAGS)			\
+		$(PULSE_GLIB_CFLAGS)		\
+		$(MURPHY_GLIB_CFLAGS)		\
+		$(GLIB_CFLAGS)
 
 srs_daemon_LDADD =				\
 		$(MURPHY_PULSE_LIBS)		\
 		$(MURPHY_RESOURCE_LIBS)		\
 		$(MURPHY_COMMON_LIBS)		\
 		$(PULSE_LIBS)			\
+		$(PULSE_GLIB_LIBS)		\
+		$(MURPHY_GLIB_LIBS)		\
+		$(GLIB_LIBS)			\
 		-ldl
 
 srs_daemon_LDFLAGS =				\

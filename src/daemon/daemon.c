@@ -34,6 +34,8 @@
 #include <murphy/common/log.h>
 #include <murphy/common/utils.h>
 
+#include <glib-object.h>
+
 #include "src/daemon/context.h"
 #include "src/daemon/config.h"
 #include "src/daemon/resourceif.h"
@@ -42,16 +44,13 @@
 #include "src/daemon/recognizer.h"
 
 
+static void cleanup_mainloop(srs_context_t *srs);
+
 static void cleanup_context(srs_context_t *srs)
 {
     if (srs != NULL) {
         resource_disconnect(srs);
-
-        if (srs->ml != NULL)
-            mrp_mainloop_destroy(srs->ml);
-
-        if (srs->pa != NULL)
-            pa_mainloop_free(srs->pa);
+        cleanup_mainloop(srs);
 
         mrp_free(srs);
     }
@@ -67,18 +66,9 @@ static srs_context_t *create_context(void)
         mrp_list_init(&srs->plugins);
         mrp_list_init(&srs->recognizers);
         mrp_list_init(&srs->disambiguators);
-
-        srs->pa = pa_mainloop_new();
-        srs->ml = mrp_mainloop_pulse_get(pa_mainloop_get_api(srs->pa));
-
-        if (srs->pa != NULL && srs->ml != NULL)
-            if (resource_connect(srs))
-                return srs;
-
-        cleanup_context(srs);
     }
 
-    return NULL;
+    return srs;
 }
 
 
@@ -108,18 +98,81 @@ static void daemonize(srs_context_t *srs)
 }
 
 
+static void create_mainloop(srs_context_t *srs)
+{
+    if (srs_get_bool_config(srs->settings, "gmainloop", FALSE)) {
+        mrp_log_info("Configured to run with glib mainloop.");
+
+        g_type_init();
+        srs->gl = g_main_loop_new(NULL, FALSE);
+
+        if (srs->gl == NULL) {
+            mrp_log_error("Failed to create GMainLoop.");
+            exit(1);
+        }
+    }
+    else
+        mrp_log_info("Configured to run with native PA mainloop.");
+
+    if (srs->gl == NULL) {
+        srs->pl = pa_mainloop_new();
+        srs->pa = pa_mainloop_get_api(srs->pl);
+        srs->ml = mrp_mainloop_pulse_get(srs->pa);
+    }
+    else {
+        srs->pl = pa_glib_mainloop_new(g_main_loop_get_context(srs->gl));
+        srs->pa = pa_glib_mainloop_get_api(srs->pl);
+        srs->ml = mrp_mainloop_glib_get(srs->gl);
+    }
+
+    if (srs->pa != NULL && srs->ml != NULL)
+        if (resource_connect(srs))
+            return;
+
+    cleanup_context(srs);
+    exit(1);
+}
+
+
 static void run_mainloop(srs_context_t *srs)
 {
-    pa_mainloop_run(srs->pa, &srs->exit_status);
+    if (srs->gl == NULL)
+        pa_mainloop_run((pa_mainloop *)srs->pl, &srs->exit_status);
+    else
+        g_main_loop_run(srs->gl);
 }
 
 
 static void quit_mainloop(srs_context_t *srs, int exit_status)
 {
-    if (srs != NULL)
-        pa_mainloop_quit(srs->pa, exit_status);
+    if (srs != NULL) {
+        if (srs->gl != NULL)
+            g_main_loop_quit(srs->gl);
+        else
+            pa_mainloop_quit((pa_mainloop *)srs->pl, exit_status);
+    }
     else
         exit(exit_status);
+}
+
+
+static void cleanup_mainloop(srs_context_t *srs)
+{
+    mrp_mainloop_destroy(srs->ml);
+    srs->ml = NULL;
+
+    if (srs->gl == NULL) {
+        if (srs->pl != NULL)
+            pa_mainloop_free(srs->pl);
+    }
+    else {
+        pa_glib_mainloop_free(srs->pl);
+        g_main_loop_unref(srs->gl);
+        srs->gl = NULL;
+    }
+
+    srs->pl = NULL;
+    srs->pa = NULL;
 }
 
 
@@ -171,9 +224,11 @@ int main(int argc, char *argv[])
     if (srs != NULL) {
         srs->rlog = mrp_res_set_logger(NULL);
 
-        setup_signals(srs);
         config_parse_cmdline(srs, argc, argv);
         setup_logging(srs);
+
+        create_mainloop(srs);
+        setup_signals(srs);
 
         if (!srs_configure_plugins(srs)) {
             mrp_log_error("Some plugins failed to configure.");
@@ -196,6 +251,7 @@ int main(int argc, char *argv[])
         srs_stop_plugins(srs);
         srs_destroy_plugins(srs);
 
+        cleanup_mainloop(srs);
         cleanup_context(srs);
 
         exit(0);

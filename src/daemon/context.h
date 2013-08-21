@@ -30,9 +30,13 @@
 #ifndef __SRS_DAEMON_CONTEXT_H__
 #define __SRS_DAEMON_CONTEXT_H__
 
+#include <pulse/mainloop.h>
+#include <pulse/glib-mainloop.h>
+
 #include <murphy/common/list.h>
 #include <murphy/common/pulse-glue.h>
 #include <murphy/common/hashtbl.h>
+#include <murphy/common/glib-glue.h>
 
 #include <murphy/plugins/resource-native/libmurphy-resource/resource-api.h>
 
@@ -46,7 +50,9 @@ typedef struct srs_context_s srs_context_t;
  */
 
 struct srs_context_s {
-    pa_mainloop       *pa;               /* pulseaudio mainloop */
+    GMainLoop         *gl;               /* GMainLoop if enabled and used */
+    void              *pl;               /* PA (native or glib) mainloop */
+    pa_mainloop_api   *pa;               /* PA mainloop API */
     mrp_mainloop_t    *ml;               /* associated murphy mainloop */
     mrp_list_hook_t    clients;          /* connected clients */
     mrp_list_hook_t    plugins;          /* loaded plugins */

@@ -7,14 +7,14 @@
 #include "sphinx-plugin.h"
 
 struct pulse_interface_s {
-    pa_mainloop *mloop;
+    pa_mainloop_api *api;
     pa_context *pactx;
     pa_stream *stream;
     bool conup;
     bool corked;
 };
 
-int  pulse_interface_create(context_t *ctx, pa_mainloop *mloop);
+int  pulse_interface_create(context_t *ctx, pa_mainloop_api *api);
 void pulse_interface_destroy(context_t *ctx);
 
 void pulse_interface_cork_input_stream(context_t *ctx, bool cork);

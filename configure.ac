@@ -107,8 +107,11 @@ AC_SUBST(MURPHY_BREEDLINE_LIBS)
 
 # Check for PulseAudio.
 PKG_CHECK_MODULES(PULSE, libpulse >= 0.9.22)
+PKG_CHECK_MODULES(PULSE_GLIB, libpulse-mainloop-glib >= 0.922)
 AC_SUBST(PULSE_CFLAGS)
 AC_SUBST(PULSE_LIBS)
+AC_SUBST(PULSE_GLIB_CFLAGS)
+AC_SUBST(PULSE_GLIB_LIBS)
 
 # Check if potentially GPL bits are allowed to be enabled.
 AC_ARG_ENABLE(gpl,
@@ -191,6 +194,14 @@ AC_SUBST(SPHINX_LIBS)
 
 # Check for libudev.
 PKG_CHECK_MODULES(UDEV, libudev)
+
+# Check for glib et al that we need temporarily to allow plugins use gdbus.
+PKG_CHECK_MODULES(GLIB, glib-2.0 gobject-2.0)
+PKG_CHECK_MODULES(MURPHY_GLIB, murphy-glib)
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+AC_SUBST(MURPHY_GLIB_CFLAGS)
+AC_SUBST(MURPHY_GLIB_LIBS)
 
 # Shave by default.
 SHAVE_INIT([build-aux], [enable])
