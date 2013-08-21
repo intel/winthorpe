@@ -203,6 +203,21 @@ AC_SUBST(GLIB_LIBS)
 AC_SUBST(MURPHY_GLIB_CFLAGS)
 AC_SUBST(MURPHY_GLIB_LIBS)
 
+# Check if WRT media client should be enabled.
+AC_ARG_ENABLE(wrt-client,
+              [  --enable-wrt-client     enable WRT media client plugin],
+	      [enable_wrtc=$enableval], [enable_wrtc=yes])
+
+if test "$enable_wrtc" = "yes"; then
+    PKG_CHECK_MODULES(GIO, gio-2.0)
+else
+    AC_MSG_NOTICE([WRT media client plugin is disabled.])
+fi
+
+AM_CONDITIONAL(WRTC_ENABLED, [test "$enable_wrtc" = "yes"])
+AC_SUBST(GIO_CFLAGS)
+AC_SUBST(GIO_LIBS)
+
 # Shave by default.
 SHAVE_INIT([build-aux], [enable])
 

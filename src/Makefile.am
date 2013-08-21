@@ -252,6 +252,26 @@ plugin_input_handler_la_LDFLAGS =				\
 plugin_input_handler_la_LIBADD  =				\
 		$(UDEV_LIBS)
 
+if WRTC_ENABLED
+# WRT media client
+plugin_LTLIBRARIES += plugin-wrt-media-client.la
+
+plugin_wrt_media_client_la_SOURCES = 				\
+		plugins/wrt-media-client/wrt-media-client.c
+
+plugin_wrt_media_client_la_CFLAGS =				\
+		$(AM_CFLAGS)					\
+		$(MURPHY_GLIB_CFLAGS)				\
+		$(GIO_CFLAGS)
+
+plugin_wrt_media_client_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_wrt_media_client_la_LIBADD =				\
+		$(MURPHY_GLIB_LIBS)				\
+		$(GIO_LIBS)
+endif
+
 # cleanup
 clean-local::
 	-rm -f *~
