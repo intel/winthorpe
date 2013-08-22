@@ -1,54 +1,84 @@
-Summary: Speech recognition for Tizen
+Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version:  0.0.1
+Version: 0.0.1
 Release: 0
-License: LGPLv2.1
-Group: System Environment/Daemons
+License: BSD-3-Clause
+Group: Base/Utilities
 URL: https://github.com/otcshare/speech-recognition
 Source0: %{name}-%{version}.tar.gz
-#BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+
 BuildRequires: pkgconfig(pocketsphinx)
 BuildRequires: pkgconfig(sphinxbase)
 BuildRequires: pkgconfig(libpulse)
 BuildRequires: pkgconfig(murphy-common)
 BuildRequires: pkgconfig(murphy-pulse)
+BuildRequires: pkgconfig(murphy-glib)
 BuildRequires: pkgconfig(dbus-1)
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(json)
+
 Requires: pulseaudio
+Requires: sphinxbase
+Requires: pocketsphinx
 
 %description
-This package contains a pulseaudio module that enforces (mostly audio) routing,
-corking and muting policy decisions.
+SRS/Winthorpe speech recognition system service.
+
+%package doc
+Summary: Documentation
+Group: Development/Tools
+
+%description doc
+Documentation for the speech recognition service.
 
 %prep
 %setup -q -n %{name}-%{version}
 
 %build
-./bootstrap --prefix=/usr --sysconfdir=/etc --libdir=/usr/lib \
-    --enable-gpl --enable-dbus --enable-sphinx
-
-make
+./bootstrap && \
+    %configure --disable-gpl --disable-dbus \
+        --enable-sphinx --enable-wrt-client && \
+    make
 
 %install
-rm -rf %{buildroot}
+rm -fr $RPM_BUILD_ROOT
+
 %make_install
 
-mkdir -p %{buildroot}/usr/share/srs
-cp run-speech-daemon.sh %{buildroot}/usr/share/srs
-cp speech-recognition.conf %{buildroot}/usr/share/srs
-cp demo/dictionary/demo.* %{buildroot}/usr/share/srs
+# Install dictionaries, configuration and service files.
+mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig \
+    $RPM_BUILD_ROOT/lib/systemd/user \
+    $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition \
+    $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo
 
+/usr/bin/install -m 644 packaging/speech-recognition.conf \
+    $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
+/usr/bin/install -m 644 packaging/speech-recognition.env \
+    $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/speech-recognition
+/usr/bin/install -m 644 packaging/speech-recognition.service \
+    $RPM_BUILD_ROOT/lib/systemd/user
+/usr/bin/install -m 644 \
+    -t $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
+    dictionaries/demo/demo.*
 
 %clean
-rm -rf %{buildroot}
+rm -rf $RPM_BUILD_ROOT
+
+%post
+ldconfig
+
+%postun
+ldconfig
 
 %files
 %defattr(-,root,root,-)
-/usr/bin/srs-client
-/usr/lib/src/plugins/plugin-*
-/usr/sbin/srs-daemon
-/usr/share/doc/speech-recognition/*
-/usr/share/srs/demo.*
-/usr/share/srs/speech-recognition.conf
-/usr/share/srs/run-speech-daemon.sh
+%{_sbindir}/srs-daemon
+%{_libdir}/srs
+%{_sysconfdir}/speech-recognition/speech-recognition.conf
+%{_sysconfdir}/sysconfig/speech-recognition
+%{_datadir}/speech-recognition/dictionaries
+/lib/systemd/user/speech-recognition.service
+
+%files doc
+%defattr(-,root,root,-)
+%doc AUTHORS COPYING ChangeLog INSTALL NEWS README
