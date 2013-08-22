@@ -1,0 +1,36 @@
+FSG_BEGIN demo-commands
+N 12
+S 0
+F 11
+T 0 1 0.0833 dial
+T 0 11 0.0833 call
+T 0 2 0.0833 play
+T 0 3 0.0833 stop
+T 0 4 0.0833 listen
+T 0 11 0.0833 siri
+T 0 5 0.0833 show
+T 0 6 0.0833 quit
+T 0 7 0.0833 volume
+T 0 8 0.0833 search
+T 0 9 0.0833 where
+T 0 11 0.0833
+T 1 11 0.5 number
+T 2 11 0.25 music
+T 2 11 0.25 list
+T 2 11 0.25 next
+T 2 11 0.25 previous
+T 3 11 1 music
+T 4 11 0.33 to
+T 4 11 0.33 to(2)
+T 4 11 0.33 to(3)
+T 5 11 1 player
+T 6 11 1 player
+T 7 11 0.5 up
+T 7 11 0.5 down
+T 8 11 0.33 for
+T 8 11 0.33 for(2)
+T 8 11 0.33 for(3)
+T 9 10 0.5 are
+T 9 10 0.5 are(2)
+T 10 11 1 we
+FSG_END
