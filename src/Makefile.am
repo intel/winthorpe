@@ -1,7 +1,7 @@
 sbin_PROGRAMS      = srs-daemon
 bin_PROGRAMS       =
 
-plugindir          = $(libdir)/src/plugins
+plugindir          = $(libdir)/srs/plugins
 plugin_LTLIBRARIES =
 
 INCLUDES           = -I$(top_builddir)
