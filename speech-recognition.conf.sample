@@ -1,0 +1,22 @@
+sphinx.record = foo.wav
+sphinx.pulsesrc = alsa_input.usb-Logitech_Logitech_USB_Microphone-00-Microphone.analog-mono
+sphinx.hmm  = /usr/share/pocketsphinx/model/hmm/en_US/hub4wsj_sc_8k
+sphinx.lm   = dictionaries/demo/demo.DMP
+sphinx.dict = dictionaries/demo/demo.dic
+sphinx.fsg  = dictionaries/demo/demo.fsg
+sphinx.decoder = general
+sphinx.general.lm = /usr/share/pocketsphinx/model/lm/en_US/wsj0vp.5000.DMP
+sphinx.general.dict = /usr/share/pocketsphinx/model/lm/en_US/cmu07a.dic
+mpris2.player1 = rhythmbox
+mpris2.rhythmbox.service = org.gnome.Rhythmbox3
+mpris2.rhythmbox.object = /org/gnome/Rhythmbox3
+mpris2.player2 = Anssi_Kostiainen__Intel____s_iPhone_Music
+# search.command = chromium-browser "http://google.com/search?q=__url__"
+# feedback effects for unrecognized commands
+feedback.tts.sorry1   = Sorry, I did not understand that.
+feedback.tts.sorry2   = Sorry, I did not get that.
+feedback.sound.taxi0  = ./effects/effect-youtalkingtome-0.wav
+feedback.sound.taxi1  = ./effects/effect-youtalkingtome-1.wav
+feedback.sound.repeat = ./effects/effect-repeat.wav
+feedback.sound.taxi2  = ./effects/effect-youtalkingtome-2.wav
+feedback.sound.what   = ./effects/effect-what-0.wav
