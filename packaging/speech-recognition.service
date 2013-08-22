@@ -1,0 +1,11 @@
+[Unit]
+Description=Speech recognition service
+After=sound.target
+
+[Service]
+EnvironmentFile=/etc/sysconfig/speech-recognition
+ExecStart=/usr/sbin/srs-daemon -f $CONFIG $MIKE $PLUGINS $CLIENTS
+Type=simple
+
+[Install]
+WantedBy=tizen-middleware.target
