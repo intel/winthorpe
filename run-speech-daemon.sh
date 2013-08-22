@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VERBOSITY=${VERBOSITY:--vvv}
-PLUGINDIR=${PLUGINDIR:-$(pwd)/src/.libs}
+PLUGINDIR=${PLUGINDIR:-/usr/lib/src/plugins/}
 CONFIGFILE=${CONFIGFILE:-$(pwd)/speech-recognition.conf}
 
 plugins="simple-disambiguator sphinx-speech simple-voice"
@@ -76,7 +76,7 @@ EXTRA_OPTIONS=""
 while [ -n "$1" ]; do
     case $1 in
         --valgrind)
-            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$PUGINDIR"
+            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$PLUGINDIR"
             opts="${1#--valgrind}"
             case $opts in
                 =*) xeq="valgrind ${opts#=}";;
@@ -90,5 +90,5 @@ while [ -n "$1" ]; do
     shift
 done
 
-$xeq ./src/srs-daemon -f $VERBOSITY -P $PLUGINDIR -c $CONFIGFILE \
+$xeq srs-daemon -f $VERBOSITY -P $PLUGINDIR -c $CONFIGFILE \
     $LOAD_OPTIONS $PULSESRC $EXTRA_OPTIONS
