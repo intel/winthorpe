@@ -206,7 +206,16 @@ static int wrtc_setup(wrtc_t *wrtc)
     const char *appcls = "player";
     const char *id     = "wrt-media-client";
 
-    wrtc->gdbus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
+    if (!strcmp(wrtc->config.bus, "session"))
+        wrtc->gdbus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
+    else if (!strcmp(wrtc->config.bus, "system"))
+        wrtc->gdbus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
+    else {
+        int flags = G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION;
+        wrtc->gdbus = g_dbus_connection_new_for_address_sync(wrtc->config.bus,
+                                                             flags,
+                                                             NULL, NULL, NULL);
+    }
 
     if (wrtc->gdbus == NULL)
         return FALSE;
