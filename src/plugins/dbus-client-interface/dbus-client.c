@@ -44,6 +44,9 @@
 #define PLUGIN_AUTHORS "Krisztian Litkey <kli@iki.fi>"
 #define PLUGIN_VERSION "0.0.1"
 
+#define BUS_CONFIG  "dbus.address"
+#define BUS_DEFAULT "session"
+
 #define MAX_COMMANDS 256
 
 static int register_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
@@ -503,7 +506,7 @@ static int config_dbusif(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configure D-Bus client interface plugin");
 
-    bus->address = srs_get_string_config(settings, "dbus.address", "session");
+    bus->address = srs_get_string_config(settings, BUS_CONFIG, BUS_DEFAULT);
 
     mrp_log_info("Client interface D-Bus address: '%s'", bus->address);
 
