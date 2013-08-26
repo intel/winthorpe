@@ -8,7 +8,7 @@
 #include "bluetooth-plugin.h"
 
 struct pulseif_s {
-    pa_mainloop *mloop;
+    pa_mainloop_api *paapi;
     pa_context *pactx;
     pa_operation *subscr;
     mrp_list_hook_t cards;
@@ -54,7 +54,7 @@ struct card_s {
 
 
 
-int  pulseif_create(context_t *ctx, pa_mainloop *mloop);
+int  pulseif_create(context_t *ctx, pa_mainloop_api *pa);
 void pulseif_destroy(context_t *ctx);
 
 int pulseif_set_card_profile(card_t *card, const char *profnam);

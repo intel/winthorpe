@@ -59,24 +59,14 @@ static void sink_info_callback(pa_context *, const pa_sink_info *,
                                int, void *);
 
 
-int pulseif_create(context_t *ctx, pa_mainloop *mloop)
+int pulseif_create(context_t *ctx, pa_mainloop_api *pa)
 {
     pulseif_t *pulseif = NULL;
-#if 0
-    pa_mainloop_api *api;
-#endif
 
     if (!(pulseif = mrp_allocz(sizeof(pulseif_t))))
         goto failed;
 
-#if 0
-    api = pa_mainloop_get_api(mloop);
-
-    if (pa_signal_init(api) < 0)
-        goto failed;
-#endif
-
-    pulseif->mloop = mloop;
+    pulseif->paapi = pa;
     pulseif->rate = 16000;
     pulseif->limit.upper = 1500;
     pulseif->limit.lower = 100;
@@ -385,7 +375,7 @@ static void remove_pending_op(pending_op_t *pending)
 static void connect_to_server(context_t *ctx)
 {
     pulseif_t *pulseif = ctx->pulseif;
-    pa_mainloop_api *api = pa_mainloop_get_api(pulseif->mloop);
+    pa_mainloop_api *api = pulseif->paapi;
     pa_context *pactx;
 
     if (pulseif->subscr)

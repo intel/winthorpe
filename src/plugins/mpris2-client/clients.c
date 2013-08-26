@@ -475,7 +475,7 @@ static void schedule_delayed_request(player_t *player)
     
     if (!player || !(ctx = player->ctx) ||
         !(pl = ctx->plugin) || !(srs = pl->srs) ||
-        !(api = pa_mainloop_get_api(srs->pa)))
+        !(api = srs->pa))
         return;
 
     age_of_request = get_current_time() - player->request.time;
@@ -521,7 +521,7 @@ static void player_free(void *key, void *object)
                       (char *)key);
     else {
         if (player->timer && (ctx = player->ctx) && (pl = ctx->plugin) &&
-            (srs = pl->srs) && (api = pa_mainloop_get_api(srs->pa)))
+            (srs = pl->srs) && (api = srs->pa))
         {
             api->time_free(player->timer);
         }
