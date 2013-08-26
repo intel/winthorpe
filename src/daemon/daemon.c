@@ -52,6 +52,10 @@ static void cleanup_context(srs_context_t *srs)
         resource_disconnect(srs);
         cleanup_mainloop(srs);
 
+        /*
+         * XXX TODO: should purge recognizers, disambiguators, synthesizers...
+         */
+
         mrp_free(srs);
     }
 }

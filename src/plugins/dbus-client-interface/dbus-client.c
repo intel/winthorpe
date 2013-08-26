@@ -49,18 +49,24 @@
 
 #define MAX_COMMANDS 256
 
-static int register_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
-static int unregister_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
-static int focus_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
+static int register_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
+static int unregister_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
+static int focus_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
+static int render_voice_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
+static int cancel_voice_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
+static int query_voices_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
 
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus);
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
                           uint32_t *start, uint32_t *end,
                           srs_audiobuf_t *audio);
+static int voice_notify(srs_client_t *c, srs_voice_event_t *event);
 
+#define reply_error      simple_reply
 #define reply_register   simple_reply
 #define reply_unregister simple_reply
 #define reply_focus      simple_reply
+#define reply_cancel     simple_reply
 
 typedef struct {
     srs_plugin_t *self;                  /* our plugin instance */
@@ -83,33 +89,54 @@ static int dbusif_setup(dbusif_t *bus)
     bus->dbus = mrp_dbus_get(srs->ml, bus->address, NULL);
 
     if (bus->dbus != NULL) {
-        path   = SRS_SERVICE_PATH;
-        iface  = SRS_SERVICE_INTERFACE;
+        path   = SRS_CLIENT_PATH;
+        iface  = SRS_CLIENT_INTERFACE;
 
-        method = SRS_METHOD_REGISTER;
-        cb     = register_cb;
+        method = SRS_CLIENT_REGISTER;
+        cb     = register_req;
         if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
-        method = SRS_METHOD_UNREGISTER;
-        cb     = unregister_cb;
+        method = SRS_CLIENT_UNREGISTER;
+        cb     = unregister_req;
         if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
-        method = SRS_METHOD_FOCUS;
-        cb     = focus_cb;
+        method = SRS_CLIENT_REQUEST_FOCUS;
+        cb     = focus_req;
         if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
             mrp_log_error("Failed to register D-BUS '%s' method.", method);
             goto fail;
         }
 
-        if (!mrp_dbus_acquire_name(bus->dbus, SRS_SERVICE_NAME, NULL)) {
+        method = SRS_CLIENT_RENDER_VOICE;
+        cb     = render_voice_req;
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
+            mrp_log_error("Failed to register D-BUS '%s' method.", method);
+            goto fail;
+        }
+
+        method = SRS_CLIENT_CANCEL_VOICE;
+        cb     = cancel_voice_req;
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
+            mrp_log_error("Failed to register D-BUS '%s' method.", method);
+            goto fail;
+        }
+
+        method = SRS_CLIENT_QUERY_VOICES;
+        cb     = query_voices_req;
+        if (!mrp_dbus_export_method(bus->dbus, path, iface, method, cb, bus)) {
+            mrp_log_error("Failed to register D-BUS '%s' method.", method);
+            goto fail;
+        }
+
+        if (!mrp_dbus_acquire_name(bus->dbus, SRS_CLIENT_SERVICE, NULL)) {
             mrp_log_error("Failed to acquire D-BUS name '%s'.",
-                          SRS_SERVICE_NAME);
+                          SRS_CLIENT_SERVICE);
             goto fail;
         }
 
@@ -136,21 +163,33 @@ static void dbusif_cleanup(dbusif_t *bus)
     mrp_debug("cleaning up client D-BUS interface");
 
     if (bus->dbus != NULL) {
-        mrp_dbus_release_name(bus->dbus, SRS_SERVICE_NAME, NULL);
+        mrp_dbus_release_name(bus->dbus, SRS_CLIENT_SERVICE, NULL);
 
-        path   = SRS_SERVICE_PATH;
-        iface  = SRS_SERVICE_INTERFACE;
+        path   = SRS_CLIENT_PATH;
+        iface  = SRS_CLIENT_INTERFACE;
 
-        method = SRS_METHOD_REGISTER;
-        cb     = register_cb;
+        method = SRS_CLIENT_REGISTER;
+        cb     = register_req;
         mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
-        method = SRS_METHOD_UNREGISTER;
-        cb     = unregister_cb;
+        method = SRS_CLIENT_UNREGISTER;
+        cb     = unregister_req;
         mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
-        method = SRS_METHOD_FOCUS;
-        cb     = focus_cb;
+        method = SRS_CLIENT_REQUEST_FOCUS;
+        cb     = focus_req;
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
+
+        method = SRS_CLIENT_RENDER_VOICE;
+        cb     = render_voice_req;
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
+
+        method = SRS_CLIENT_CANCEL_VOICE;
+        cb     = cancel_voice_req;
+        mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
+
+        method = SRS_CLIENT_QUERY_VOICES;
+        cb     = query_voices_req;
         mrp_dbus_remove_method(bus->dbus, path, iface, method, cb, bus);
 
         mrp_dbus_unref(bus->dbus);
@@ -194,6 +233,76 @@ static void simple_reply(mrp_dbus_t *dbus, DBusMessage *req, int errcode,
         mrp_dbus_reply_error(dbus, req, DBUS_ERROR_FAILED, errmsg,
                              DBUS_TYPE_INT32, &error, DBUS_TYPE_INVALID);
     }
+}
+
+
+static void reply_render(mrp_dbus_t *dbus, DBusMessage *req, uint32_t id)
+{
+    mrp_dbus_reply(dbus, req, DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID);
+}
+
+
+static char *clear_non_us_ascii(char *s)
+{
+    char *p;
+
+    for (p = s; *p; p++) {
+        if (*p & 0x80)
+            *p = '?';
+    }
+
+    return s;
+}
+
+
+static void reply_voice_query(mrp_dbus_t *dbus, DBusMessage *req, int nactor,
+                              srs_voice_actor_t *actors)
+{
+    srs_voice_actor_t *a;
+    char              *voices[nactor], **v;
+    char              *lang[nactor], **ml;
+    char              *dialect[nactor], **sl;
+    char              *gender[nactor], **g;
+    char              *description[nactor], **d;
+    uint32_t           n;
+    int                i;
+
+    a  = actors;
+    v  = voices;
+    ml = lang;
+    sl = dialect;
+    g  = gender;
+    d  = description;
+    for (i = 0; i < nactor; i++, a++, v++, ml++, sl++, g++, d++) {
+        *v  = a->name;
+        *ml = a->lang;
+        *sl = a->dialect ? a->dialect : "";
+        *g  = a->gender == SRS_VOICE_GENDER_MALE ? "male" : "female";
+
+        /*
+         * XXX TODO: this is a hack is currently needed for festival
+         * which can feed us voice descriptions that are not UTF-8
+         * (and consequently not 7-bit ASCII either).
+         */
+        *d  = clear_non_us_ascii(a->description);
+
+        printf("* description: %s\n", *d);
+    }
+
+    n = nactor;
+    v  = voices;
+    ml = lang;
+    sl = dialect;
+    g  = gender;
+    d  = description;
+    mrp_dbus_reply(dbus, req,
+                   DBUS_TYPE_UINT32, &n,
+                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &v , n,
+                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &ml, n,
+                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &sl, n,
+                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &g , n,
+                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &d , n,
+                   DBUS_TYPE_INVALID);
 }
 
 
@@ -263,11 +372,12 @@ static int parse_register(DBusMessage *req, const char **id, const char **name,
 }
 
 
-static int register_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int register_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 {
     static srs_client_ops_t ops = {
         .notify_focus   = focus_notify,
-        .notify_command = command_notify
+        .notify_command = command_notify,
+        .notify_render  = voice_notify,
     };
 
     dbusif_t        *bus = (dbusif_t *)user_data;
@@ -289,7 +399,7 @@ static int register_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
     mrp_debug("got register request from %s", id);
 
     c = client_create(srs, SRS_CLIENT_TYPE_DBUS, name, appcls, cmds, ncmd,
-                      id, &ops, NULL);
+                      id, &ops, bus);
 
     if (c != NULL) {
         if (mrp_dbus_follow_name(dbus, id, name_change_cb, bus)) {
@@ -326,7 +436,7 @@ static int parse_unregister(DBusMessage *req, const char **id,
 }
 
 
-static int unregister_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int unregister_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -389,7 +499,7 @@ static int parse_focus(DBusMessage *req, const char **id, int *focus,
 }
 
 
-static int focus_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int focus_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -422,12 +532,12 @@ static int focus_cb(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 {
-    dbusif_t      *bus   = c->user_data;
+    dbusif_t      *bus   = (dbusif_t *)c->user_data;
     srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
-    const char    *path  = SRS_SERVICE_PATH;
-    const char    *iface = SRS_SERVICE_INTERFACE;
-    const char    *sig   = SRS_SIGNAL_FOCUS;
+    const char    *path  = SRS_CLIENT_PATH;
+    const char    *iface = SRS_CLIENT_INTERFACE;
+    const char    *sig   = SRS_CLIENT_NOTIFY_FOCUS;
     const char    *state;
 
     switch (focus) {
@@ -445,12 +555,12 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
                           uint32_t *start, uint32_t *end, srs_audiobuf_t *audio)
 {
-    dbusif_t      *bus   = c->user_data;
+    dbusif_t      *bus   = (dbusif_t *)c->user_data;
     srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
-    const char    *path  = SRS_SERVICE_PATH;
-    const char    *iface = SRS_SERVICE_INTERFACE;
-    const char    *sig   = SRS_SIGNAL_COMMAND;
+    const char    *path  = SRS_CLIENT_PATH;
+    const char    *iface = SRS_CLIENT_INTERFACE;
+    const char    *sig   = SRS_CLIENT_NOTIFY_COMMAND;
 
     char           buf[1024], *cmd, *p, *t;
     int            i, n, l;
@@ -477,6 +587,248 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
 
     return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
                            DBUS_TYPE_STRING, &cmd, DBUS_TYPE_INVALID);
+}
+
+
+static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
+{
+    dbusif_t      *bus   = (dbusif_t *)c->user_data;
+    srs_context_t *srs   = c->srs;
+    const char    *dest  = c->id;
+    const char    *path  = SRS_CLIENT_PATH;
+    const char    *iface = SRS_CLIENT_INTERFACE;
+    const char    *sig   = SRS_CLIENT_NOTIFY_VOICE;
+    const char    *type;
+    double         pcnt;
+    uint32_t       msec;
+
+
+    switch (event->type) {
+    case SRS_VOICE_EVENT_STARTED:   type = "started"  ; goto send;
+    case SRS_VOICE_EVENT_COMPLETED: type = "completed"; goto send;
+    case SRS_VOICE_EVENT_TIMEOUT:   type = "timeout"  ; goto send;
+    case SRS_VOICE_EVENT_ABORTED:   type = "aborted"  ; goto send;
+    send:
+        return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
+                               DBUS_TYPE_UINT32, &event->id,
+                               DBUS_TYPE_STRING, &type,
+                               DBUS_TYPE_INVALID);
+
+    case SRS_VOICE_EVENT_PROGRESS:
+        type = "progress";
+        pcnt = event->data.progress.pcnt;
+        msec = event->data.progress.msec;
+
+        return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
+                               DBUS_TYPE_UINT32, &event->id,
+                               DBUS_TYPE_STRING, &type,
+                               DBUS_TYPE_DOUBLE, &pcnt,
+                               DBUS_TYPE_UINT32, &msec,
+                               DBUS_TYPE_INVALID);
+
+    default:
+        return TRUE;
+    }
+}
+
+
+static int parse_render_voice(DBusMessage *req, const char **id,
+                              const char **msg, const char **voice,
+                              int *timeout, int *notify_events,
+                              const char **errmsg)
+{
+    char    **events, *e;
+    int       nevent, i;
+    int32_t   to;
+
+    *id = dbus_message_get_sender(req);
+
+    if (*id == NULL)
+        return EINVAL;
+
+    if (!dbus_message_get_args(req, NULL,
+                               DBUS_TYPE_STRING, msg,
+                               DBUS_TYPE_STRING, voice,
+                               DBUS_TYPE_INT32 , &to,
+                               DBUS_TYPE_ARRAY,
+                               DBUS_TYPE_STRING, &events, &nevent,
+                               DBUS_TYPE_INVALID)) {
+        *errmsg = "malformed voice render message";
+
+        return EINVAL;
+    }
+
+    *timeout       = to;
+    *notify_events = 0;
+
+    for (i = 0; i < nevent; i++) {
+        e = events[i];
+
+        if (!strcmp(e, SRS_CLIENT_VOICE_STARTED))
+            *notify_events |= SRS_VOICE_MASK_STARTED;
+        else if (!strcmp(e, SRS_CLIENT_VOICE_PROGRESS))
+            *notify_events |= SRS_VOICE_MASK_PROGRESS;
+        else if (!strcmp(e, SRS_CLIENT_VOICE_COMPLETED))
+            *notify_events |= SRS_VOICE_MASK_COMPLETED;
+        else if (!strcmp(e, SRS_CLIENT_VOICE_TIMEOUT))
+            *notify_events |= SRS_VOICE_MASK_TIMEOUT;
+        else if (!strcmp(e, SRS_CLIENT_VOICE_ABORTED))
+            *notify_events |= SRS_VOICE_MASK_ABORTED;
+        else {
+            *errmsg = "invalid event";
+
+            return EINVAL;
+        }
+    }
+
+    return 0;
+}
+
+
+static int render_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+{
+    dbusif_t      *bus = (dbusif_t *)user_data;
+    srs_context_t *srs = bus->self->srs;
+    const char    *id, *msg, *voice, *errmsg;
+    int            timeout, events, err;
+    uint32_t       reqid;
+    srs_client_t  *c;
+
+    err = parse_render_voice(req, &id, &msg, &voice, &timeout, &events,
+                             &errmsg);
+
+    if (err != 0) {
+        reply_error(dbus, req, err, errmsg);
+
+        return TRUE;
+    }
+
+    c = client_lookup_by_id(srs, id);
+
+    if (c == NULL) {
+        reply_error(dbus, req, 1, "you don't exists, go away");
+
+        return TRUE;
+    }
+
+    reqid = client_render_voice(c, msg, voice, timeout, events);
+
+    if (reqid != SRS_VOICE_INVALID)
+        reply_render(dbus, req, reqid);
+    else
+        reply_error(dbus, req, 1, "voice render request failed");
+
+    return TRUE;
+}
+
+
+static int parse_cancel_voice(DBusMessage *req, const char **id,
+                              uint32_t *reqid, const char **errmsg)
+{
+
+    *id = dbus_message_get_sender(req);
+
+    if (*id == NULL)
+        return EINVAL;
+
+    if (!dbus_message_get_args(req, NULL,
+                               DBUS_TYPE_UINT32, reqid,
+                               DBUS_TYPE_INVALID)) {
+        *errmsg = "malformed voice render message";
+
+        return EINVAL;
+    }
+
+    return 0;
+}
+
+
+static int cancel_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+{
+    dbusif_t      *bus = (dbusif_t *)user_data;
+    srs_context_t *srs = bus->self->srs;
+    const char    *id, *errmsg;
+    uint32_t       reqid;
+    int            err;
+    srs_client_t  *c;
+
+    err = parse_cancel_voice(req, &id, &reqid, &errmsg);
+
+    if (err != 0) {
+        reply_cancel(dbus, req, err, errmsg);
+
+        return TRUE;
+    }
+
+    c = client_lookup_by_id(srs, id);
+
+    if (c == NULL) {
+        reply_cancel(dbus, req, 1, "you don't exists, go away");
+
+        return TRUE;
+    }
+
+    client_cancel_voice(c, reqid);
+    reply_cancel(dbus, req, 0, NULL);
+
+    return TRUE;
+}
+
+
+static int parse_voice_query(DBusMessage *req, const char **id,
+                             const char **lang)
+{
+    *id = dbus_message_get_sender(req);
+
+    if (*id == NULL)
+        return EINVAL;
+
+    if (!dbus_message_get_args(req, NULL,
+                               DBUS_TYPE_STRING, lang,
+                               DBUS_TYPE_INVALID))
+        lang = NULL;
+
+    return 0;
+}
+
+
+static int query_voices_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+{
+    dbusif_t          *bus = (dbusif_t *)user_data;
+    srs_context_t     *srs = bus->self->srs;
+    const char        *lang;
+    const char        *id;
+    int                err;
+    srs_client_t      *c;
+    srs_voice_actor_t *actors;
+    int                nactor;
+
+    err = parse_voice_query(req, &id, &lang);
+
+    if (err != 0) {
+        reply_cancel(dbus, req, err, "internal error");
+
+        return TRUE;
+    }
+
+    c = client_lookup_by_id(srs, id);
+
+    if (c == NULL) {
+        reply_error(dbus, req, 1, "you don't exists, go away");
+
+        return TRUE;
+    }
+
+    nactor = client_query_voices(c, lang, &actors);
+
+    if (nactor < 0)
+        reply_error(dbus, req, 1, "voice actor query failed");
+    else
+        reply_voice_query(dbus, req, nactor, actors);
+
+    client_free_queried_voices(actors);
+
+    return TRUE;
 }
 
 

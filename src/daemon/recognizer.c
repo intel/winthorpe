@@ -450,6 +450,7 @@ static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
 
 static void process_unrecognized(srs_srec_t *srec, srs_srec_result_t *res)
 {
+#if 0
     static effect_t *effects = NULL;
     static int       neffect = -1;
     effect_t        *e;
@@ -470,6 +471,7 @@ static void process_unrecognized(srs_srec_t *srec, srs_srec_result_t *res)
         srs_play_sound_file(srec->srs, e->data, NULL, NULL);
     else
         srs_say_msg(srec->srs, e->data, NULL, NULL);
+#endif
 }
 
 

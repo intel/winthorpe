@@ -218,6 +218,38 @@ AM_CONDITIONAL(WRTC_ENABLED, [test "$enable_wrtc" = "yes"])
 AC_SUBST(GIO_CFLAGS)
 AC_SUBST(GIO_LIBS)
 
+# Check if festival support should be enabled.
+AC_ARG_ENABLE(festival,
+              [  --enable-festival          enable festival support],
+	      [enable_festival=$enableval], [enable_festival=auto])
+
+if test "$enable_festival" != "no"; then
+    enable_festival=yes
+    AC_MSG_NOTICE([festival support is enabled.])
+else
+    AC_MSG_NOTICE([festival support is disabled.])
+fi
+
+if test "$enable_festival" = "yes"; then
+    AC_DEFINE([FESTIVAL_ENABLED], 1, [Enable festival support ?])
+fi
+
+if test -f $prefix/include/festival/festival.h; then
+    FESTIVAL_INCLUDES="-I$prefix/include \
+                       -I$prefix/include/festival \
+                       -I$prefix/include/speech_tools"
+else
+    FESTIVAL_INCLUDES="-I$prefix/include"
+fi
+
+FESTIVAL_CXXFLAGS="$FESTIVAL_INCLUDES"
+FESTIVAL_LIBS=""
+
+AM_CONDITIONAL(FESTIVAL_ENABLED, [test "$enable_festival" = "yes"])
+AC_SUBST(FESTIVAL_ENABLED)
+AC_SUBST(FESTIVAL_CXXFLAGS)
+AC_SUBST(FESTIVAL_LIBS)
+
 # Shave by default.
 SHAVE_INIT([build-aux], [enable])
 
@@ -242,6 +274,7 @@ echo "----- configuration -----"
 echo "Extra C warnings flags: $WARNING_CFLAGS"
 echo "D-Bus support: $enable_dbus"
 echo "Sphinx support: $enable_sphinx"
+echo "Festival support: $enable_festival"
 
 if test "$DUMP_LIB_FLAGS" = "yes"; then
     echo "MURPHY_COMMON:"

@@ -34,6 +34,13 @@
 #include "src/daemon/recognizer.h"
 #include "src/daemon/client.h"
 
+typedef struct {
+    mrp_list_hook_t  hook;               /* to list of voice requests */
+    srs_client_t    *c;                  /* client for this request */
+    uint32_t         id;                 /* voice request id */
+    int              notify_events;      /* event mask */
+} voice_req_t;
+
 
 void client_reset_resources(srs_context_t *srs)
 {
@@ -164,6 +171,7 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
         return NULL;
 
     mrp_list_init(&c->hook);
+    mrp_list_init(&c->voices);
     c->srs       = srs;
     c->type      = type;
     c->ops       = *ops;
@@ -196,6 +204,18 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
 }
 
 
+static void purge_voice_requests(srs_client_t *c)
+{
+    mrp_list_hook_t *p, *n;
+    voice_req_t     *req;
+
+    mrp_list_foreach(&c->voices, p, n) {
+        req = mrp_list_entry(p, typeof(*req), hook);
+        client_cancel_voice(c, req->id);
+    }
+}
+
+
 void client_destroy(srs_client_t *c)
 {
     if (c != NULL) {
@@ -212,6 +232,7 @@ void client_destroy(srs_client_t *c)
         mrp_free(c->id);
 
         free_commands(c->commands, c->ncommand);
+        purge_voice_requests(c);
     }
 }
 
@@ -311,4 +332,94 @@ void client_notify_command(srs_client_t *c, int index,
         c->ops.notify_command(c, index, ntoken, (char **)tokens,
                               start, end, audio);
     }
+}
+
+
+static void client_voice_event(srs_voice_event_t *event, void *notify_data)
+{
+    voice_req_t *req  = (void *)notify_data;
+    int          mask = (1 << event->type);
+    int          done;
+
+    if (mask & SRS_VOICE_MASK_DONE) {
+        mrp_list_delete(&req->hook);
+        done = TRUE;
+    }
+    else
+        done = FALSE;
+
+    if (req->notify_events & mask)
+        req->c->ops.notify_render(req->c, event);
+
+    if (done)
+        mrp_free(req);
+}
+
+
+uint32_t client_render_voice(srs_client_t *c, const char *msg,
+                             const char *voice, int timeout, int notify_events)
+{
+    srs_context_t *srs    = c->srs;
+    const char    *tags[] = { "media.role=speech", NULL };
+    int            forced = SRS_VOICE_MASK_DONE;
+    voice_req_t   *req;
+
+    if ((req = mrp_allocz(sizeof(*req))) == NULL)
+        return SRS_VOICE_INVALID;
+
+    mrp_list_init(&req->hook);
+    req->c             = c;
+    req->notify_events = notify_events;
+
+    req->id = srs_render_voice(srs, msg, (char **)tags, voice, timeout,
+                               notify_events | forced, client_voice_event,
+                               req);
+
+    if (req->id != SRS_VOICE_INVALID) {
+        mrp_list_append(&c->voices, &req->hook);
+
+        return req->id;
+    }
+    else {
+        mrp_free(req);
+
+        return SRS_VOICE_INVALID;
+    }
+}
+
+
+void client_cancel_voice(srs_client_t *c, uint32_t id)
+{
+    srs_context_t   *srs = c->srs;
+    mrp_list_hook_t *p, *n;
+    voice_req_t     *req;
+
+    mrp_list_foreach(&c->voices, p, n) {
+        req = mrp_list_entry(p, typeof(*req), hook);
+
+        if (req->id == id) {
+            srs_cancel_voice(srs, id, FALSE);
+
+            mrp_list_delete(&req->hook);
+            mrp_free(req);
+
+            return;
+        }
+    }
+}
+
+
+int client_query_voices(srs_client_t *c, const char *language,
+                        srs_voice_actor_t **actorsp)
+{
+    srs_context_t *srs  = c->srs;
+    const char    *lang = language && *language ? language : NULL;
+
+    return srs_query_voices(c->srs, lang, actorsp);
+}
+
+
+void client_free_queried_voices(srs_voice_actor_t *actors)
+{
+    srs_free_queried_voices(actors);
 }

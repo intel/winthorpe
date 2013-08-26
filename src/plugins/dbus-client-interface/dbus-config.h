@@ -30,15 +30,25 @@
 #ifndef __SRS_DBUS_PLUGIN_CONFIG_H__
 #define __SRS_DBUS_PLUGIN_CONFIG_H__
 
-#define SRS_SERVICE_NAME      "org.tizen.srs"
-#define SRS_SERVICE_PATH      "/srs"
-#define SRS_SERVICE_INTERFACE "org.tizen.srs"
+#define SRS_CLIENT_SERVICE   "org.tizen.srs"
+#define SRS_CLIENT_PATH      "/srs"
+#define SRS_CLIENT_INTERFACE "org.tizen.srs"
 
-#define SRS_METHOD_REGISTER   "Register"      /* register client */
-#define SRS_METHOD_UNREGISTER "Unregister"    /* unregister client */
-#define SRS_METHOD_FOCUS      "RequestFocus"  /* request voice focus */
+#define SRS_CLIENT_REGISTER        "Register"
+#define SRS_CLIENT_UNREGISTER      "Unregister"
 
-#define SRS_SIGNAL_FOCUS      "FocusChanged"  /* voice focus notification */
-#define SRS_SIGNAL_COMMAND    "VoiceCommand"  /* voice command notification */
+#define SRS_CLIENT_NOTIFY_COMMAND  "VoiceCommand"
+#define SRS_CLIENT_REQUEST_FOCUS   "RequestFocus"
+#define SRS_CLIENT_NOTIFY_FOCUS    "FocusChanged"
 
+#define SRS_CLIENT_RENDER_VOICE    "RenderVoice"
+#define SRS_CLIENT_CANCEL_VOICE    "CancelVoice"
+#define SRS_CLIENT_NOTIFY_VOICE    "VoiceEvent"
+#define SRS_CLIENT_VOICE_STARTED   "started"
+#define SRS_CLIENT_VOICE_PROGRESS  "progress"
+#define SRS_CLIENT_VOICE_COMPLETED "completed"
+#define SRS_CLIENT_VOICE_TIMEOUT   "timeout"
+#define SRS_CLIENT_VOICE_ABORTED   "aborted"
+
+#define SRS_CLIENT_QUERY_VOICES    "QueryVoices"
 #endif /* __SRS_DBUS_PLUGIN_CONFIG_H__ */

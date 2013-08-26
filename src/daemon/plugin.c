@@ -79,8 +79,17 @@ srs_plugin_t *srs_create_plugin(srs_context_t *srs, const char *name)
     plugin = NULL;
     h      = dlopen(path, RTLD_LAZY | RTLD_LOCAL);
 
-    if (h == NULL)
+    if (h == NULL) {
+        const char *error = dlerror();
+
+        if (error != NULL)
+            mrp_log_error("Failed to load plugin '%s' (error: %s).", name,
+                          error);
+        else
+            mrp_log_error("Failed to load plugin '%s'.", name);
+
         goto fail;
+    }
 
     plugin = mrp_allocz(sizeof(*plugin));
 

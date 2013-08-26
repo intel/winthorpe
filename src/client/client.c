@@ -28,6 +28,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <getopt.h>
 #include <stdarg.h>
@@ -70,12 +71,17 @@ typedef struct {
     int             ncommand;
     int             autoregister : 1;
     const char     *autofocus;
+    uint32_t        vreq;
 } client_t;
 
 
 static void register_client(client_t *c);
 static void request_focus(client_t *c, const char *focus);
 static void execute_user_command(client_t *c, int narg, char **args);
+static void request_render_voice(client_t *c, const char *msg, const char *vid,
+                                 int timeout, int subscribe);
+static void request_cancel_voice(client_t *c, uint32_t id);
+static void query_voices(client_t *c, const char *language);
 
 static void set_prompt(client_t *c, const char *prompt)
 {
@@ -238,6 +244,85 @@ static void list_commands(client_t *c)
 }
 
 
+static void request_tts(client_t *c, int ntoken, char **tokens)
+{
+    const char *sep     = "";
+    const char *voice   = "english";
+    int         timeout = 5000;
+    int         events  = FALSE;
+    char        msg[1024], *t, *e, *p;
+    int         i, o;
+    size_t      l;
+    ssize_t     n;
+
+    if (c->registered) {
+        print(c, "You need to unregister first to modify commands.");
+        return;
+    }
+
+    p = msg;
+    l = sizeof(msg);
+    for (i = 0; i < ntoken; i++) {
+        t = tokens[i];
+        if (*t == '-') {
+            if (!strncmp(t + 1, "timeout:", o=8)) {
+                timeout = strtol(t + 1 + o, &e, 10);
+                if (*e != '\0') {
+                    print(c, "Invalid timeout: %s.", t + 1 + o);
+                    return;
+                }
+            }
+            else if (!strncmp(t + 1, "events", o=6)) {
+                events = TRUE;
+            }
+            else if (!strncmp(t + 1, "voice:", o=6)) {
+                voice = t + 1 + o;
+            }
+        }
+        else {
+            n = snprintf(p, l, "%s%s", sep, t);
+            if (n >= l) {
+                print(c, "TTS message too long.");
+                return;
+            }
+
+            p += n;
+            l -= n;
+            sep = " ";
+        }
+    }
+
+    print(c, "message: '%s'", msg);
+
+    request_render_voice(c, msg, voice, timeout, events);
+}
+
+
+static void cancel_tts(client_t *c, int ntoken, char **tokens)
+{
+    int       i;
+    uint32_t  vreq;
+    char     *end;
+
+    if (ntoken == 0) {
+        if (c->vreq)
+            request_cancel_voice(c, c->vreq);
+        else
+            print(c, "No outstanding TTS request.");
+    }
+    else {
+        for (i = 0; i < ntoken; i++) {
+            vreq = strtoul(tokens[i], &end, 10);
+
+            if (end && !*end)
+                request_cancel_voice(c, vreq);
+            else
+                print(c, "TTS request id '%s' is invalid.", tokens[i]);
+        }
+    }
+}
+
+
 static void set_client_defaults(client_t *c, const char *argv0)
 {
     int i;
@@ -339,6 +424,45 @@ static int voice_command_notify(mrp_dbus_t *dbus, DBusMessage *msg,
 }
 
 
+static int voice_render_notify(mrp_dbus_t *dbus, DBusMessage *msg,
+                               void *user_data)
+{
+    client_t   *c = (client_t *)user_data;
+    uint32_t    id;
+    const char *event;
+    double      pcnt;
+    uint32_t    msec;
+
+    MRP_UNUSED(dbus);
+
+    hide_prompt(c);
+    if (!dbus_message_get_args(msg, NULL,
+                               DBUS_TYPE_UINT32, &id,
+                               DBUS_TYPE_STRING, &event,
+                               DBUS_TYPE_INVALID)) {
+        print(c, "Failed to parse voice render event notification.");
+        return TRUE;
+    }
+
+    if (!strcmp(event, "progress")) {
+        pcnt = -1.0;
+        msec = (uint32_t)-1;
+        dbus_message_get_args(msg, NULL,
+                              DBUS_TYPE_UINT32, &id,
+                              DBUS_TYPE_STRING, &event,
+                              DBUS_TYPE_DOUBLE, &pcnt,
+                              DBUS_TYPE_UINT32, &msec,
+                              DBUS_TYPE_INVALID);
+        print(c, "Rendering <%u> progress: %f %% (%u msecs)", id, pcnt, msec);
+    }
+    else
+        print(c, "Rendering <%u>: %s", id, event);
+    show_prompt(c);
+
+    return TRUE;
+}
+
+
 static void server_name_change(mrp_dbus_t *dbus, const char *name, int running,
                                const char *owner, void *user_data)
 {
@@ -365,49 +489,51 @@ static void server_name_change(mrp_dbus_t *dbus, const char *name, int running,
 
 static void setup_dbus(client_t *c)
 {
-    const char *name;
+    const char *name      = SRS_CLIENT_SERVICE;
+    const char *path      = SRS_CLIENT_PATH;
+    const char *interface = SRS_CLIENT_INTERFACE;
+    const char *focus     = SRS_CLIENT_NOTIFY_FOCUS;
+    const char *command   = SRS_CLIENT_NOTIFY_COMMAND;
+    const char *voice     = SRS_CLIENT_NOTIFY_VOICE;
 
     c->dbus = mrp_dbus_get(c->ml, c->dbus_address, NULL);
 
-    if (c->dbus != NULL) {
-        name = SRS_SERVICE_NAME;
-        if (mrp_dbus_follow_name(c->dbus, name, server_name_change, c) &&
-            mrp_dbus_subscribe_signal(c->dbus, focus_notify, c,
-                                      NULL, SRS_SERVICE_PATH,
-                                      SRS_SERVICE_INTERFACE, SRS_SIGNAL_FOCUS,
-                                      NULL) &&
-            mrp_dbus_subscribe_signal(c->dbus, voice_command_notify, c,
-                                      NULL, SRS_SERVICE_PATH,
-                                      SRS_SERVICE_INTERFACE, SRS_SIGNAL_COMMAND,
-                                      NULL))
-            return;
-        else {
-            print(c, "Failed to set up server D-BUS name tracking.");
-            exit(1);
-        }
-    }
-    else {
+    if (c->dbus == NULL) {
         print(c, "Failed to connect to D-BUS (%s).", c->dbus_address);
         exit(1);
     }
+
+    if (mrp_dbus_follow_name(c->dbus, name, server_name_change, c) &&
+        mrp_dbus_subscribe_signal(c->dbus, focus_notify, c,
+                                  NULL, path, interface, focus, NULL) &&
+        mrp_dbus_subscribe_signal(c->dbus, voice_command_notify, c,
+                                  NULL, path, interface, command, NULL) &&
+        mrp_dbus_subscribe_signal(c->dbus, voice_render_notify, c,
+                                  NULL, path, interface, voice, NULL))
+        return;
+
+    print(c, "Failed to set up server D-BUS name tracking.");
+    exit(1);
 }
 
 
 static void cleanup_dbus(client_t *c)
 {
-    const char *name;
+    const char *name      = SRS_CLIENT_SERVICE;
+    const char *path      = SRS_CLIENT_PATH;
+    const char *interface = SRS_CLIENT_INTERFACE;
+    const char *focus     = SRS_CLIENT_NOTIFY_FOCUS;
+    const char *command   = SRS_CLIENT_NOTIFY_COMMAND;
+    const char *voice     = SRS_CLIENT_NOTIFY_VOICE;
 
     if (c != NULL) {
-        name = SRS_SERVICE_NAME;
         mrp_dbus_forget_name(c->dbus, name, server_name_change, c);
         mrp_dbus_unsubscribe_signal(c->dbus, focus_notify, c,
-                                    NULL, SRS_SERVICE_PATH,
-                                    SRS_SERVICE_INTERFACE, SRS_SIGNAL_FOCUS,
-                                    NULL);
+                                    NULL, path, interface, focus, NULL);
         mrp_dbus_unsubscribe_signal(c->dbus, voice_command_notify, c,
-                                    NULL, SRS_SERVICE_PATH,
-                                    SRS_SERVICE_INTERFACE, SRS_SIGNAL_COMMAND,
-                                    NULL);
+                                    NULL, path, interface, command, NULL);
+        mrp_dbus_unsubscribe_signal(c->dbus, voice_render_notify, c,
+                                    NULL, path, interface, voice, NULL);
         mrp_dbus_unref(c->dbus);
     }
 }
@@ -646,10 +772,10 @@ static void register_client(client_t *c)
 {
     const char **cmds   = (const char **)c->commands;
     int          ncmd   = c->ncommand;
-    const char  *dest   = SRS_SERVICE_NAME;
-    const char  *path   = SRS_SERVICE_PATH;
-    const char  *iface  = SRS_SERVICE_INTERFACE;
-    const char  *method = SRS_METHOD_REGISTER;
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_REGISTER;
 
     if (!c->server_up) {
         print(c, "Server is currently down.");
@@ -685,10 +811,10 @@ static void unregister_reply(mrp_dbus_t *dbus, DBusMessage *rpl,
 
 static void unregister_client(client_t *c)
 {
-    const char  *dest   = SRS_SERVICE_NAME;
-    const char  *path   = SRS_SERVICE_PATH;
-    const char  *iface  = SRS_SERVICE_INTERFACE;
-    const char  *method = SRS_METHOD_UNREGISTER;
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_UNREGISTER;
 
     if (!c->server_up) {
         print(c, "Server is currently down.");
@@ -716,10 +842,10 @@ static void focus_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
 
 static void request_focus(client_t *c, const char *focus)
 {
-    const char  *dest   = SRS_SERVICE_NAME;
-    const char  *path   = SRS_SERVICE_PATH;
-    const char  *iface  = SRS_SERVICE_INTERFACE;
-    const char  *method = SRS_METHOD_FOCUS;
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_REQUEST_FOCUS;
 
     if (!c->server_up) {
         print(c, "Server is currently down.");
@@ -730,6 +856,173 @@ static void request_focus(client_t *c, const char *focus)
                        focus_reply, c,
                        DBUS_TYPE_STRING, &focus, DBUS_TYPE_INVALID))
         print(c, "Failed to send focus request to server.");
+}
+
+
+static void render_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+{
+    client_t *c = (client_t *)user_data;
+
+    MRP_UNUSED(dbus);
+
+    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+        print(c, "TTS render request succeeded.");
+    else
+        print(c, "TTS render request failed on server.");
+}
+
+
+static void request_render_voice(client_t *c, const char *msg, const char *vid,
+                                 int timeout, int subscribe)
+{
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_RENDER_VOICE;
+    int32_t      to     = (int32_t)timeout;
+    char        *none[] = { };
+    char        *full[] = { "started", "progress", "completed", "timeout",
+                            "aborted" };
+    char       **events;
+    int          nevent;
+
+    if (!c->server_up) {
+        print(c, "Server is currently down.");
+        return;
+    }
+
+    if (subscribe) {
+        events = full;
+        nevent = MRP_ARRAY_SIZE(full);
+    }
+    else {
+        events = none;
+        nevent = 0;
+    }
+
+    if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
+                       render_reply, c,
+                       DBUS_TYPE_STRING, &msg,
+                       DBUS_TYPE_STRING, &vid,
+                       DBUS_TYPE_INT32 , &to,
+                       DBUS_TYPE_ARRAY , DBUS_TYPE_STRING, &events, nevent,
+                       DBUS_TYPE_INVALID))
+        print(c, "Failed to send voice cancel request to server.");
+
+    return;
+}
+
+
+static void cancel_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+{
+    client_t *c = (client_t *)user_data;
+
+    MRP_UNUSED(dbus);
+
+    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+        print(c, "TTS cancel request succeeded.");
+    else
+        print(c, "TTS cancel request failed on server.");
+}
+
+
+static void request_cancel_voice(client_t *c, uint32_t id)
+{
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_CANCEL_VOICE;
+
+    if (!c->server_up) {
+        print(c, "Server is currently down.");
+        return;
+    }
+
+    if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
+                       cancel_reply, c,
+                       DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID))
+        print(c, "Failed to send voice cancel request to server.");
+}
+
+
+static void voice_query_reply(mrp_dbus_t *dbus, DBusMessage *rpl,
+                              void *user_data)
+{
+    client_t *c = (client_t *)user_data;
+    uint32_t  nvoice;
+    int       n;
+
+    MRP_UNUSED(dbus);
+
+    if (dbus_message_get_type(rpl) != DBUS_MESSAGE_TYPE_METHOD_RETURN) {
+        print(c, "Voice query failed.");
+        return;
+    }
+
+    if (!dbus_message_get_args(rpl, NULL,
+                               DBUS_TYPE_UINT32, &nvoice,
+                               DBUS_TYPE_INVALID)) {
+        print(c, "Failed to parse voice query reply.");
+        return;
+    }
+
+    n = (int)nvoice;
+    {
+        char **voices, **lang, **dialect, **gender, **description;
+        int    i, dummy;
+
+        if (!dbus_message_get_args(rpl, NULL,
+                                   DBUS_TYPE_UINT32, &nvoice,
+                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                                   &voices, &dummy,
+                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                                   &lang, &dummy,
+                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                                   &dialect, &dummy,
+                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                                   &gender, &dummy,
+                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+                                   &description, &dummy,
+                                   DBUS_TYPE_INVALID)) {
+            print(c, "Failed to parse voice query reply.");
+            return;
+        }
+
+        print(c, "Server has %d voice%s loaded.", nvoice,
+              nvoice == 1 ? "" : "s");
+        for (i = 0; i < nvoice; i++) {
+            print(c, "#%d: %s", i + 1, voices[i]);
+            print(c, "    language: %s", lang[i]);
+            print(c, "    dialect: %s", dialect[i] ? dialect[i] : "<none>");
+            print(c, "    gender: %s", gender[i]);
+            print(c, "    description: %s", description[i]);
+        }
+    }
+}
+
+
+static void query_voices(client_t *c, const char *language)
+{
+    const char  *dest   = SRS_CLIENT_SERVICE;
+    const char  *path   = SRS_CLIENT_PATH;
+    const char  *iface  = SRS_CLIENT_INTERFACE;
+    const char  *method = SRS_CLIENT_QUERY_VOICES;
+
+    if (!c->server_up) {
+        print(c, "Server is currently down.");
+        return;
+    }
+
+    if (language == NULL)
+        language = "";
+
+    if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
+                       voice_query_reply, c,
+                       DBUS_TYPE_STRING, &language,
+                       DBUS_TYPE_INVALID))
+        print(c, "Failed to send voice query request to server.");
+
+    return;
 }
 
 
@@ -754,6 +1047,8 @@ static void execute_user_command(client_t *c, int narg, char **args)
             print(c, "  focus none|shared|exclusive  - request voice focus");
             print(c, "  add command <command>        - add new command");
             print(c, "  del command <command>        - delete a command");
+            print(c, "  tts render '<msg>' timeout subscribe");
+            print(c, "  tts cancel '<id>'");
             print(c, "  list commands                - list commands set");
             print(c, "  help                         - show this help");
             print(c, "  exit                         - exit from client");
@@ -777,6 +1072,8 @@ static void execute_user_command(client_t *c, int narg, char **args)
             reset_commands(c);
         else if (!strcmp(cmd, "list" ) && !strcmp(args[0], "commands"))
             list_commands(c);
+        else if (!strcmp(cmd, "list" ) && !strcmp(args[0], "voices"))
+            query_voices(c, NULL);
         else
             print(c, "Invalid command.");
         break;
@@ -789,6 +1086,14 @@ static void execute_user_command(client_t *c, int narg, char **args)
                 del_command(c, narg-1, args+1);
             else
                 print(c, "Invalid command.");
+        }
+        else if (!strcmp(args[0], "tts")) {
+            if (!strcmp(cmd, "render"))
+                request_tts(c, narg-1, args+1);
+            else if (!strcmp(cmd, "cancel"))
+                cancel_tts(c, narg-1, args+1);
+            else
+                print(c, "Invalid TTS command.");
         }
         else
             print(c, "Invalid command.");

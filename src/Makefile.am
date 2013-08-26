@@ -222,19 +222,55 @@ plugin_search_client_la_LDFLAGS =				\
 
 plugin_search_client_la_LIBADD  =
 
-# simple-voice synthesizer plugin
-plugin_LTLIBRARIES += plugin-simple-voice.la
+if FESTIVAL_ENABLED
+# festival-loader plugin
+plugin_LTLIBRARIES += plugin-festival-loader.la
 
-plugin_simple_voice_la_SOURCES =				\
-		plugins/simple-voice/simple-voice.c
+plugin_festival_loader_la_SOURCES =				\
+		plugins/festival/festival-loader.c
 
-plugin_simple_voice_la_CFLAGS  =				\
+plugin_festival_loader_la_CFLAGS  =				\
 		$(AM_CFLAGS)
 
-plugin_simple_voice_la_LDFLAGS =				\
+plugin_festival_loader_la_LDFLAGS =				\
 		-module -avoid-version
 
-plugin_simple_voice_la_LIBADD  =
+plugin_festival_loader_la_LIBADD = -ldl
+
+# festival-voice synthesizer plugin
+plugin_LTLIBRARIES += plugin-festival-voice.la
+
+plugin_festival_voice_la_SOURCES =				\
+		plugins/festival/festival-voice.c		\
+		plugins/festival/libcarnival.cc			\
+		plugins/festival/pulse.c
+
+plugin_festival_voice_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_festival_voice_la_CXXFLAGS =				\
+		$(AM_CFLAGS)					\
+		$(AM_CXXFLAGS)					\
+		$(FESTIVAL_CXXFLAGS)
+
+plugin_festival_voice_la_LDFLAGS =				\
+		-module -avoid-version
+endif
+
+# simple-voice synthesizer plugin
+#plugin_LTLIBRARIES += plugin-simple-voice.la
+#
+#plugin_simple_voice_la_SOURCES =				\
+#		plugins/simple-voice/simple-voice.c
+#
+#plugin_simple_voice_la_CFLAGS  =				\
+#		$(AM_CFLAGS)
+#
+#plugin_simple_voice_la_LDFLAGS =				\
+#		-module -avoid-version
+#
+#plugin_simple_voice_la_LIBADD  =
+#
 
 # input plugin
 plugin_LTLIBRARIES += plugin-input-handler.la
