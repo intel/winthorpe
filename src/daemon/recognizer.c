@@ -547,34 +547,6 @@ static int srec_notify_cb(srs_srec_utterance_t *utt, void *notify_data)
                 flush = SRS_SREC_FLUSH_ALL;
                 break;
 
- {
-                static effect_t *effects = NULL;
-                static int       neffect = -1;
-
-                effect_t *effect;
-                int       idx = (1.0 * neffect * rand()) / RAND_MAX;
-
-                if (neffect < 0)
-                    neffect = get_effect_config(srec->srs, &effects);
-
-                mrp_log_error("Unrecognized command.");
-
-                effect = effects + idx;
-
-                mrp_log_info("Trying to render feedback %s '%s'...",
-                             effect->tts ? "TTS" : "effect", effect->data);
-
-                if (!effect->tts)
-                    srs_play_sound_file(srec->srs, effect->data, NULL, NULL);
-                else
-                    srs_say_msg(srec->srs, effect->data, NULL, NULL);
-
-                free_srec_result(res);
-                srec->result = NULL;
-                flush = SRS_SREC_FLUSH_ALL;
-            }
-                break;
-
             default:
                 flush = SRS_SREC_FLUSH_ALL;
                 free_srec_result(res);
