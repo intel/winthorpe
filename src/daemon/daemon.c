@@ -213,7 +213,7 @@ static void setup_signals(srs_context_t *srs)
 }
 
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[], char *env[])
 {
     srs_context_t *srs;
     srs_cfg_t     *cfg;
@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
     if (srs != NULL) {
         srs->rlog = mrp_res_set_logger(NULL);
 
-        config_parse_cmdline(srs, argc, argv);
+        config_parse_cmdline(srs, argc, argv, env);
         setup_logging(srs);
 
         create_mainloop(srs);

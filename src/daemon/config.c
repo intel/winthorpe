@@ -47,15 +47,136 @@
 #include "src/daemon/plugin.h"
 #include "src/daemon/config.h"
 
+#define ARGV_MAX 128
+#define ARGV_VG    3
+
 static srs_cfg_t *find_config(srs_cfg_t *settings, const char *key);
+
+static void save_args(char **saved_argv, int argc, char **argv)
+{
+    int i;
+
+    for (i = 0; i < argc; i++)
+        saved_argv[i] = argv[i];
+
+    saved_argv[i] = NULL;
+}
+
+
+static int valgrind(const char *vg_path, int full, int argc, char **argv,
+                    int envc, char **envp)
+{
+    char       *vg_env[envc + 2], **vg_envp;
+    char       *vg_argv[ARGV_MAX + ARGV_VG + 1];
+    int         vg_argc, offs, i, j;
+    const char *bin, *e, *ldp;
+    char        lib[PATH_MAX];
+    int         len;
+
+    bin = argv[0];
+    ldp = getenv("LD_LIBRARY_PATH");
+
+    if ((e = strstr(bin, "/src/srs-daemon")) != NULL) {
+        len = e - bin;
+
+        if (snprintf(lib, sizeof(lib), "LD_LIBRARY_PATH=%*.*s/.libs%s%s",
+                     len + 5, len + 5, bin,
+                     ldp ? ":" : "", ldp ? ldp : "") >= sizeof(lib) - 1) {
+            errno = ENAMETOOLONG;
+            return -1;
+        }
+
+        vg_env[0] = lib;
+        vg_envp   = vg_env + 1;
+    }
+    else
+        vg_envp = vg_env;
+
+    vg_argc = i = 0;
+    vg_argv[vg_argc++] = (char *)(vg_path ? vg_path : "/usr/bin/valgrind");
+    if (full)
+        vg_argv[vg_argc++] = "--leak-check=full";
+    vg_argv[vg_argc++] = argv[i++];
+
+    for ( ; i < argc; i++ ) {
+        if (!strcmp(argv[i], "-V") ||
+            !strncmp(argv[i], "-V=", 3) ||
+            !strncmp(argv[i], "--valgrind", 10) ||
+            !strcmp(argv[i], "-W") ||
+            !strncmp(argv[i], "-W=", 3) ||
+            !strncmp(argv[i], "--valgrind-full", 15))
+            continue;
+
+        vg_argv[vg_argc++] = argv[i];
+    }
+
+    vg_argv[vg_argc] = NULL;
+
+    for (i = 0; envp[i] != NULL; i++)
+        vg_envp[i] = envp[i];
+    vg_envp[i] = NULL;
+
+    return execve(vg_argv[0], vg_argv, vg_env);
+}
+
 
 /*
  * command line processing
  */
 
+static void config_set_defaults(srs_context_t *srs, const char *bin)
+{
+#define CFG "speech-recognition.conf"
+    static char  plgbuf[PATH_MAX], cfgbuf[PATH_MAX];
+    char         wd[PATH_MAX];
+    const char  *plugin_dir, *config_file, *e;
+    int          len, n;
+
+    if ((e = strstr(bin, "/src/srs-daemon")) != NULL) {
+    srctree:
+        len = e - bin;
+
+        n = snprintf(plgbuf, sizeof(plgbuf), "%*.*s/src/.libs", len, len, bin);
+        if (n >= sizeof(plgbuf) - 1)
+            plugin_dir = SRS_DEFAULT_PLUGIN_DIR;
+        else
+            plugin_dir = plgbuf;
+
+        n = snprintf(cfgbuf, sizeof(cfgbuf), "%*.*s/%s", len, len, bin, CFG);
+        if (n >= sizeof(cfgbuf) - 1)
+            config_file = SRS_DEFAULT_CONFIG_FILE;
+        else
+            config_file = cfgbuf;
+    }
+    else {
+        if (getcwd(wd, sizeof(wd)) != NULL) {
+            if ((e = strrchr(wd, '/')) != NULL && !strcmp(e, "/src")) {
+                strncat(wd, "/srs-daemon", sizeof(wd));
+                bin = wd;
+                goto srctree;
+            }
+        }
+        config_file = SRS_DEFAULT_CONFIG_FILE;
+        plugin_dir  = SRS_DEFAULT_PLUGIN_DIR;
+    }
+
+    srs->config_file = config_file;
+    srs->plugin_dir  = plugin_dir;
+    srs->log_mask    = MRP_LOG_MASK_ERROR;
+    srs->log_target  = MRP_LOG_TO_STDERR;
+}
+
+
 static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
 {
-    va_list ap;
+    va_list        ap;
+    srs_context_t  srs;
+    const char    *cfg, *plg;
+
+    mrp_clear(&srs);
+    config_set_defaults(&srs, argv0);
+    cfg = srs.config_file;
+    plg = srs.plugin_dir;
 
     if (fmt && *fmt) {
         va_start(ap, fmt);
@@ -80,22 +201,15 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
            "  -d, --debug                    enable given debug configuration\n"
            "  -D, --list-debug               list known debug sites\n"
            "  -f, --foreground               don't daemonize\n"
-           "  -h, --help                     show help on usage\n",
-           argv0, SRS_DEFAULT_CONFIG_FILE, SRS_DEFAULT_PLUGIN_DIR);
+           "  -h, --help                     show help on usage\n"
+           "  -V, --valgrind[=VALGRIND-PATH] try to run under valgrind\n"
+           "  -W, --valgrind-full[=VALGRIND-PATH] try to run under valgrind\n",
+           argv0, cfg, plg);
 
     if (exit_code < 0)
         return;
     else
         exit(exit_code);
-}
-
-
-static void config_set_defaults(srs_context_t *srs)
-{
-    srs->config_file = SRS_DEFAULT_CONFIG_FILE;
-    srs->plugin_dir  = SRS_DEFAULT_PLUGIN_DIR;
-    srs->log_mask    = MRP_LOG_MASK_ERROR;
-    srs->log_target  = MRP_LOG_TO_STDERR;
 }
 
 
@@ -231,9 +345,10 @@ static void config_parse_file(srs_context_t *srs, char *path)
 }
 
 
-void config_parse_cmdline(srs_context_t *srs, int argc, char **argv)
+void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
+                          char **envp)
 {
-#   define OPTIONS "c:P:L:l:t:B:s:fvd:Dh"
+#   define OPTIONS "c:P:L:l:t:B:s:fvd:DV::W::h"
     struct option options[] = {
         { "config-file"  , required_argument, NULL, 'c' },
         { "plugin-dir"   , required_argument, NULL, 'P' },
@@ -245,13 +360,20 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv)
         { "debug"        , required_argument, NULL, 'd' },
         { "list-debug"   , no_argument      , NULL, 'D' },
         { "foreground"   , no_argument      , NULL, 'f' },
+        { "valgrind"     , optional_argument, NULL, 'V' },
+        { "valgrind-full", optional_argument, NULL, 'W' },
         { "help"         , no_argument      , NULL, 'h' },
         { NULL, 0, NULL, 0 }
     };
 
-    int opt, help;
+    char *saved_argv[ARGV_MAX];
+    int   saved_argc, envc;
+    int   opt, help;
 
-    config_set_defaults(srs);
+    save_args(saved_argv, argc, argv);
+    saved_argc = argc;
+
+    config_set_defaults(srs, argv[0]);
     mrp_log_set_mask(srs->log_mask);
     mrp_log_set_target(srs->log_target);
 
@@ -312,6 +434,16 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv)
         case 'f':
             srs->foreground = TRUE;
             break;
+
+        case 'V':
+        case 'W':
+            envc = 0;
+            if (envp != NULL)
+                while (envp[envc] != NULL)
+                    envc++;
+            valgrind(optarg, opt == 'W', saved_argc, saved_argv, envc, envp);
+            mrp_log_error("Failed to run through valgrind.");
+            exit(1);
 
         case 'h':
             help++;

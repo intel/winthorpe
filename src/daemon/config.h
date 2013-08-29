@@ -64,7 +64,8 @@ struct srs_cfg_s {
 
 
 /** Parse the daemon command line. */
-void config_parse_cmdline(srs_context_t *srs, int argc, char **argv);
+void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
+                          char **env);
 
 /** Get the value of a string configuration variable. */
 const char *srs_get_string_config(srs_cfg_t *settings, const char *key,
