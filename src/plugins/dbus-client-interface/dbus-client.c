@@ -39,8 +39,8 @@
 #include "src/daemon/client.h"
 #include "dbus-config.h"
 
-#define PLUGIN_NAME    "search-client"
-#define PLUGIN_DESCR   "A trivial search plugin for SRS."
+#define PLUGIN_NAME    "dbus-client"
+#define PLUGIN_DESCR   "A D-Bus client plugin for SRS."
 #define PLUGIN_AUTHORS "Krisztian Litkey <kli@iki.fi>"
 #define PLUGIN_VERSION "0.0.1"
 
