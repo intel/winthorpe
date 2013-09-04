@@ -251,7 +251,6 @@ int main(int argc, char *argv[], char *env[])
         srs_stop_plugins(srs);
         srs_destroy_plugins(srs);
 
-        cleanup_mainloop(srs);
         cleanup_context(srs);
 
         exit(0);
