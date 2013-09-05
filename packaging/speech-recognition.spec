@@ -1,3 +1,9 @@
+%{!?_with_debug:%{!?_without_debug:%define _with_debug 1}}
+%{!?_with_sphinx:%{!?_without_sphinx:%define _with_sphinx 1}}
+%{!?_with_festival:%{!?_without_festival:%define _with_festival 1}}
+%{!?_with_wrt:%{!?_without_wrt:%define _with_wrt 1}}
+%{!?_with_dbus:%{!?_without_dbus:%define _without_dbus 1}}
+
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
 Version: 0.0.1
@@ -7,19 +13,33 @@ Group: Base/Utilities
 URL: https://github.com/otcshare/speech-recognition
 Source0: %{name}-%{version}.tar.gz
 
-BuildRequires: pkgconfig(pocketsphinx)
-BuildRequires: pkgconfig(sphinxbase)
 BuildRequires: pkgconfig(libpulse)
 BuildRequires: pkgconfig(murphy-common)
 BuildRequires: pkgconfig(murphy-pulse)
 BuildRequires: pkgconfig(murphy-glib)
-BuildRequires: pkgconfig(dbus-1)
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(json)
+%if %{?_with_sphinx:1}%{!?_with_sphinx:0}
+BuildRequires: pkgconfig(pocketsphinx)
+BuildRequires: pkgconfig(sphinxbase)
+%endif
+%if %{?_with_festival:1}%{!?_with_festival:0}
+BuildRequires: festival-devel
+%endif
+%if %{?_with_dbus:1}%{!?_with_dbus:0}
+BuildRequires: pkgconfig(dbus-1)
+%endif
 
 Requires: pulseaudio
+%if %{?_with_sphinx:1}%{!?_with_sphinx:0}
 Requires: sphinxbase
 Requires: pocketsphinx
+%endif
+%if %{?_with_festival:1}%{!?_with_festival:0}
+BuildRequires: festival-devel
+Requires: festival
+%endif
+
 
 %description
 SRS/Winthorpe speech recognition system service.
@@ -35,9 +55,41 @@ Documentation for the speech recognition service.
 %setup -q -n %{name}-%{version}
 
 %build
+%if %{?_with_debug:1}%{!?_with_debug:0}
+export CFLAGS="-O0 -g3"
+export CXXFLAGS="-O0 -g3"
+V="V=1"
+%endif
+
+CONFIG_OPTIONS=""
+
+%if %{?_with_sphinx:1}%{!?_with_sphinx:0}
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-sphinx"
+%else
+CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-sphinx"
+%endif
+
+%if %{?_with_festival:1}%{!?_with_festival:0}
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-festival"
+%else
+CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-festival"
+%endif
+
+%if %{?_with_wrt:1}%{!?_with_wrt:0}
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-wrt-client"
+%else
+CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-wrt-client"
+%endif
+
+%if %{?_with_dbus:1}%{!?_with_dbus:0}
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-gpl --enable-dbus"
+%else
+CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-dbus"
+%endif
+
+
 ./bootstrap && \
-    %configure --disable-gpl --disable-dbus \
-        --enable-sphinx --enable-wrt-client && \
+    %configure $CONFIG_OPTIONS && \
     make
 
 %install
@@ -73,6 +125,9 @@ ldconfig
 %files
 %defattr(-,root,root,-)
 %{_sbindir}/srs-daemon
+%if %{?_with_dbus:1}%{!?_with_dbus:0}
+%{_bindir}/srs-client
+%endif
 %{_libdir}/srs
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %{_sysconfdir}/sysconfig/speech-recognition
