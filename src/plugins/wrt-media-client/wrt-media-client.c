@@ -57,6 +57,17 @@
 #define DEFAULT_NEXT  "play next"
 #define DEFAULT_PREV  "play previous"
 
+#define TTS_INTERFACE_XML                                       \
+    "<node>"                                                    \
+    "  <interface name='org.tizen.srs'>"                        \
+    "    <method name='synthesize'>"                            \
+    "      <arg type='s' name='message' direction='in'/>"       \
+    "      <arg type='s' name='language' direction='in'/>"      \
+    "      <arg type='u' name='id' direction='out'/>"           \
+    "    </method>"                                             \
+    "  </interface>"                                            \
+    "</node>"
+
 typedef enum {
     CMD_PLAY = 0,
     CMD_STOP,
@@ -72,15 +83,22 @@ typedef struct {
     GDBusConnection *gdbus;              /* D-Bus connection */
     guint            gnrq;               /* name request ID*/
     int              name;               /* whether we have the name */
+    guint            gtts;               /* TTS method registration id */
+    GDBusNodeInfo   *intr;               /* introspection data */
     struct {
-        const char *bus;
-        const char *play;
-        const char *stop;
-        const char *pause;
-        const char *next;
-        const char *prev;
+        const char *bus;                 /* which bus to use */
+        const char *play;                /* command to register for playback */
+        const char *stop;                /*          -||-       for stop */
+        const char *pause;               /*          -||-       for pause */
+        const char *next;                /*          -||-       for next */
+        const char *prev;                /*          -||-       for prev */
     } config;
 } wrtc_t;
+
+
+static void wrtc_cleanup(wrtc_t *wrtc);
+static void tts_setup(wrtc_t *wrtc);
+static void tts_cleanup(wrtc_t *wrtc);
 
 
 static int focus_cb(srs_client_t *c, srs_voice_focus_t focus)
@@ -99,7 +117,7 @@ static int focus_cb(srs_client_t *c, srs_voice_focus_t focus)
     default:                        state = "unknown";
     }
 
-    mrp_log_info("WRT media client now has %s voice focus.", state);
+    mrp_log_info("WRT media client: got %s voice focus.", state);
 
     return TRUE;
 }
@@ -129,20 +147,20 @@ static int command_cb(srs_client_t *c, int idx, int ntoken, char **tokens,
     MRP_UNUSED(ntoken);
 
     if (!wrtc->name) {
-        mrp_log_error("WRT media client can't relay, got no D-Bus name.");
+        mrp_log_error("WRT media client: can't relay, got no D-Bus name.");
 
         return TRUE;
     }
 
     if (idx < 0 || idx >= nevent) {
-        mrp_log_error("WRT media client got invalid command #%d.", idx);
+        mrp_log_error("WRT media client: got invalid command #%d.", idx);
 
         return TRUE;
     }
     else
         event = events[idx];
 
-    mrp_log_info("WRT media client relaying command #%d (%s).", idx, event);
+    mrp_log_info("WRT media client: relaying command %s.", event);
 
     vb = g_variant_builder_new(G_VARIANT_TYPE("as"));
     g_variant_builder_add(vb, "s", event);
@@ -156,9 +174,6 @@ static int command_cb(srs_client_t *c, int idx, int ntoken, char **tokens,
 }
 
 
-static void wrtc_cleanup(wrtc_t *wrtc);
-
-
 static void name_acquired_cb(GDBusConnection *gdbus,
                              const gchar *name, gpointer data)
 {
@@ -166,9 +181,11 @@ static void name_acquired_cb(GDBusConnection *gdbus,
 
     MRP_UNUSED(gdbus);
 
-    mrp_log_info("WRT media client plugin acquired name '%s' on D-Bus.", name);
+    mrp_log_info("WRT media client: acquired name '%s'.", name);
 
     wrtc->name = TRUE;
+
+    tts_setup(wrtc);
 }
 
 
@@ -179,10 +196,71 @@ static void name_lost_cb(GDBusConnection *gdbus,
 
     MRP_UNUSED(gdbus);
 
-    mrp_log_info("WRT media client plugin lost name '%s' on D-Bus.", name);
+    mrp_log_info("WRT media client: lost name '%s'.", name);
+
+    tts_cleanup(wrtc);
 
     wrtc->gnrq = 0;
     wrtc->name = 0;
+}
+
+
+static void tts_request_cb(GDBusConnection *c, const gchar *sender,
+                           const gchar *path, const gchar *interface,
+                           const gchar *method, GVariant *args,
+                           GDBusMethodInvocation *inv, gpointer user_data)
+{
+    wrtc_t     *wrtc    = (wrtc_t *)user_data;
+    int         timeout = SRS_VOICE_QUEUE;
+    int         events  = SRS_VOICE_MASK_NONE;
+    char       *voice, *msg;
+    uint32_t    id;
+
+    if (strcmp(method, "synthesize"))
+        return;
+
+    g_variant_get(args, "(&s&s)", &msg, &voice);
+
+    if (voice == NULL || !*voice)
+        voice = "english";
+
+    mrp_log_info("WRT media client: relaying TTS request '%s' in '%s' from %s.",
+                 msg, voice, sender);
+
+    id = client_render_voice(wrtc->c, msg, voice, timeout, events);
+
+    g_dbus_method_invocation_return_value(inv, g_variant_new("(u)", id));
+}
+
+
+static void tts_setup(wrtc_t *wrtc)
+{
+    static GDBusInterfaceVTable vtable = { tts_request_cb, NULL, NULL };
+
+    wrtc->intr = g_dbus_node_info_new_for_xml(TTS_INTERFACE_XML, NULL);
+
+    if (wrtc->intr == NULL) {
+        mrp_log_error("WRT media client: failed to create introspection data.");
+        return;
+    }
+
+    wrtc->gtts = g_dbus_connection_register_object(wrtc->gdbus, "/tts",
+                                                   wrtc->intr->interfaces[0],
+                                                   &vtable, wrtc, NULL, NULL);
+}
+
+
+static void tts_cleanup(wrtc_t *wrtc)
+{
+    if (wrtc->gtts != 0) {
+        g_dbus_connection_unregister_object(wrtc->gdbus, wrtc->gtts);
+        wrtc->gtts = 0;
+    }
+
+    if (wrtc->intr != NULL) {
+        g_dbus_node_info_unref(wrtc->intr);
+        wrtc->intr = NULL;
+    }
 }
 
 
@@ -243,6 +321,8 @@ static void wrtc_cleanup(wrtc_t *wrtc)
 {
     if (wrtc->c != NULL)
         client_destroy(wrtc->c);
+
+    tts_cleanup(wrtc);
 
     if (wrtc->gnrq != 0)
         g_bus_unown_name(wrtc->gnrq);
