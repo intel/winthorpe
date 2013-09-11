@@ -30,9 +30,9 @@
 #ifndef __SRS_DBUS_PLUGIN_CONFIG_H__
 #define __SRS_DBUS_PLUGIN_CONFIG_H__
 
-#define SRS_CLIENT_SERVICE   "org.tizen.srs"
-#define SRS_CLIENT_PATH      "/srs"
-#define SRS_CLIENT_INTERFACE "org.tizen.srs"
+#define SRS_CLIENT_SERVICE   "org.tizen.winthorpe"
+#define SRS_CLIENT_PATH      "/winthorpe"
+#define SRS_CLIENT_INTERFACE "org.tizen.winthorpe"
 
 #define SRS_CLIENT_REGISTER        "Register"
 #define SRS_CLIENT_UNREGISTER      "Unregister"
