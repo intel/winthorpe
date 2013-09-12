@@ -101,7 +101,9 @@ rm -fr $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig \
     $RPM_BUILD_ROOT/lib/systemd/user \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition \
-    $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo
+    $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
+    $RPM_BUILD_ROOT%{_libdir}/srs/scripts \
+    $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
 /usr/bin/install -m 644 packaging/speech-recognition.conf \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
@@ -112,6 +114,10 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig \
 /usr/bin/install -m 644 \
     -t $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     dictionaries/demo/demo.*
+/usr/bin/install -m 755 packaging/start-speech-service.sh \
+     $RPM_BUILD_ROOT%{_libdir}/srs/scripts
+/usr/bin/install -m 755 packaging/org.tizen.srs.service \
+     $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -133,6 +139,7 @@ ldconfig
 %{_sysconfdir}/sysconfig/speech-recognition
 %{_datadir}/speech-recognition/dictionaries
 /lib/systemd/user/speech-recognition.service
+%{_datadir}/dbus-1/services/org.tizen.srs.service
 
 %files doc
 %defattr(-,root,root,-)
