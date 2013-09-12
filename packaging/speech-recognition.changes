@@ -1,3 +1,6 @@
+* Thu Sep 12 14:02:21 EEST 2013 Krisztian Litkey <krisztian.litkey@intel.com> - 0.0.3
+- Enabled D-Bus-based activation.
+
 * Wed Sep 11 22:41:20 EEST 2013 Krisztian Litkey <krisztian.litkey@intel.com> - 0.0.2
 - Added and enabled voice/TTS support.
 - Fix a shutdown code path corruption.
