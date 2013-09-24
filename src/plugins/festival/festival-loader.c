@@ -271,6 +271,7 @@ static const char *load_libs(loader_t *l)
                 if (h != NULL) {
                     mrp_log_info("Preloaded %s.", path);
                     l->handles[i] = h;
+                    break;
                 }
                 else {
                     err = dlerror();
