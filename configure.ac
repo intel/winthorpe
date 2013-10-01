@@ -131,7 +131,7 @@ if test "$enable_dbus" = "yes"; then
     DBUS_SESSION_DIR="`pkg-config --variable session_bus_services_dir dbus-1`"
     AC_SUBST(DBUS_SESSION_DIR)
 
-    PKG_CHECK_MODULES(MURPHY_DBUS, murphy-dbus)
+    PKG_CHECK_MODULES(MURPHY_DBUS, murphy-dbus-libdbus)
 else
     AC_MSG_NOTICE([D-Bus support is disabled.])
 fi
@@ -146,6 +146,12 @@ AC_SUBST(MURPHY_DBUS_CFLAGS)
 AC_SUBST(MURPHY_DBUS_LIBS)
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
+
+# XXX TODO temporarily disable mpris2 and bluetooth plugins
+AM_CONDITIONAL(MPRIS2_ENABLED, [test "xno" = "xyes"])
+AM_CONDITIONAL(BLUETOOTH_ENABLED, [test "xno" = "xyes"])
+AC_SUBST(MPRIS2_ENABLED)
+AC_SUBST(BLUETOOTH_ENABLED)
 
 # Set up common SRS compilation and linking flags.
 SRS_CFLAGS=""

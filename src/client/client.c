@@ -37,7 +37,7 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/debug.h>
 #include <murphy/common/mainloop.h>
-#include <murphy/common/dbus.h>
+#include <murphy/common/dbus-libdbus.h>
 #include <murphy/common/pulse-glue.h>
 
 #include <breedline/breedline-murphy.h>
@@ -385,7 +385,7 @@ static client_t *create_client(const char *argv0)
 }
 
 
-static int focus_notify(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
+static int focus_notify(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg, void *user_data)
 {
     client_t   *c = (client_t *)user_data;
     const char *focus;
@@ -393,8 +393,7 @@ static int focus_notify(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
     MRP_UNUSED(dbus);
 
     hide_prompt(c);
-    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &focus,
-                              DBUS_TYPE_INVALID))
+    if (mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_STRING, &focus))
         print(c, "Voice focus is now: %s", focus);
     else
         print(c, "Failed to parse voice focus notification.");
@@ -404,7 +403,7 @@ static int focus_notify(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
 }
 
 
-static int voice_command_notify(mrp_dbus_t *dbus, DBusMessage *msg,
+static int voice_command_notify(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
                                 void *user_data)
 {
     client_t   *c = (client_t *)user_data;
@@ -413,8 +412,7 @@ static int voice_command_notify(mrp_dbus_t *dbus, DBusMessage *msg,
     MRP_UNUSED(dbus);
 
     hide_prompt(c);
-    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &command,
-                              DBUS_TYPE_INVALID))
+    if (mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_STRING, &command))
         print(c, "Received voice command: %s", command);
     else
         print(c, "Failed to parse voice command notification.");
@@ -424,7 +422,7 @@ static int voice_command_notify(mrp_dbus_t *dbus, DBusMessage *msg,
 }
 
 
-static int voice_render_notify(mrp_dbus_t *dbus, DBusMessage *msg,
+static int voice_render_notify(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
                                void *user_data)
 {
     client_t   *c = (client_t *)user_data;
@@ -436,10 +434,8 @@ static int voice_render_notify(mrp_dbus_t *dbus, DBusMessage *msg,
     MRP_UNUSED(dbus);
 
     hide_prompt(c);
-    if (!dbus_message_get_args(msg, NULL,
-                               DBUS_TYPE_UINT32, &id,
-                               DBUS_TYPE_STRING, &event,
-                               DBUS_TYPE_INVALID)) {
+    if (!mrp_dbus_msg_read_basic(msg, DBUS_TYPE_UINT32, &id) ||
+        !mrp_dbus_msg_read_basic(msg, DBUS_TYPE_STRING, &event)) {
         print(c, "Failed to parse voice render event notification.");
         return TRUE;
     }
@@ -447,13 +443,14 @@ static int voice_render_notify(mrp_dbus_t *dbus, DBusMessage *msg,
     if (!strcmp(event, "progress")) {
         pcnt = -1.0;
         msec = (uint32_t)-1;
-        dbus_message_get_args(msg, NULL,
-                              DBUS_TYPE_UINT32, &id,
-                              DBUS_TYPE_STRING, &event,
-                              DBUS_TYPE_DOUBLE, &pcnt,
-                              DBUS_TYPE_UINT32, &msec,
-                              DBUS_TYPE_INVALID);
-        print(c, "Rendering <%u> progress: %f %% (%u msecs)", id, pcnt, msec);
+        if (mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_UINT32, &id) &&
+            mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_STRING, &event) &&
+            mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_DOUBLE, &pcnt) &&
+            mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_UINT32, &msec))
+            print(c, "Rendering <%u> progress: %f %% (%u msecs)", id,
+                  pcnt, msec);
+        else
+            print(c, "Rendering <%u> progress: failed to parse message", id);
     }
     else
         print(c, "Rendering <%u>: %s", id, event);
@@ -749,13 +746,14 @@ static void parse_cmdline(client_t *c, int argc, char **argv)
 }
 
 
-static void register_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+static void register_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl,
+                           void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
+    if (mrp_dbus_msg_type(rpl) == MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN) {
         set_prompt(c, c->app_name);
         print(c, "Successfully registered to server.");
         if (c->autofocus)
@@ -785,22 +783,22 @@ static void register_client(client_t *c)
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
                        register_reply, c,
-                       DBUS_TYPE_STRING, &c->app_name,
-                       DBUS_TYPE_STRING, &c->app_class,
-                       DBUS_TYPE_ARRAY , DBUS_TYPE_STRING, &cmds, ncmd,
-                       DBUS_TYPE_INVALID))
+                       MRP_DBUS_TYPE_STRING, c->app_name,
+                       MRP_DBUS_TYPE_STRING, c->app_class,
+                       MRP_DBUS_TYPE_ARRAY , MRP_DBUS_TYPE_STRING, cmds, ncmd,
+                       MRP_DBUS_TYPE_INVALID))
         print(c, "Failed to send register message to server.");
 }
 
 
-static void unregister_reply(mrp_dbus_t *dbus, DBusMessage *rpl,
+static void unregister_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl,
                              void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
+    if (mrp_dbus_msg_type(rpl) == MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN) {
         set_prompt(c, "unregistered");
         print(c, "Successfully unregistered from server.");
     }
@@ -822,18 +820,18 @@ static void unregister_client(client_t *c)
     }
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
-                       unregister_reply, c, DBUS_TYPE_INVALID))
+                       unregister_reply, c, MRP_DBUS_TYPE_INVALID))
         print(c, "Failed to send unregister message to server.");
 }
 
 
-static void focus_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+static void focus_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl, void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+    if (mrp_dbus_msg_type(rpl) == MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN)
         print(c, "Focus request sent to server.");
     else
         print(c, "Focus request failed on server.");
@@ -854,18 +852,18 @@ static void request_focus(client_t *c, const char *focus)
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
                        focus_reply, c,
-                       DBUS_TYPE_STRING, &focus, DBUS_TYPE_INVALID))
+                       MRP_DBUS_TYPE_STRING, focus, DBUS_TYPE_INVALID))
         print(c, "Failed to send focus request to server.");
 }
 
 
-static void render_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+static void render_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl, void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+    if (mrp_dbus_msg_type(rpl) == MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN)
         print(c, "TTS render request succeeded.");
     else
         print(c, "TTS render request failed on server.");
@@ -902,24 +900,25 @@ static void request_render_voice(client_t *c, const char *msg, const char *vid,
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
                        render_reply, c,
-                       DBUS_TYPE_STRING, &msg,
-                       DBUS_TYPE_STRING, &vid,
-                       DBUS_TYPE_INT32 , &to,
-                       DBUS_TYPE_ARRAY , DBUS_TYPE_STRING, &events, nevent,
-                       DBUS_TYPE_INVALID))
+                       MRP_DBUS_TYPE_STRING, msg,
+                       MRP_DBUS_TYPE_STRING, vid,
+                       MRP_DBUS_TYPE_INT32 , &to,
+                       MRP_DBUS_TYPE_ARRAY ,
+                       MRP_DBUS_TYPE_STRING, events, nevent,
+                       MRP_DBUS_TYPE_INVALID))
         print(c, "Failed to send voice cancel request to server.");
 
     return;
 }
 
 
-static void cancel_reply(mrp_dbus_t *dbus, DBusMessage *rpl, void *user_data)
+static void cancel_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl, void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) == DBUS_MESSAGE_TYPE_METHOD_RETURN)
+    if (mrp_dbus_msg_type(rpl) == MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN)
         print(c, "TTS cancel request succeeded.");
     else
         print(c, "TTS cancel request failed on server.");
@@ -940,63 +939,55 @@ static void request_cancel_voice(client_t *c, uint32_t id)
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
                        cancel_reply, c,
-                       DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID))
+                       MRP_DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID))
         print(c, "Failed to send voice cancel request to server.");
 }
 
 
-static void voice_query_reply(mrp_dbus_t *dbus, DBusMessage *rpl,
+static void voice_query_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl,
                               void *user_data)
 {
-    client_t *c = (client_t *)user_data;
-    uint32_t  nvoice;
-    int       n;
+    client_t  *c = (client_t *)user_data;
+    uint32_t   nvoice;
+    char     **voices, **lang, **dialect, **gender, **description;
+    size_t     dummy;
+    int        i, n;
 
     MRP_UNUSED(dbus);
 
-    if (dbus_message_get_type(rpl) != DBUS_MESSAGE_TYPE_METHOD_RETURN) {
+    if (mrp_dbus_msg_type(rpl) != MRP_DBUS_MESSAGE_TYPE_METHOD_RETURN) {
         print(c, "Voice query failed.");
         return;
     }
 
-    if (!dbus_message_get_args(rpl, NULL,
-                               DBUS_TYPE_UINT32, &nvoice,
-                               DBUS_TYPE_INVALID)) {
+    if (!mrp_dbus_msg_read_basic(rpl, MRP_DBUS_TYPE_UINT32, &nvoice)) {
         print(c, "Failed to parse voice query reply.");
         return;
     }
 
-    n = (int)nvoice;
-    {
-        char **voices, **lang, **dialect, **gender, **description;
-        int    i, dummy;
+    if (!mrp_dbus_msg_read_basic(rpl, MRP_DBUS_TYPE_UINT32, &nvoice) ||
+        !mrp_dbus_msg_read_array(rpl, MRP_DBUS_TYPE_STRING,
+                                 (void **)&voices, &dummy) ||
+        !mrp_dbus_msg_read_array(rpl, MRP_DBUS_TYPE_STRING,
+                                 (void **)&lang, &dummy) ||
+        !mrp_dbus_msg_read_array(rpl, MRP_DBUS_TYPE_STRING,
+                                 (void **)&dialect, &dummy) ||
+        !mrp_dbus_msg_read_array(rpl, MRP_DBUS_TYPE_STRING,
+                                 (void **)&gender, &dummy) ||
+        !mrp_dbus_msg_read_array(rpl, MRP_DBUS_TYPE_STRING,
+                                 (void **)&description, &dummy)) {
+        print(c, "Failed to parse voice query reply.");
+        return;
+    }
 
-        if (!dbus_message_get_args(rpl, NULL,
-                                   DBUS_TYPE_UINT32, &nvoice,
-                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-                                   &voices, &dummy,
-                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-                                   &lang, &dummy,
-                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-                                   &dialect, &dummy,
-                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-                                   &gender, &dummy,
-                                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
-                                   &description, &dummy,
-                                   DBUS_TYPE_INVALID)) {
-            print(c, "Failed to parse voice query reply.");
-            return;
-        }
-
-        print(c, "Server has %d voice%s loaded.", nvoice,
-              nvoice == 1 ? "" : "s");
-        for (i = 0; i < nvoice; i++) {
-            print(c, "#%d: %s", i + 1, voices[i]);
-            print(c, "    language: %s", lang[i]);
-            print(c, "    dialect: %s", dialect[i] ? dialect[i] : "<none>");
-            print(c, "    gender: %s", gender[i]);
-            print(c, "    description: %s", description[i]);
-        }
+    print(c, "Server has %d voice%s loaded.", nvoice,
+          nvoice == 1 ? "" : "s");
+    for (i = 0; i < nvoice; i++) {
+        print(c, "#%d: %s", i + 1, voices[i]);
+        print(c, "    language: %s", lang[i]);
+        print(c, "    dialect: %s", dialect[i] ? dialect[i] : "<none>");
+        print(c, "    gender: %s", gender[i]);
+        print(c, "    description: %s", description[i]);
     }
 }
 
@@ -1018,8 +1009,8 @@ static void query_voices(client_t *c, const char *language)
 
     if (!mrp_dbus_call(c->dbus, dest, path, iface, method, -1,
                        voice_query_reply, c,
-                       DBUS_TYPE_STRING, &language,
-                       DBUS_TYPE_INVALID))
+                       MRP_DBUS_TYPE_STRING, language,
+                       MRP_DBUS_TYPE_INVALID))
         print(c, "Failed to send voice query request to server.");
 
     return;

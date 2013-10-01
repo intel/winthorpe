@@ -33,7 +33,7 @@
 #include <murphy/common/log.h>
 #include <murphy/common/debug.h>
 #include <murphy/common/debug.h>
-#include <murphy/common/dbus.h>
+#include <murphy/common/dbus-libdbus.h>
 
 #include "src/daemon/plugin.h"
 #include "src/daemon/client.h"
@@ -49,12 +49,16 @@
 
 #define MAX_COMMANDS 256
 
-static int register_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
-static int unregister_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
-static int focus_req(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
-static int render_voice_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
-static int cancel_voice_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
-static int query_voices_req(mrp_dbus_t *dbus, DBusMessage *msg,void *user_data);
+static int register_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg, void *user_data);
+static int unregister_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
+                          void *user_data);
+static int focus_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg, void *user_data);
+static int render_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
+                            void *user_data);
+static int cancel_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
+                            void *user_data);
+static int query_voices_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg,
+                            void *user_data);
 
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus);
 static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
@@ -82,7 +86,7 @@ static int dbusif_setup(dbusif_t *bus)
 {
     srs_context_t  *srs = bus->self->srs;
     const char     *path, *iface, *method;
-    int           (*cb)(mrp_dbus_t *, DBusMessage *, void *);
+    int           (*cb)(mrp_dbus_t *, mrp_dbus_msg_t *, void *);
 
     mrp_debug("setting up client D-BUS interface (%s)", bus->address);
 
@@ -158,7 +162,7 @@ static void dbusif_cleanup(dbusif_t *bus)
 {
     srs_context_t  *srs = bus->self->srs;
     const char     *path, *iface, *method;
-    int           (*cb)(mrp_dbus_t *, DBusMessage *, void *);
+    int           (*cb)(mrp_dbus_t *, mrp_dbus_msg_t *, void *);
 
     mrp_debug("cleaning up client D-BUS interface");
 
@@ -221,24 +225,26 @@ static void name_change_cb(mrp_dbus_t *dbus, const char *name, int running,
 }
 
 
-static void simple_reply(mrp_dbus_t *dbus, DBusMessage *req, int errcode,
+static void simple_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, int errcode,
                          const char *errmsg)
 {
     int32_t error;
 
     if (!errcode)
-        mrp_dbus_reply(dbus, req, DBUS_TYPE_INVALID);
+        mrp_dbus_reply(dbus, req, MRP_DBUS_TYPE_INVALID);
     else {
         error = errcode;
-        mrp_dbus_reply_error(dbus, req, DBUS_ERROR_FAILED, errmsg,
-                             DBUS_TYPE_INT32, &error, DBUS_TYPE_INVALID);
+        mrp_dbus_reply_error(dbus, req, MRP_DBUS_ERROR_FAILED, errmsg,
+                             MRP_DBUS_TYPE_INT32, &error,
+                             MRP_DBUS_TYPE_INVALID);
     }
 }
 
 
-static void reply_render(mrp_dbus_t *dbus, DBusMessage *req, uint32_t id)
+static void reply_render(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, uint32_t id)
 {
-    mrp_dbus_reply(dbus, req, DBUS_TYPE_UINT32, &id, DBUS_TYPE_INVALID);
+    mrp_dbus_reply(dbus, req, MRP_DBUS_TYPE_UINT32, &id,
+                   MRP_DBUS_TYPE_INVALID);
 }
 
 
@@ -255,7 +261,7 @@ static char *clear_non_us_ascii(char *s)
 }
 
 
-static void reply_voice_query(mrp_dbus_t *dbus, DBusMessage *req, int nactor,
+static void reply_voice_query(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, int nactor,
                               srs_voice_actor_t *actors)
 {
     srs_voice_actor_t *a;
@@ -296,74 +302,59 @@ static void reply_voice_query(mrp_dbus_t *dbus, DBusMessage *req, int nactor,
     g  = gender;
     d  = description;
     mrp_dbus_reply(dbus, req,
-                   DBUS_TYPE_UINT32, &n,
-                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &v , n,
-                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &ml, n,
-                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &sl, n,
-                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &g , n,
-                   DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &d , n,
-                   DBUS_TYPE_INVALID);
+                   MRP_DBUS_TYPE_UINT32, &n,
+                   MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &v , n,
+                   MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &ml, n,
+                   MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &sl, n,
+                   MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &g , n,
+                   MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &d , n,
+                   MRP_DBUS_TYPE_INVALID);
 }
 
 
-static int parse_commands(DBusMessageIter *it, char **commands, int ncommand)
+static int parse_commands(mrp_dbus_msg_t *msg, char **commands, int ncommand)
 {
     int n;
 
     n = 0;
-    while (dbus_message_iter_get_arg_type(it) == DBUS_TYPE_STRING) {
-        if (n >= ncommand)
+    while (n < ncommand - 1) {
+        if (mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_STRING, commands + n))
+            n++;
+        else
             return -1;
-
-        dbus_message_iter_get_basic(it, commands + n);
-        n++;
-
-        dbus_message_iter_next(it);
     }
 
     return n;
 }
 
 
-static int parse_register(DBusMessage *req, const char **id, const char **name,
-                          const char **appclass, char **commands, int *ncommand,
-                          const char **errmsg)
+static int parse_register(mrp_dbus_msg_t *req, const char **id,
+                          const char **name, const char **appclass,
+                          char ***commands, int *ncommand, const char **errmsg)
 {
-    DBusMessageIter it, ia;
+    void   *cmds;
+    size_t  ncmd;
 
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
-    if (*id == NULL || !dbus_message_iter_init(req, &it)) {
+    if (*id == NULL) {
         *errmsg = "failed to parse register message";
         return EINVAL;
     }
 
-    if (dbus_message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+    if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, name))
         goto malformed;
-    else
-        dbus_message_iter_get_basic(&it, name);
 
-    dbus_message_iter_next(&it);
-
-    if (dbus_message_iter_get_arg_type(&it) != DBUS_TYPE_STRING)
+    if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, appclass))
         goto malformed;
-    else
-        dbus_message_iter_get_basic(&it, appclass);
 
-    dbus_message_iter_next(&it);
+    if (mrp_dbus_msg_read_array(req, MRP_DBUS_TYPE_STRING, &cmds, &ncmd)) {
+        if (ncmd > 0) {
+            *commands = cmds;
+            *ncommand = (int)ncmd;
 
-    if (dbus_message_iter_get_arg_type(&it) != DBUS_TYPE_ARRAY)
-        goto malformed;
-    else
-        dbus_message_iter_recurse(&it, &ia);
-
-    *ncommand = parse_commands(&ia, commands, *ncommand);
-
-    if (*ncommand > 0)
-        return 0;
-    else {
-        *errmsg = "failed to parse commands";
-        return EINVAL;
+            return 0;
+        }
     }
 
  malformed:
@@ -372,7 +363,7 @@ static int parse_register(DBusMessage *req, const char **id, const char **name,
 }
 
 
-static int register_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int register_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, void *user_data)
 {
     static srs_client_ops_t ops = {
         .notify_focus   = focus_notify,
@@ -383,12 +374,12 @@ static int register_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
     dbusif_t        *bus = (dbusif_t *)user_data;
     srs_context_t   *srs = bus->self->srs;
     const char      *id, *name, *appcls, *errmsg;
-    char            *cmds[MAX_COMMANDS];
+    char           **cmds;
     int              ncmd, err;
     srs_client_t    *c;
 
     ncmd = MRP_ARRAY_SIZE(cmds);
-    err  = parse_register(req, &id, &name, &appcls, &cmds[0], &ncmd, &errmsg);
+    err  = parse_register(req, &id, &name, &appcls, &cmds, &ncmd, &errmsg);
 
     if (err) {
         reply_register(dbus, req, err, errmsg);
@@ -422,10 +413,10 @@ static int register_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 }
 
 
-static int parse_unregister(DBusMessage *req, const char **id,
+static int parse_unregister(mrp_dbus_msg_t *req, const char **id,
                             const char **errmsg)
 {
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
     if (*id != NULL)
         return 0;
@@ -436,7 +427,8 @@ static int parse_unregister(DBusMessage *req, const char **id,
 }
 
 
-static int unregister_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int unregister_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
+                          void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -466,16 +458,15 @@ static int unregister_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 }
 
 
-static int parse_focus(DBusMessage *req, const char **id, int *focus,
+static int parse_focus(mrp_dbus_msg_t *req, const char **id, int *focus,
                        const char **errmsg)
 {
     const char *type;
 
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
     if (*id != NULL) {
-        if (dbus_message_get_args(req, NULL, DBUS_TYPE_STRING, &type,
-                                  DBUS_TYPE_INVALID)) {
+        if (mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, &type)) {
             if (!strcmp(type, "none"))
                 *focus = SRS_VOICE_FOCUS_NONE;
             else if (!strcmp(type, "shared"   ))
@@ -499,7 +490,7 @@ static int parse_focus(DBusMessage *req, const char **id, int *focus,
 }
 
 
-static int focus_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int focus_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -548,7 +539,7 @@ static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
     }
 
     return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
-                           DBUS_TYPE_STRING, &state, DBUS_TYPE_INVALID);
+                           MRP_DBUS_TYPE_STRING, state, MRP_DBUS_TYPE_INVALID);
 }
 
 
@@ -586,7 +577,7 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
     }
 
     return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
-                           DBUS_TYPE_STRING, &cmd, DBUS_TYPE_INVALID);
+                           MRP_DBUS_TYPE_STRING, cmd, MRP_DBUS_TYPE_INVALID);
 }
 
 
@@ -610,9 +601,9 @@ static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
     case SRS_VOICE_EVENT_ABORTED:   type = "aborted"  ; goto send;
     send:
         return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
-                               DBUS_TYPE_UINT32, &event->id,
-                               DBUS_TYPE_STRING, &type,
-                               DBUS_TYPE_INVALID);
+                               MRP_DBUS_TYPE_UINT32, &event->id,
+                               MRP_DBUS_TYPE_STRING, type,
+                               MRP_DBUS_TYPE_INVALID);
 
     case SRS_VOICE_EVENT_PROGRESS:
         type = "progress";
@@ -620,11 +611,11 @@ static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
         msec = event->data.progress.msec;
 
         return mrp_dbus_signal(bus->dbus, dest, path, iface, sig,
-                               DBUS_TYPE_UINT32, &event->id,
-                               DBUS_TYPE_STRING, &type,
-                               DBUS_TYPE_DOUBLE, &pcnt,
-                               DBUS_TYPE_UINT32, &msec,
-                               DBUS_TYPE_INVALID);
+                               MRP_DBUS_TYPE_UINT32, &event->id,
+                               MRP_DBUS_TYPE_STRING, type,
+                               MRP_DBUS_TYPE_DOUBLE, &pcnt,
+                               MRP_DBUS_TYPE_UINT32, &msec,
+                               MRP_DBUS_TYPE_INVALID);
 
     default:
         return TRUE;
@@ -632,27 +623,26 @@ static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
 }
 
 
-static int parse_render_voice(DBusMessage *req, const char **id,
+static int parse_render_voice(mrp_dbus_msg_t *req, const char **id,
                               const char **msg, const char **voice,
                               int *timeout, int *notify_events,
                               const char **errmsg)
 {
     char    **events, *e;
-    int       nevent, i;
+    int       i;
+    size_t    nevent;
     int32_t   to;
 
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
     if (*id == NULL)
         return EINVAL;
 
-    if (!dbus_message_get_args(req, NULL,
-                               DBUS_TYPE_STRING, msg,
-                               DBUS_TYPE_STRING, voice,
-                               DBUS_TYPE_INT32 , &to,
-                               DBUS_TYPE_ARRAY,
-                               DBUS_TYPE_STRING, &events, &nevent,
-                               DBUS_TYPE_INVALID)) {
+    if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, msg) ||
+        !mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, voice) ||
+        !mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_INT32 , &to) ||
+        !mrp_dbus_msg_read_array(req, MRP_DBUS_TYPE_STRING,
+                                 (void **)&events, &nevent)) {
         *errmsg = "malformed voice render message";
 
         return EINVAL;
@@ -685,7 +675,8 @@ static int parse_render_voice(DBusMessage *req, const char **id,
 }
 
 
-static int render_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int render_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
+                            void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -722,18 +713,16 @@ static int render_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 }
 
 
-static int parse_cancel_voice(DBusMessage *req, const char **id,
+static int parse_cancel_voice(mrp_dbus_msg_t *req, const char **id,
                               uint32_t *reqid, const char **errmsg)
 {
 
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
     if (*id == NULL)
         return EINVAL;
 
-    if (!dbus_message_get_args(req, NULL,
-                               DBUS_TYPE_UINT32, reqid,
-                               DBUS_TYPE_INVALID)) {
+    if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_UINT32, &reqid)) {
         *errmsg = "malformed voice render message";
 
         return EINVAL;
@@ -743,7 +732,8 @@ static int parse_cancel_voice(DBusMessage *req, const char **id,
 }
 
 
-static int cancel_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int cancel_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
+                            void *user_data)
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
@@ -775,24 +765,23 @@ static int cancel_voice_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
 }
 
 
-static int parse_voice_query(DBusMessage *req, const char **id,
+static int parse_voice_query(mrp_dbus_msg_t *req, const char **id,
                              const char **lang)
 {
-    *id = dbus_message_get_sender(req);
+    *id = mrp_dbus_msg_sender(req);
 
     if (*id == NULL)
         return EINVAL;
 
-    if (!dbus_message_get_args(req, NULL,
-                               DBUS_TYPE_STRING, lang,
-                               DBUS_TYPE_INVALID))
+    if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, lang))
         lang = NULL;
 
     return 0;
 }
 
 
-static int query_voices_req(mrp_dbus_t *dbus, DBusMessage *req, void *user_data)
+static int query_voices_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
+                            void *user_data)
 {
     dbusif_t          *bus = (dbusif_t *)user_data;
     srs_context_t     *srs = bus->self->srs;

@@ -328,7 +328,7 @@ void client_notify_command(srs_client_t *c, int index,
                            uint32_t *start, uint32_t *end,
                            srs_audiobuf_t *audio)
 {
-    if (c->enabled && /*c->allowed && */ 0 <= index && index < c->ncommand) {
+    if (c->enabled && c->allowed && 0 <= index && index < c->ncommand) {
         c->ops.notify_command(c, index, ntoken, (char **)tokens,
                               start, end, audio);
     }

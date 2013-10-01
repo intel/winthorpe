@@ -154,7 +154,7 @@ int resource_create(srs_client_t *c)
 
     if (rset != NULL) {
         c->rset = rset;
-        shared  = (c->requested != SRS_VOICE_FOCUS_EXCLUSIVE);
+        shared  = (c->focus != SRS_VOICE_FOCUS_EXCLUSIVE);
 
         if (!mrp_res_create_resource(rctx, rset, RESOURCE, TRUE, shared)) {
             resource_destroy(c);
@@ -163,6 +163,7 @@ int resource_create(srs_client_t *c)
         }
 
         if (c->focus != SRS_VOICE_FOCUS_NONE) {
+            c->shared = !!shared;
             if (!resource_acquire(c)) {
                 resource_destroy(c);
 
@@ -182,7 +183,8 @@ void resource_destroy(srs_client_t *c)
     if (c->srs->rctx != NULL && c->rset != NULL)
         mrp_res_delete_resource_set(c->srs->rctx, c->rset);
 
-    c->rset = NULL;
+    c->rset   = NULL;
+    c->shared =  0;
 }
 
 
@@ -193,6 +195,11 @@ int resource_acquire(srs_client_t *c)
 
     if (c->rset == NULL && !resource_create(c))
         return FALSE;
+
+    if (c->focus != SRS_VOICE_FOCUS_SHARED && c->shared) {
+        resource_destroy(c);
+        return resource_create(c);
+    }
 
     if (mrp_res_acquire_resource_set(c->srs->rctx, c->rset) >= 0)
         return TRUE;

@@ -20,6 +20,7 @@ srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
 		daemon/config.c			\
 		daemon/resourceif.c		\
+		daemon/resctl.c			\
 		daemon/client.c			\
 		daemon/plugin.c			\
 		daemon/audiobuf.c		\
@@ -161,7 +162,7 @@ plugin_simple_disambiguator_la_LDFLAGS =			\
 
 plugin_simple_disambiguator_la_LIBADD  =
 
-if DBUS_ENABLED
+if MPRIS2_ENABLED
 # Mpris2 client plugin
 plugin_LTLIBRARIES += plugin-mpris2-client.la
 
@@ -184,7 +185,7 @@ plugin_mpris2_client_la_LIBADD  =				\
 endif
 
 
-if DBUS_ENABLED
+if BLUETOOTH_ENABLED
 # Bluetooth client plugin
 plugin_LTLIBRARIES += plugin-bluetooth-client.la
 

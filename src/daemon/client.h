@@ -145,6 +145,7 @@ struct srs_client_s {
     srs_voice_focus_t       focus;       /* requested voice focus */
     int                     enabled : 1; /* interested in commands */
     int                     allowed : 1; /* has resource granted */
+    int                     shared : 1;  /* */
     mrp_list_hook_t         voices;      /* unfinished voice requests */
     srs_client_ops_t        ops;         /* client ops (notifications)  */
     void                   *user_data;   /* opaque client data */
