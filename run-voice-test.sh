@@ -88,7 +88,7 @@ while [ -n "$1" ]; do
             xeq=echo
             ;;
         -d|--debug)
-            DEBUG_OPTIONS="-d '*'"
+            DEBUG_OPTIONS='-d'
             ;;
          *)
             EXTRA_OPTIONS="$EXTRA_OPTIONS $1"
@@ -97,6 +97,12 @@ while [ -n "$1" ]; do
     shift
 done
 
-$xeq ./src/srs-daemon -f $VERBOSITY $DEBUG_OPTIONS \
-    -P $PLUGINDIR -c $CONFIGFILE \
-    $LOAD_OPTIONS $PULSESRC $EXTRA_OPTIONS
+if [ -z "$DEBUG_OPTIONS" ]; then
+    $xeq ./src/srs-daemon -f $VERBOSITY "$DEBUG_OPTIONS" \
+        -P $PLUGINDIR -c $CONFIGFILE \
+        $LOAD_OPTIONS $PULSESRC $EXTRA_OPTIONS
+else
+    $xeq ./src/srs-daemon -f $VERBOSITY -d '*' \
+        -P $PLUGINDIR -c $CONFIGFILE \
+        $LOAD_OPTIONS $PULSESRC $EXTRA_OPTIONS
+fi
