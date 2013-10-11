@@ -108,7 +108,9 @@ static void create_mainloop(srs_context_t *srs)
     if (srs_get_bool_config(srs->settings, "gmainloop", FALSE)) {
         mrp_log_info("Configured to run with glib mainloop.");
 
+#ifndef GLIB_VERSION_2_36
         g_type_init();
+#endif
         srs->gl = g_main_loop_new(NULL, FALSE);
 
         if (srs->gl == NULL) {
