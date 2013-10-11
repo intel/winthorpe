@@ -4,8 +4,8 @@ bin_PROGRAMS       =
 plugindir          = $(libdir)/srs/plugins
 plugin_LTLIBRARIES =
 
-INCLUDES           = -I$(top_builddir)
-AM_CFLAGS          = $(INCLUDES) $(GLIB_CFLAGS)
+AM_CPPFLAGS        = -I$(top_builddir)
+AM_CFLAGS          = $(GLIB_CFLAGS)
 
 QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 
