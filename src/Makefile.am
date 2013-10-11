@@ -19,7 +19,6 @@ srs_daemon_PUBLIC_SYMBOLS =			\
 srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
 		daemon/config.c			\
-		daemon/resourceif.c		\
 		daemon/resctl.c			\
 		daemon/client.c			\
 		daemon/plugin.c			\

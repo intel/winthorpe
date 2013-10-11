@@ -33,7 +33,7 @@
 typedef struct srs_client_s srs_client_t;
 
 #include "src/daemon/context.h"
-#include "src/daemon/resourceif.h"
+#include "src/daemon/resctl.h"
 #include "src/daemon/audiobuf.h"
 #include "srs/daemon/voice.h"
 
@@ -139,13 +139,11 @@ struct srs_client_s {
     int                     ncommand;    /* number of commands */
     char                   *id;          /* client id */
     srs_context_t          *srs;         /* context back pointer */
-    mrp_res_resource_set_t *rset;        /* resource set */
+    srs_resset_t           *rset;        /* resource set */
     srs_voice_focus_t       requested;   /* requested voice focus */
-    srs_voice_focus_t       granted;     /* granted voice focus */
-    srs_voice_focus_t       focus;       /* requested voice focus */
+    int                     granted;     /* granted resources */
     int                     enabled : 1; /* interested in commands */
-    int                     allowed : 1; /* has resource granted */
-    int                     shared : 1;  /* */
+    int                     shared : 1;  /* whether voice focus is shared */
     mrp_list_hook_t         voices;      /* unfinished voice requests */
     srs_client_ops_t        ops;         /* client ops (notifications)  */
     void                   *user_data;   /* opaque client data */
@@ -185,9 +183,6 @@ void client_create_resources(srs_context_t *srs);
 
 /** Reset the resource sets of all clients. */
 void client_reset_resources(srs_context_t *srs);
-
-/** Deliver a resource notification event to the client. */
-void client_resource_event(srs_client_t *c, srs_resset_event_t event);
 
 /** Query voice actors. */
 int client_query_voices(srs_client_t *c, const char *language,

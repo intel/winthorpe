@@ -30,7 +30,7 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 
-#include "src/daemon/resourceif.h"
+#include "src/daemon/resctl.h"
 #include "src/daemon/recognizer.h"
 #include "src/daemon/client.h"
 
@@ -41,6 +41,8 @@ typedef struct {
     int              notify_events;      /* event mask */
 } voice_req_t;
 
+
+static void resource_event(srs_resctl_event_t *e, void *user_data);
 
 void client_reset_resources(srs_context_t *srs)
 {
@@ -61,7 +63,7 @@ void client_create_resources(srs_context_t *srs)
 
     mrp_list_foreach(&srs->clients, p, n) {
         c = mrp_list_entry(p, typeof(*c), hook);
-        resource_create(c);
+        c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
     }
 }
 
@@ -194,7 +196,7 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
     }
 
     if (srs->rctx != NULL)
-        resource_create(c);
+        c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
 
     mrp_list_append(&srs->clients, &c->hook);
 
@@ -223,7 +225,8 @@ void client_destroy(srs_client_t *c)
                      c->appclass, c->name);
 
         srs_srec_del_client(c->srs, c);
-        resource_destroy(c);
+        srs_resctl_destroy(c->rset);
+        c->rset = NULL;
 
         mrp_list_delete(&c->hook);
 
@@ -270,56 +273,61 @@ int client_request_focus(srs_client_t *c, srs_voice_focus_t focus)
 {
     mrp_debug("client %s requested %s focus", c->id, focus_string(focus));
 
-    if (c->focus != focus) {
-        c->focus = focus;
+    if (c->requested != focus) {
+        c->requested = focus;
 
-        if (c->focus != SRS_VOICE_FOCUS_NONE)
+        if (c->requested != SRS_VOICE_FOCUS_NONE) {
             c->enabled = TRUE;
-
-        if (c->focus != SRS_VOICE_FOCUS_NONE)
-            return resource_acquire(c);
+            c->shared  = focus == SRS_VOICE_FOCUS_SHARED;
+            return srs_resctl_acquire(c->rset, c->shared);
+        }
         else
-            return resource_release(c);
+            return srs_resctl_release(c->rset);
     }
-
-    return TRUE;
-}
-
-
-static int notify_focus(srs_client_t *c)
-{
-    if (!c->enabled)
-        return TRUE;
-
-    if (!c->allowed)
-        mrp_log_info("Client %s has lost voice focus.", c->id);
     else
-        mrp_log_info("Client %s has gained %svoice focus.", c->id,
-                     c->focus == SRS_VOICE_FOCUS_SHARED ?
-                     "shared " : "exclusive ");
-
-    c->ops.notify_focus(c, c->focus);
+        mrp_debug("client %s has already the requested %s focus", c->id,
+                  focus_string(focus));
 
     return TRUE;
 }
 
 
-void client_resource_event(srs_client_t *c, srs_resset_event_t e)
+static void notify_focus(srs_client_t *c, int granted)
 {
-    switch (e) {
-    case SRS_RESSET_GRANTED:
-        c->allowed = TRUE;
-        break;
+    srs_voice_focus_t focus;
 
-    case SRS_RESSET_RELEASED:
-        c->allowed = FALSE;
-        break;
-
-    default:
+    if (!c->enabled)
         return;
-    }
 
-    notify_focus(c);
+    if (granted & SRS_RESCTL_MASK_SREC) {
+        if (c->shared)
+            focus = SRS_VOICE_FOCUS_SHARED;
+        else
+            focus = SRS_VOICE_FOCUS_EXCLUSIVE;
+    }
+    else
+        focus = SRS_VOICE_FOCUS_NONE;
+
+    mrp_log_info("Client %s has %s %svoice focus.", c->id,
+                 focus ? "gained" : "lost",
+                 focus ? (c->shared ? "shared " : "exclusive ") : "");
+
+    c->ops.notify_focus(c, focus);
+
+    c->granted = granted;
+}
+
+
+static void resource_event(srs_resctl_event_t *e, void *user_data)
+{
+    srs_client_t *c = (srs_client_t *)user_data;
+
+    if (e->type != SRS_RESCTL_EVENT_RESOURCE)
+        return;
+
+    notify_focus(c, e->resource.granted);
+
+    c->granted = e->resource.granted;
 }
 
 
@@ -328,7 +336,13 @@ void client_notify_command(srs_client_t *c, int index,
                            uint32_t *start, uint32_t *end,
                            srs_audiobuf_t *audio)
 {
-    if (c->enabled && c->allowed && 0 <= index && index < c->ncommand) {
+    if (!c->enabled)
+        return;
+
+    if (!(c->granted & SRS_RESCTL_MASK_SREC))
+        return;
+
+    if (0 <= index && index < c->ncommand) {
         c->ops.notify_command(c, index, ntoken, (char **)tokens,
                               start, end, audio);
     }

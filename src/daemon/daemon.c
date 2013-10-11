@@ -38,7 +38,6 @@
 
 #include "src/daemon/context.h"
 #include "src/daemon/config.h"
-#include "src/daemon/resourceif.h"
 #include "src/daemon/resctl.h"
 #include "src/daemon/plugin.h"
 #include "src/daemon/client.h"
@@ -46,13 +45,12 @@
 
 
 static void cleanup_mainloop(srs_context_t *srs);
-static void resctl_state_change(srs_resctl_event_t e, void *user_data);
+static void resctl_state_change(srs_resctl_event_t *e, void *user_data);
 
 static void cleanup_context(srs_context_t *srs)
 {
     if (srs != NULL) {
         srs_resctl_disconnect(srs);
-        resource_disconnect(srs);
         cleanup_mainloop(srs);
 
         /*
@@ -133,8 +131,7 @@ static void create_mainloop(srs_context_t *srs)
     }
 
     if (srs->pa != NULL && srs->ml != NULL) {
-        srs_resctl_connect(srs, resctl_state_change, srs, TRUE);
-        if (resource_connect(srs))
+        if (srs_resctl_connect(srs, resctl_state_change, srs, TRUE))
             return;
     }
 
@@ -185,20 +182,20 @@ static void cleanup_mainloop(srs_context_t *srs)
 }
 
 
-static void resctl_state_change(srs_resctl_event_t e, void *user_data)
+static void resctl_state_change(srs_resctl_event_t *e, void *user_data)
 {
     srs_context_t *srs = (srs_context_t *)user_data;
 
-    switch (e) {
-    case SRS_RESCTL_UP:
+    if (e->type != SRS_RESCTL_EVENT_CONNECTION)
+        return;
+
+    if (e->connection.up) {
         mrp_log_info("Resource control connection is up.");
         client_create_resources(srs);
-        break;
-
-    case SRS_RESCTL_DOWN:
+    }
+    else {
         mrp_log_info("Resource control connection is down.");
         client_reset_resources(srs);
-        break;
     }
 }
 

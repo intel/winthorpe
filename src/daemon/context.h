@@ -58,9 +58,8 @@ struct srs_context_s {
     mrp_list_hook_t    clients;          /* connected clients */
     mrp_list_hook_t    plugins;          /* loaded plugins */
     mrp_timer_t       *rtmr;             /* resource reconnect timer */
-    mrp_res_context_t *rctx;             /* resource context */
+    srs_resctx_t      *rctx;             /* resource context */
     mrp_res_logger_t   rlog;             /* original resource logger */
-    srs_resctx_t      *resctx;           /* resource context */
     mrp_list_hook_t    recognizers;      /* speech recognition backends */
     void              *default_srec;     /* default backend */
     void              *cached_srec;      /* previously looked up backend */
