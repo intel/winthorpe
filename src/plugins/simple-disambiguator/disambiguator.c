@@ -528,6 +528,9 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
         return -1;
     }
 
+    if (utt->ncand == 0 || src == NULL)
+        goto unrecognized;
+
     for (i = 0, match = TRUE; i < (int)src->ntoken && match; i++) {
         tkn = src->tokens[i].token;
 
@@ -664,8 +667,10 @@ static int disambiguate(srs_srec_utterance_t *utt, srs_srec_result_t **result,
         }
     }
 
-    if (!match)
+    if (!match) {
+    unrecognized:
         res->type = SRS_SREC_RESULT_UNRECOGNIZED;
+    }
 
     return 0;
 }
