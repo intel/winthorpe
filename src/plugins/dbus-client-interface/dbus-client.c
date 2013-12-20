@@ -32,7 +32,6 @@
 
 #include <murphy/common/log.h>
 #include <murphy/common/debug.h>
-#include <murphy/common/debug.h>
 #include <murphy/common/dbus-libdbus.h>
 
 #include "src/daemon/plugin.h"
@@ -389,7 +388,7 @@ static int register_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, void *user_data)
 
     mrp_debug("got register request from %s", id);
 
-    c = client_create(srs, SRS_CLIENT_TYPE_DBUS, name, appcls, cmds, ncmd,
+    c = client_create(srs, SRS_CLIENT_TYPE_EXTERNAL, name, appcls, cmds, ncmd,
                       id, &ops, bus);
 
     if (c != NULL) {

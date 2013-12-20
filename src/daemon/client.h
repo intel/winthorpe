@@ -32,10 +32,11 @@
 
 typedef struct srs_client_s srs_client_t;
 
-#include "src/daemon/context.h"
-#include "src/daemon/resctl.h"
-#include "src/daemon/audiobuf.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/resctl.h"
+#include "srs/daemon/audiobuf.h"
 #include "srs/daemon/voice.h"
+#include "srs/daemon/client-api-types.h"
 
 
 /*
@@ -44,20 +45,9 @@ typedef struct srs_client_s srs_client_t;
 
 typedef enum {
     SRS_CLIENT_TYPE_NONE = 0,
-    SRS_CLIENT_TYPE_DBUS,                /* external D-BUS client */
     SRS_CLIENT_TYPE_BUILTIN,             /* builtin client */
+    SRS_CLIENT_TYPE_EXTERNAL,            /* other client */
 } srs_client_type_t;
-
-
-/*
- * voice focus types
- */
-
-typedef enum {
-    SRS_VOICE_FOCUS_NONE = 0,            /* focus released */
-    SRS_VOICE_FOCUS_SHARED,              /* normal shared voice focus */
-    SRS_VOICE_FOCUS_EXCLUSIVE,           /* exclusive voice focus */
-} srs_voice_focus_t;
 
 
 /*
@@ -73,40 +63,9 @@ typedef struct {
 
 
 /*
- * special command tokens
- */
-
-#define SRS_TOKEN_SWITCHDICT "__switch_dict__"
-#define SRS_TOKEN_PUSHDICT   "__push_dict__"
-#define SRS_TOKEN_POPDICT    "__pop_dict__"
-#define SRS_TOKEN_WILDCARD   "*"
-
-
-/* dictionary pseudo-commands */
-#define SRS_DICTCMD_SWITCH    "__switch_dict__"
-#define SRS_DICTCMD_PUSH      "__push_dict__"
-#define SRS_DICTCMD_POP       "__pop_dict__"
-
-#define SRS_DICT_SWITCH(dict) SRS_DICTCMD_SWITCH"("dict")"
-#define SRS_DICT_PUSH(dict)   SRS_DICTCMD_PUSH"("dict")"
-#define SRS_DICT_POP()        SRS_DICTCMD_POP
-
-
-/*
- * special tokens
- */
-
-#define SRS_TOKEN_SWITCHDICT "__switch_dict__"
-#define SRS_TOKEN_PUSHDICT   "__push_dict__"
-#define SRS_TOKEN_POPDICT    "__pop_dict__"
-
-#define SRS_TOKEN_WILDCARD "*"           /* match till end of utterance */
-
-/*
  * dictionary operations
  */
 
-/* dictionary operations */
 typedef enum {
     SRS_DICT_OP_UNKNOWN = 0,
     SRS_DICT_OP_SWITCH,
@@ -189,6 +148,6 @@ int client_query_voices(srs_client_t *c, const char *language,
                         srs_voice_actor_t **actorsp);
 
 /** Free voice actor query reult. */
-    void client_free_queried_voices(srs_voice_actor_t *actors);
+void client_free_queried_voices(srs_voice_actor_t *actors);
 
 #endif /* __SRS_DAEMON_CLIENT_H__ */
