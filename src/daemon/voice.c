@@ -96,7 +96,7 @@ typedef struct {
     int                 notify_mask;     /* notification event mask */
     srs_voice_notify_t  notify;          /* notification callback */
     void               *notify_data;     /* opaque notification data */
-    mrp_timer_t        *timer;           /* stream timeout timer */
+    mrp_timer_t        *timer;           /* request timeout timer */
     mrp_list_hook_t     hook;            /* hook to list of requests */
 } request_t;
 
@@ -586,12 +586,13 @@ static char **copy_tags(char **tags)
 
 static void request_timer_cb(mrp_timer_t *t, void *user_data)
 {
-    request_t         *req = (request_t *)user_data;
+    queued_t          *qr  = (queued_t *)user_data;
+    request_t         *req = &qr->req;
     srs_voice_event_t  event;
 
-    mrp_log_info("Voice/TTS request #%u timed out.", req->id);
+    mrp_log_info("Voice/TTS request #%u timed out.", qr->req.id);
 
-    mrp_del_timer(t);
+    mrp_del_timer(req->timer);
     req->timer = NULL;
 
     mrp_clear(&event);
@@ -602,14 +603,10 @@ static void request_timer_cb(mrp_timer_t *t, void *user_data)
 
     mrp_list_delete(&req->hook);
 
-    if (req->vid == SRS_VOICE_INVALID) {
-        queued_t *qr = (queued_t *)req;
+    mrp_free(qr->msg);
+    free_tags(qr->tags);
 
-        mrp_free(qr->msg);
-        free_tags(qr->tags);
-    }
-
-    mrp_free(req);
+    mrp_free(qr);
 }
 
 
@@ -644,7 +641,7 @@ static request_t *enqueue_request(state_t *state, const char *msg, char **tags,
 
         if (timeout > 0)
             qr->req.timer = mrp_add_timer(r->srs->ml, timeout,
-                                          request_timer_cb, &qr->req);
+                                          request_timer_cb, qr);
 
         return &qr->req;
     }
@@ -741,9 +738,6 @@ request_t *render_request(state_t *state, const char *msg, char **tags,
     req->notify_data = notify_data;
 
     state->active = req;
-
-    if (timeout > 0)
-        req->timer = mrp_add_timer(r->srs->ml, timeout, request_timer_cb, req);
 
     return req;
 }
