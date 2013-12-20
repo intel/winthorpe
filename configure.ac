@@ -94,12 +94,15 @@ AC_SUBST(WARNING_CFLAGS)
 # Check for the necessary Murphy components.
 PKG_CHECK_MODULES(MURPHY_COMMON,    murphy-common)
 PKG_CHECK_MODULES(MURPHY_PULSE,     murphy-pulse)
+PKG_CHECK_MODULES(MURPHY_GLIB,      murphy-glib)
 PKG_CHECK_MODULES(MURPHY_RESOURCE,  murphy-resource)
 PKG_CHECK_MODULES(MURPHY_BREEDLINE, breedline-murphy)
 AC_SUBST(MURPHY_COMMON_CFLAGS)
 AC_SUBST(MURPHY_COMMON_LIBS)
 AC_SUBST(MURPHY_PULSE_CFLAGS)
 AC_SUBST(MURPHY_PULSE_LIBS)
+AC_SUBST(MURPHY_GLIB_CFLAGS)
+AC_SUBST(MURPHY_GLIB_LIBS)
 AC_SUBST(MURPHY_RESOURCE_CFLAGS)
 AC_SUBST(MURPHY_RESOURCE_LIBS)
 AC_SUBST(MURPHY_BREEDLINE_CFLAGS)
@@ -271,6 +274,7 @@ AC_CONFIG_FILES([build-aux/shave
 		 Makefile
                  utils/Makefile
                  src/Makefile
+                 src/plugins/native-client-interface/srs-native.pc
 		 ])
 AC_OUTPUT
 

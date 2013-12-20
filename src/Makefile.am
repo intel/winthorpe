@@ -4,6 +4,11 @@ bin_PROGRAMS       =
 plugindir          = $(libdir)/srs/plugins
 plugin_LTLIBRARIES =
 
+lib_LTLIBRARIES    =
+EXTRA_DIST         =
+pkgconfig_DATA     =
+pkgconfigdir       = ${libdir}/pkgconfig
+
 AM_CPPFLAGS        = -I$(top_builddir)
 AM_CFLAGS          = $(GLIB_CFLAGS)
 
@@ -50,7 +55,7 @@ srs_daemon_LDFLAGS =				\
 		-rdynamic
 
 if DBUS_ENABLED
-# SRS command line test clinet
+# SRS command line test client
 bin_PROGRAMS += srs-client
 
 srs_client_SOURCES =				\
@@ -92,6 +97,69 @@ plugin_dbus_client_la_LDFLAGS =			\
 plugin_dbus_client_la_LIBADD =			\
 		$(MURPHY_DBUS_LIBS)
 endif
+
+# Native client interface plugin
+plugin_LTLIBRARIES += plugin-native-client.la
+
+plugin_native_client_la_SOURCES = 					\
+		plugins/native-client-interface/native-server.c		\
+		plugins/native-client-interface/native-messages.c
+
+plugin_native_client_la_CFLAGS =		\
+		$(AM_CFLAGS)			\
+		$(MURPHY_COMMON_CFLAGS)
+
+plugin_native_client_la_LDFLAGS =		\
+		-module -avoid-version
+
+plugin_native_client_la_LIBADD =		\
+		$(MURPHY_COMMON_LIBS)
+
+# Native client library
+lib_LTLIBRARIES += libsrs-native.la
+EXTRA_DIST      += plugins/native-client-interface/srs-native.pc
+pkgconfig_DATA  += plugins/native-client-interface/srs-native.pc
+
+libsrs_native_ladir      = $(includedir)/srs
+libsrs_native_la_HEADERS =	\
+		plugins/native-client-interface/native-client.h \
+		plugins/native-client-interface/native-config.h \
+		plugins/native-client-interface/native-messages.h
+
+libsrs_native_la_SOURCES =	\
+		plugins/native-client-interface/native-client.c \
+		plugins/native-client-interface/native-messages.c
+
+libsrs_native_la_CFLAGS =	\
+		$(AM_CFLAGS)	\
+		$(MURPHY_COMMON_CFLAGS)
+
+libsrs_native_la_LIBADD =	\
+		$(MURPHY_COMMON_LIBS)
+
+# native client API command line test client
+bin_PROGRAMS += srs-native-client
+
+srs_native_client_SOURCES =						\
+		plugins/native-client-interface/test-client.c
+
+srs_native_client_CFLAGS =			\
+		$(AM_CFLAGS)			\
+		$(MURPHY_PULSE_CFLAGS)		\
+		$(MURPHY_BREEDLINE_CFLAGS)	\
+		$(MURPHY_COMMON_CFLAGS)		\
+		$(MURPHY_GLIB_FLAGS)
+
+srs_native_client_LDADD =			\
+		$(MURPHY_PULSE_LIBS)		\
+		$(MURPHY_BREEDLINE_LIBS)	\
+		$(MURPHY_COMMON_LIBS)		\
+		$(MURPHY_GLIB_LIBS)		\
+		$(PULSE_LIBS)			\
+		libsrs-native.la
+
+libsrs_native_client_la_LDFLAGS =	\
+		-version-info @SRS_VERSION_INFO@
 
 # SRS fake speech engine plugin
 plugin_LTLIBRARIES += plugin-fake-speech.la
