@@ -1,7 +1,7 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/refcnt.h>
 
-#include "src/daemon/audiobuf.h"
+#include "srs/daemon/audiobuf.h"
 
 /*
  * audio buffer handling

@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/recognizer.h"
 
 typedef enum utterance_processor_e  utterance_processor_t;
 

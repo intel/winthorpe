@@ -6,9 +6,9 @@
 #include <murphy/common/log.h>
 #include <murphy/common/debug.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
+#include "srs/daemon/recognizer.h"
 
 #define DISAMB_NAME     "simple-disambiguator"
 #define DISAMB_INFO     "A test disambiguator."

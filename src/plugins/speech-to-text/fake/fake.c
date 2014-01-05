@@ -30,8 +30,8 @@
 #include <murphy/common/debug.h>
 #include <murphy/common/mainloop.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/recognizer.h"
 
 #define FAKE_NAME        "fake-speech"
 #define FAKE_DESCRIPTION "A fake/test SRS speech engine to test the infra."

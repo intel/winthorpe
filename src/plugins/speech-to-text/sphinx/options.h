@@ -1,7 +1,7 @@
 #ifndef __SRS_POCKET_SPHINX_OPTIONS_H__
 #define __SRS_POCKET_SPHINX_OPTIONS_H__
 
-#include "src/daemon/config.h"
+#include "srs/daemon/config.h"
 
 #include "sphinx-plugin.h"
 

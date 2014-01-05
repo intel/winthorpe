@@ -5,7 +5,7 @@
 #include <murphy/common/macros.h>
 #include <pulse/pulseaudio.h>
 
-#include "src/plugins/festival/festival-voice.h"
+#include "festival-voice.h"
 
 MRP_CDECL_BEGIN
 

@@ -163,19 +163,19 @@ static void acoustic_processor(context_t *ctx,
         if ((seg  = ps_nbest_seg(nb, &score))) {
             while (seg && strcmp(ps_seg_word(seg), "<s>"))
                 seg = ps_seg_next(seg);
-            
+
             if (!seg)
                 continue;
-                
+
             ps_seg_frames(seg, &start, &end);
-                
+
             cand = cands + ncand;
-                
+
             cand->score = logmath_exp(lmath, score) / prob;
             cand->ntoken = 0;
-                
+
             length = 0;
-                
+
             while ((seg = ps_seg_next(seg))) {
                 if ((hyp = ps_seg_word(seg))) {
                     if (!strcmp(hyp, "</s>") ||
@@ -204,13 +204,13 @@ static void acoustic_processor(context_t *ctx,
                     }
                 }
             } /* while seg */
-            
+
             if (!seg && cand->ntoken > 0) {
                 ncand++;
                 cand->score *= 0.9; /* some penalty */
                 //memset(cand+1, 0, sizeof(srs_srec_candidate_t));
             }
-            
+
             if (!length) {
                 tkn = cand->tokens + (cand->ntoken - 1);
                 length = tkn->end;
@@ -219,7 +219,7 @@ static void acoustic_processor(context_t *ctx,
     } /* for nb */
 
     memset(cand+1, 0, sizeof(srs_srec_candidate_t));
-    
+
     utt->id = uttid;
     utt->score = prob;
     //utt->length = length;

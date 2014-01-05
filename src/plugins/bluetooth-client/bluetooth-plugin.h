@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
 
 #define PLUGIN_NAME           "bluetooth-voice-recognition"
 #define BLUETOOTH_PREFIX      "bluetooth."

@@ -34,8 +34,9 @@
 #include <murphy/common/debug.h>
 #include <murphy/common/dbus-libdbus.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
+
 #include "dbus-config.h"
 
 #define PLUGIN_NAME    "dbus-client"

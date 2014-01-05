@@ -36,13 +36,12 @@
 
 #include <glib-object.h>
 
-#include "src/daemon/context.h"
-#include "src/daemon/config.h"
-#include "src/daemon/resctl.h"
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
-#include "src/daemon/recognizer.h"
-
+#include "srs/daemon/context.h"
+#include "srs/daemon/config.h"
+#include "srs/daemon/resctl.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
+#include "srs/daemon/recognizer.h"
 
 static void cleanup_mainloop(srs_context_t *srs);
 static void resctl_state_change(srs_resctl_event_t *e, void *user_data);

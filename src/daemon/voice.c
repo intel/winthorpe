@@ -34,8 +34,8 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/list.h>
 
-#include "src/daemon/context.h"
-#include "src/daemon/voice.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/voice.h"
 
 typedef struct state_s state_t;
 

@@ -15,11 +15,10 @@ AM_CFLAGS          = $(GLIB_CFLAGS)
 QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 
 # SRS daemon
-srs_daemon_PUBLIC_SYMBOLS =			\
-		daemon/context.h		\
-		daemon/audiobuf.h		\
-		daemon/recognizer.h		\
-		daemon/plugin.h
+daemon_includedir  = $(includedir)/srs/daemon
+daemon_include_HEADERS = \
+		daemon/client-api-types.h	\
+		daemon/voice-api-types.h
 
 srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
@@ -55,36 +54,11 @@ srs_daemon_LDFLAGS =				\
 		-rdynamic
 
 if DBUS_ENABLED
-# SRS command line test client
-bin_PROGRAMS += srs-client
-
-srs_client_SOURCES =				\
-		client/client.c
-
-srs_client_CFLAGS =				\
-		$(AM_CFLAGS)			\
-		$(MURPHY_PULSE_CFLAGS)		\
-		$(MURPHY_DBUS_CFLAGS)		\
-		$(MURPHY_BREEDLINE_CFLAGS)	\
-		$(MURPHY_COMMON_CFLAGS)		\
-		$(DBUS_CFLAGS)
-
-srs_client_LDADD =				\
-		$(MURPHY_PULSE_LIBS)		\
-		$(MURPHY_DBUS_LIBS)		\
-		$(MURPHY_BREEDLINE_LIBS)	\
-		$(MURPHY_COMMON_LIBS)		\
-		$(PULSE_LIBS)			\
-		$(DBUS_LIBS)
-endif
-
-
-if DBUS_ENABLED
-# D-Bus client interface plugin
+# D-Bus client API plugin
 plugin_LTLIBRARIES += plugin-dbus-client.la
 
 plugin_dbus_client_la_SOURCES = 		\
-		plugins/dbus-client-interface/dbus-client.c
+		plugins/client-api/dbus/dbus-client.c
 
 plugin_dbus_client_la_CFLAGS =			\
 		$(AM_CFLAGS)			\
@@ -96,14 +70,37 @@ plugin_dbus_client_la_LDFLAGS =			\
 
 plugin_dbus_client_la_LIBADD =			\
 		$(MURPHY_DBUS_LIBS)
+
+# D-Bus client API command line test client
+bin_PROGRAMS += srs-dbus-client
+
+srs_dbus_client_SOURCES =				\
+		plugins/client-api/dbus/test-client.c
+
+srs_dbus_client_CFLAGS =			\
+		$(AM_CFLAGS)			\
+		$(MURPHY_PULSE_CFLAGS)		\
+		$(MURPHY_DBUS_CFLAGS)		\
+		$(MURPHY_BREEDLINE_CFLAGS)	\
+		$(MURPHY_COMMON_CFLAGS)		\
+		$(DBUS_CFLAGS)
+
+srs_dbus_client_LDADD =				\
+		$(MURPHY_PULSE_LIBS)		\
+		$(MURPHY_DBUS_LIBS)		\
+		$(MURPHY_BREEDLINE_LIBS)	\
+		$(MURPHY_COMMON_LIBS)		\
+		$(PULSE_LIBS)			\
+		$(DBUS_LIBS)
 endif
 
-# Native client interface plugin
+
+# native client API plugin
 plugin_LTLIBRARIES += plugin-native-client.la
 
 plugin_native_client_la_SOURCES = 					\
-		plugins/native-client-interface/native-server.c		\
-		plugins/native-client-interface/native-messages.c
+		plugins/client-api/native/native-server.c		\
+		plugins/client-api/native/native-messages.c
 
 plugin_native_client_la_CFLAGS =		\
 		$(AM_CFLAGS)			\
@@ -115,33 +112,33 @@ plugin_native_client_la_LDFLAGS =		\
 plugin_native_client_la_LIBADD =		\
 		$(MURPHY_COMMON_LIBS)
 
-# Native client library
-lib_LTLIBRARIES += libsrs-native.la
-EXTRA_DIST      += plugins/native-client-interface/srs-native.pc
-pkgconfig_DATA  += plugins/native-client-interface/srs-native.pc
+# native client API library
+lib_LTLIBRARIES += libsrs-native-client.la
+EXTRA_DIST      += plugins/client-api/native/srs-native-client.pc
+pkgconfig_DATA  += plugins/client-api/native/srs-native-client.pc
 
-libsrs_native_ladir      = $(includedir)/srs
-libsrs_native_la_HEADERS =	\
-		plugins/native-client-interface/native-client.h \
-		plugins/native-client-interface/native-config.h \
-		plugins/native-client-interface/native-messages.h
+libsrs_native_client_ladir      = $(includedir)/srs/client-api/native
+libsrs_native_client_la_HEADERS =	\
+		plugins/client-api/native/native-client.h \
+		plugins/client-api/native/native-config.h \
+		plugins/client-api/native/native-messages.h
 
-libsrs_native_la_SOURCES =	\
-		plugins/native-client-interface/native-client.c \
-		plugins/native-client-interface/native-messages.c
+libsrs_native_client_la_SOURCES =	\
+		plugins/client-api/native/native-client.c \
+		plugins/client-api/native/native-messages.c
 
-libsrs_native_la_CFLAGS =	\
+libsrs_native_client_la_CFLAGS =	\
 		$(AM_CFLAGS)	\
 		$(MURPHY_COMMON_CFLAGS)
 
-libsrs_native_la_LIBADD =	\
+libsrs_native_client_la_LIBADD =	\
 		$(MURPHY_COMMON_LIBS)
 
 # native client API command line test client
 bin_PROGRAMS += srs-native-client
 
 srs_native_client_SOURCES =						\
-		plugins/native-client-interface/test-client.c
+		plugins/client-api/native/test-client.c
 
 srs_native_client_CFLAGS =			\
 		$(AM_CFLAGS)			\
@@ -156,7 +153,7 @@ srs_native_client_LDADD =			\
 		$(MURPHY_COMMON_LIBS)		\
 		$(MURPHY_GLIB_LIBS)		\
 		$(PULSE_LIBS)			\
-		libsrs-native.la
+		libsrs-native-client.la
 
 libsrs_native_client_la_LDFLAGS =	\
 		-version-info @SRS_VERSION_INFO@
@@ -165,7 +162,7 @@ libsrs_native_client_la_LDFLAGS =	\
 plugin_LTLIBRARIES += plugin-fake-speech.la
 
 plugin_fake_speech_la_SOURCES =			\
-		plugins/fake-speech-engine/fake.c
+		plugins/speech-to-text/fake/fake.c
 
 plugin_fake_speech_la_CFLAGS  =			\
 		$(AM_CFLAGS)
@@ -180,13 +177,13 @@ if SPHINX_ENABLED
 plugin_LTLIBRARIES += plugin-sphinx-speech.la
 
 plugin_sphinx_speech_la_SOURCES =				\
-		plugins/sphinx-speech-engine/sphinx-plugin.c	\
-		plugins/sphinx-speech-engine/pulse-interface.c	\
-		plugins/sphinx-speech-engine/input-buffer.c	\
-		plugins/sphinx-speech-engine/filter-buffer.c	\
-		plugins/sphinx-speech-engine/utterance.c	\
-		plugins/sphinx-speech-engine/decoder-set.c	\
-		plugins/sphinx-speech-engine/options.c
+		plugins/speech-to-text/sphinx/sphinx-plugin.c   \
+		plugins/speech-to-text/sphinx/pulse-interface.c \
+		plugins/speech-to-text/sphinx/input-buffer.c    \
+		plugins/speech-to-text/sphinx/filter-buffer.c   \
+		plugins/speech-to-text/sphinx/utterance.c	      \
+		plugins/speech-to-text/sphinx/decoder-set.c     \
+		plugins/speech-to-text/sphinx/options.c
 
 plugin_sphinx_speech_la_CFLAGS  =			\
 		$(AM_CFLAGS) 				\
@@ -205,7 +202,7 @@ endif
 plugin_LTLIBRARIES += plugin-nuance-speech.la
 
 plugin_nuance_speech_la_SOURCES =			\
-		plugins/nuance-speech-engine/nuance.c
+		plugins/speech-to-text/nuance/nuance.c
 
 plugin_nuance_speech_la_CFLAGS  =			\
 		$(AM_CFLAGS)
@@ -295,7 +292,7 @@ if FESTIVAL_ENABLED
 plugin_LTLIBRARIES += plugin-festival-loader.la
 
 plugin_festival_loader_la_SOURCES =				\
-		plugins/festival/festival-loader.c
+		plugins/text-to-speech/festival/festival-loader.c
 
 plugin_festival_loader_la_CFLAGS  =				\
 		$(AM_CFLAGS)
@@ -308,10 +305,10 @@ plugin_festival_loader_la_LIBADD = -ldl
 # festival-voice synthesizer plugin
 plugin_LTLIBRARIES += plugin-festival-voice.la
 
-plugin_festival_voice_la_SOURCES =				\
-		plugins/festival/festival-voice.c		\
-		plugins/festival/libcarnival.cc			\
-		plugins/festival/pulse.c
+plugin_festival_voice_la_SOURCES =					\
+		plugins/text-to-speech/festival/festival-voice.c	\
+		plugins/text-to-speech/festival/libcarnival.cc		\
+		plugins/text-to-speech/festival/pulse.c
 
 plugin_festival_voice_la_CFLAGS  =				\
 		$(AM_CFLAGS)
@@ -329,7 +326,7 @@ endif
 #plugin_LTLIBRARIES += plugin-simple-voice.la
 #
 #plugin_simple_voice_la_SOURCES =				\
-#		plugins/simple-voice/simple-voice.c
+#		plugins/text-to-speech/simple-voice/simple-voice.c
 #
 #plugin_simple_voice_la_CFLAGS  =				\
 #		$(AM_CFLAGS)
@@ -361,7 +358,7 @@ if WRTC_ENABLED
 plugin_LTLIBRARIES += plugin-wrt-media-client.la
 
 plugin_wrt_media_client_la_SOURCES = 				\
-		plugins/wrt-media-client/wrt-media-client.c
+		plugins/client-api/wrt-media-client/wrt-media-client.c
 
 plugin_wrt_media_client_la_CFLAGS =				\
 		$(AM_CFLAGS)					\

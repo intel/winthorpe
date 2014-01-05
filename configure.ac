@@ -274,7 +274,7 @@ AC_CONFIG_FILES([build-aux/shave
 		 Makefile
                  utils/Makefile
                  src/Makefile
-                 src/plugins/native-client-interface/srs-native.pc
+                 src/plugins/client-api/native/srs-native-client.pc
 		 ])
 AC_OUTPUT
 

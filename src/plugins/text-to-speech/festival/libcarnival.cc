@@ -11,7 +11,7 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/list.h>
 
-#include "src/plugins/festival/libcarnival.h"
+#include "libcarnival.h"
 
 typedef struct {
     char            *name;               /* unique voice name */

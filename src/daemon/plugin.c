@@ -33,8 +33,8 @@
 
 #include <murphy/common/mm.h>
 
-#include "src/daemon/context.h"
-#include "src/daemon/plugin.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/plugin.h"
 
 static srs_plugin_t *find_plugin(srs_context_t *srs, const char *name)
 {

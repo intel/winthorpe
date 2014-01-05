@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: srs-native-client
+Description: SRS native client library
+Requires: murphy-common
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lsrs-native-client -lmurphy-common
+Cflags: -I${includedir}

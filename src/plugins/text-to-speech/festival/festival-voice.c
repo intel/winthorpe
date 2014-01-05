@@ -30,11 +30,12 @@
 #include <murphy/common/debug.h>
 #include <murphy/common/mainloop.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/voice.h"
-#include "srs/plugins/festival/festival-voice.h"
-#include "src/plugins/festival/libcarnival.h"
-#include "srs/plugins/festival/pulse.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/voice.h"
+
+#include "festival-voice.h"
+#include "libcarnival.h"
+#include "pulse.h"
 
 #define PLUGIN_NAME    "festival-voice"
 #define PLUGIN_DESCR   "A festival-based voice synthesizer plugin for SRS."

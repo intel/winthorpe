@@ -43,9 +43,9 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 
-#include "src/daemon/context.h"
-#include "src/daemon/plugin.h"
-#include "src/daemon/config.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/config.h"
 
 #ifndef PATH_MAX
 #    define PATH_MAX 1024

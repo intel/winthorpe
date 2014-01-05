@@ -93,7 +93,7 @@ void filter_buffer_initialize(context_t *ctx,
     filtbuf->buf = mrp_alloc((bufsiz + silence) * sizeof(int16_t));
     filtbuf->max = bufsiz;
     filtbuf->hwm = hwm;
-    filtbuf->silen = silen;    
+    filtbuf->silen = silen;
 
     if (ctx->verbose) {
         mrp_debug("frame length %d samples", filtbuf->frlen);
@@ -136,7 +136,7 @@ void filter_buffer_purge(context_t *ctx, int32_t length)
     if (length > 0) {
         if (length == filtbuf->len) {
             filtbuf->len = 0;     /* nothing to preserve */
-            
+
             if (ctx->verbose)
                 mrp_debug("purging buffer. nothing preserved");
         }
@@ -199,7 +199,7 @@ void filter_buffer_process_data(context_t *ctx)
         }
 
         utterance_start(ctx);
-        
+
         if (filtbuf->len >= filtbuf->hwm)
             filter_buffer_utter(ctx, false);
     }

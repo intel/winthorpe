@@ -35,8 +35,8 @@
 
 #include <gio/gio.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
 
 #define WRTC_NAME    "wrt-media-client"
 #define WRTC_DESCR   "A demo WRT media player relay client."

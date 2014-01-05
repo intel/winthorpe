@@ -6,8 +6,8 @@
 #include <murphy/common/list.h>
 #include <murphy/common/refcnt.h>
 
-#include "src/plugins/festival/festival-voice.h"
-#include "src/plugins/festival/pulse.h"
+#include "festival-voice.h"
+#include "pulse.h"
 
 #define SPEECH "speech"
 #define TTS    "text-to-speech"

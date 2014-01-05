@@ -154,7 +154,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
 
     if (fsg)
         cmd_ln_set_str_r(cfg, "-fsg", fsg);
-    
+
     if (!(ps = ps_init(cfg)))
         return -1;
 
@@ -176,7 +176,7 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
             model = fsg_set_iter_fsg(sit);
             modnam = fsg_model_name(model);
             fsgs[nfsg] = mrp_strdup(modnam ? modnam : "<anonymous>");
-            
+
             mrp_log_info("   %s", fsgs[nfsg]);
         }
 

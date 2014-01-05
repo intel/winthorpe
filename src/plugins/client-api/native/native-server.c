@@ -37,8 +37,9 @@
 #include <murphy/common/transport.h>
 #include <murphy/common/native-types.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
+
 #include "native-messages.h"
 #include "native-config.h"
 

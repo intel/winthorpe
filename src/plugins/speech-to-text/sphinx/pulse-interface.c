@@ -191,7 +191,7 @@ static int stream_create(context_t *ctx)
             mrp_log_error("failed to create input stream");
             return -1;
         }
-        
+
         if (target < (minreq * 3))
             target = minreq * 3;
 
@@ -205,7 +205,7 @@ static int stream_create(context_t *ctx)
         battr.minreq    = minsiz;
         battr.prebuf    = 2 * tlength;
         battr.fragsize  = tlength;
-        
+
         flags = PA_STREAM_ADJUST_LATENCY;
 
         pa_stream_set_state_callback(pulseif->stream, state_callback, ctx);
@@ -234,27 +234,27 @@ static void state_callback(pa_stream *stream, void *userdata)
     pa_context_state_t ctxst = pa_context_get_state(pactx);
     int err;
     const char *strerr;
-    
+
     if (ctxst != PA_CONTEXT_TERMINATED && ctxst != PA_CONTEXT_FAILED) {
 
         switch (pa_stream_get_state(stream)) {
-            
+
         case PA_STREAM_CREATING:
             CHECK_STREAM(pulseif, stream);
             mrp_debug("sphinx plugin: pulseaudio input stream creating");
             break;
-            
+
         case PA_STREAM_TERMINATED:
             CHECK_STREAM(pulseif, stream);
             mrp_log_info("sphinx plugin: pulseaudio input stream terminated");
             pulseif->stream = NULL;
             break;
-            
+
         case PA_STREAM_READY:
             CHECK_STREAM(pulseif, stream);
             mrp_log_info("sphinx plugin: pulseaudio input stream is ready");
             break;
-            
+
         case PA_STREAM_FAILED:
         default:
             if ((err = pa_context_errno(pactx))) {
@@ -330,27 +330,27 @@ static void context_callback(pa_context *pactx, void *userdata)
         pulseif->conup = false;
         mrp_debug("sphinx plugin: connecting to pulseaudio server");
         break;
-        
+
     case PA_CONTEXT_AUTHORIZING:
         pulseif->conup = false;
         mrp_debug("   sphinx plugin: authorizing");
         break;
-        
+
     case PA_CONTEXT_SETTING_NAME:
         pulseif->conup = false;
         mrp_debug("   sphinx plugin: setting name");
         break;
-        
+
     case PA_CONTEXT_READY:
         pulseif->conup = true;
         mrp_log_info("sphinx plugin: pulseaudio connection established");
         stream_create(ctx);
         break;
-        
+
     case PA_CONTEXT_TERMINATED:
         mrp_log_info("sphinx plugin: pulseaudio connection terminated");
         goto disconnect;
-        
+
     case PA_CONTEXT_FAILED:
     default:
         if ((err = pa_context_errno(pactx)) != 0) {
@@ -373,7 +373,7 @@ static void event_callback(pa_context *pactx,pa_subscription_event_type_t type,
     pulse_interface_t *pulseif = ctx->pulseif;
 
     (void)idx;
-  
+
     if (pulseif->pactx != pactx) {
         mrp_log_error("sphinx plugin: %s() confused with data structures",
                       __FUNCTION__);

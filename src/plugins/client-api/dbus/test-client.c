@@ -42,7 +42,7 @@
 
 #include <breedline/breedline-murphy.h>
 
-#include "plugins/dbus-client-interface/dbus-config.h"
+#include "dbus-config.h"
 
 
 static const char *default_commands[] = {

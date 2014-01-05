@@ -30,8 +30,8 @@
 #include <murphy/common/debug.h>
 #include <murphy/common/mainloop.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/recognizer.h"
 
 #define NUANCE_NAME        "nuance-speech"
 #define NUANCE_DESCRIPTION "A Nuance-based speech engine backend plugin."

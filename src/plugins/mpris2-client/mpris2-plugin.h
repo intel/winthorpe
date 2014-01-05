@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
 
 #define PLUGIN_NAME    "music-player"
 #define MPRIS2_PREFIX  "mpris2."

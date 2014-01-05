@@ -37,8 +37,8 @@
 #include <murphy/common/debug.h>
 #include <murphy/common/mainloop.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/voice.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/voice.h"
 
 #define FESTIVAL "/usr/bin/festival --tts"
 #define PAPLAY   "/usr/bin/paplay"

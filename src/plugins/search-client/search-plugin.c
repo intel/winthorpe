@@ -31,8 +31,8 @@
 
 #include <murphy/common/debug.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/client.h"
 
 #define SEARCH_NAME    "search-client"
 #define SEARCH_DESCR   "A trivial search plugin for SRS."

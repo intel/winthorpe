@@ -30,9 +30,9 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 
-#include "src/daemon/resctl.h"
-#include "src/daemon/recognizer.h"
-#include "src/daemon/client.h"
+#include "srs/daemon/resctl.h"
+#include "srs/daemon/recognizer.h"
+#include "srs/daemon/client.h"
 
 typedef struct {
     mrp_list_hook_t  hook;               /* to list of voice requests */

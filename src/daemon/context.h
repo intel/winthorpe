@@ -43,8 +43,8 @@
 /** SRS daemon context type. */
 typedef struct srs_context_s srs_context_t;
 
-#include "src/daemon/config.h"
-#include "src/daemon/resctl.h"
+#include "srs/daemon/config.h"
+#include "srs/daemon/resctl.h"
 
 /*
  * daemon context

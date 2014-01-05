@@ -33,9 +33,9 @@
 
 #include <murphy/common/list.h>
 
-#include "src/daemon/context.h"
-#include "src/daemon/voice.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/voice.h"
+#include "srs/daemon/recognizer.h"
 
 
 /*

@@ -43,9 +43,9 @@
 
 #include <murphy/common/debug.h>
 
-#include "src/daemon/plugin.h"
-#include "src/daemon/context.h"
-#include "src/daemon/recognizer.h"
+#include "srs/daemon/plugin.h"
+#include "srs/daemon/context.h"
+#include "srs/daemon/recognizer.h"
 
 #define PLUGIN_NAME    "input-handler"
 #define PLUGIN_DESCR   "For activating/deactivating voice recognition"
