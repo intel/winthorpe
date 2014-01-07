@@ -6,7 +6,7 @@
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version: 0.0.3
+Version: 0.0.4
 Release: 0
 License: BSD-3-Clause
 Group: Base/Utilities
@@ -44,12 +44,21 @@ Requires: festival
 %description
 SRS/Winthorpe speech recognition system service.
 
-%package doc
-Summary: Documentation
-Group: Development/Tools
+%package devel
+Summary: The header files and libraries needed for SRS/Winthorpe clients
+Group: Development/Libraries
+Requires: %{name} = %{version}
 
-%description doc
-Documentation for the speech recognition service.
+%description devel
+This package contains header files and libraries necessary for development.
+
+%package tests
+Summary: Various test binaries for SRS/Winthorpe
+Group: Development/Debug
+Requires: %{name} = %{version}
+
+%description tests
+This package contains various test binaries for SRS/Winthorpe.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -135,12 +144,19 @@ ldconfig
 %{_bindir}/srs-client
 %endif
 %{_libdir}/srs
+%{_libdir}/libsrs*.so.*
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %{_sysconfdir}/sysconfig/speech-recognition
 %{_datadir}/speech-recognition/dictionaries
 /lib/systemd/user/speech-recognition.service
 %{_datadir}/dbus-1/services/org.tizen.srs.service
 
-%files doc
+%files devel
 %defattr(-,root,root,-)
-%doc AUTHORS COPYING ChangeLog INSTALL NEWS README
+%{_includedir}/srs
+%{_libdir}/libsrs*.so
+%{_libdir}/pkgconfig/srs*.pc
+
+%files tests
+%defattr(-,root,root,-)
+%{_bindir}/srs-native-client
