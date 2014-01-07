@@ -1,3 +1,8 @@
+* Tue Jan 07 14:02:21 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.4
+- A few crash fixes.
+- Added native client library.
+- Added devel and tests subpackages.
+
 * Thu Sep 12 14:02:21 EEST 2013 Krisztian Litkey <krisztian.litkey@intel.com> - 0.0.3
 - Enabled D-Bus-based activation.
 
