@@ -283,9 +283,6 @@ static void unregister_actors(renderer_t *r)
 
 static void free_renderer(renderer_t *r)
 {
-    srs_voice_actor_t *a;
-    int                i;
-
     if (r != NULL) {
         mrp_list_delete(&r->hook);
         unregister_actors(r);
@@ -297,8 +294,6 @@ static void free_renderer(renderer_t *r)
 static void notify_request(request_t *req, srs_voice_event_t *event)
 {
     renderer_t        *r     = req->r;
-    state_t           *state = r->state;
-    uint32_t           vid   = event->id;
     int                mask  = (1 << event->type);
     srs_voice_event_t  e;
 
@@ -716,7 +711,6 @@ request_t *render_request(state_t *state, const char *msg, char **tags,
                           void *notify_data)
 {
     request_t *req;
-    int        forced;
 
     req = mrp_allocz(sizeof(*req));
 
@@ -751,7 +745,7 @@ uint32_t srs_render_voice(srs_context_t *srs, const char *msg,
     state_t    *state = (state_t *)srs->synthesizer;
     renderer_t *r;
     request_t  *req;
-    uint32_t    actid, vid, rid, id;
+    uint32_t    actid;
 
     if (state == NULL) {
         errno = ENOSYS;
@@ -900,6 +894,8 @@ int srs_query_voices(srs_context_t *srs, const char *language,
         mrp_free(actors[i].dialect);
         mrp_free(actors[i].description);
     }
+
+    return -1;
 }
 
 
