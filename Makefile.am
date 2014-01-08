@@ -1,5 +1,5 @@
 SUBDIRS  = . utils src
-doc_DATA = AUTHORS ChangeLog COPYING INSTALL NEWS README
+#doc_DATA = AUTHORS ChangeLog COPYING INSTALL NEWS README
 
 # This is the only way with automake I know of to force 'install-git-hooks'
 # to be evaluated before 'all'. If there is a nicer way, I'm all ears...
