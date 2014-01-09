@@ -553,6 +553,7 @@ uint32_t srs_render_voice(srs_t *srs, const char *msg, const char *voice,
     req.timeout = timeout;
     req.events  = events;
 
+    memset(&data, 0, sizeof(data));
     data.voice_req.cvid    = srs->cvid++;
     data.voice_req.svid    = SRS_VOICE_INVALID;
     data.voice_req.cb      = cb;
