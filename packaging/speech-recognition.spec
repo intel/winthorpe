@@ -14,9 +14,20 @@ URL: https://github.com/otcshare/speech-recognition
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires: pkgconfig(libpulse)
-BuildRequires: pkgconfig(murphy-common)
-BuildRequires: pkgconfig(murphy-pulse)
-BuildRequires: pkgconfig(murphy-glib)
+
+# Termporarily had to replace these with explicit package-dependencies,
+# because the murphy pkgconfig files lack the correct version (needs to
+# be fixed) and now we need a new enough murphy with native-types support.
+# Switch these back once this is fixed on the murphy side.
+
+# BuildRequires: pkgconfig(murphy-common) >= 0.0.42
+# BuildRequires: pkgconfig(murphy-pulse) >= 0.0.42
+# BuildRequires: pkgconfig(murphy-glib) >= 0.0.42
+
+BuildRequires: murphy-devel >= 0.0.42
+BuildRequires: murphy-glib-devel >= 0.0.42
+BuildRequires: murphy-pulse-devel >= 0.0.42
+
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(json)
 %if %{?_with_sphinx:1}%{!?_with_sphinx:0}
