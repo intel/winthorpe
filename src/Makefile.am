@@ -38,7 +38,8 @@ srs_daemon_CFLAGS = 				\
 		$(PULSE_CFLAGS)			\
 		$(PULSE_GLIB_CFLAGS)		\
 		$(MURPHY_GLIB_CFLAGS)		\
-		$(GLIB_CFLAGS)
+		$(GLIB_CFLAGS)			\
+		$(SYSTEMD_CFLAGS)
 
 srs_daemon_LDADD =				\
 		$(MURPHY_PULSE_LIBS)		\
@@ -48,6 +49,7 @@ srs_daemon_LDADD =				\
 		$(PULSE_GLIB_LIBS)		\
 		$(MURPHY_GLIB_LIBS)		\
 		$(GLIB_LIBS)			\
+		$(SYSTEMD_LIBS)			\
 		-ldl
 
 srs_daemon_LDFLAGS =				\

@@ -259,6 +259,25 @@ AC_SUBST(FESTIVAL_ENABLED)
 AC_SUBST(FESTIVAL_CXXFLAGS)
 AC_SUBST(FESTIVAL_LIBS)
 
+# Check if systemd socket-based activation was enabled.
+AC_ARG_ENABLE(systemd,
+              [  --enable-systemd       enable systemd socket-based activation],
+	      [enable_systemd=$enableval], [enable_systemd=no])
+
+if test "$enable_systemd" = "yes"; then
+    PKG_CHECK_MODULES(SYSTEMD, libsystemd-daemon)
+else
+    AC_MSG_NOTICE([systemd support is disabled.])
+fi
+
+if test "$enable_systemd" = "yes"; then
+    AC_DEFINE([SYSTEMD_ENABLED], 1, [Enable systemd socket-based activation ?])
+fi
+
+AM_CONDITIONAL(SYSTEMD_ENABLED, [test "$enable_systemd" = "yes"])
+AC_SUBST(SYSTEMD_CFLAGS)
+AC_SUBST(SYSTEMD_LIBS)
+
 # Shave by default.
 SHAVE_INIT([build-aux], [enable])
 
@@ -285,6 +304,7 @@ echo "Extra C warnings flags: $WARNING_CFLAGS"
 echo "D-Bus support: $enable_dbus"
 echo "Sphinx support: $enable_sphinx"
 echo "Festival support: $enable_festival"
+echo "systemd socket-based activation: $enable_systemd"
 
 if test "$DUMP_LIB_FLAGS" = "yes"; then
     echo "MURPHY_COMMON:"

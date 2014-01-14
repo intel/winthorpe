@@ -56,6 +56,7 @@
 typedef struct {
     srs_plugin_t    *self;               /* our plugin instance */
     const char      *address;            /* our transport address */
+    int              sock;               /* or existing transport socket */
     mrp_transport_t *lt;                 /* transport we listen on */
     mrp_list_hook_t  clients;            /* connected clients */
     int              next_id;            /* next client id */
@@ -429,18 +430,28 @@ static int transport_setup(server_t *s)
     mrp_sockaddr_t  addr;
     socklen_t       alen;
     const char     *type, *opt, *val;
-    int             flags;
+    int             flags, state, sock;
     void           *typemap;
 
     alen = mrp_transport_resolve(NULL, s->address, &addr, sizeof(addr), &type);
 
     if (alen < 0) {
-        mrp_log_error("Failed to resolve transport address '%s'.", s->address);
+        mrp_log_error("Failed to resolve transport address '%s'.",
+                      s->address);
         goto fail;
     }
 
-    flags = MRP_TRANSPORT_REUSEADDR | MRP_TRANSPORT_MODE_NATIVE;
-    s->lt = mrp_transport_create(srs->ml, type, &evt, s, flags);
+    flags = MRP_TRANSPORT_REUSEADDR | MRP_TRANSPORT_NONBLOCK |  \
+        MRP_TRANSPORT_MODE_NATIVE;
+
+    if (s->sock < 0)
+        s->lt = mrp_transport_create(srs->ml, type, &evt, s, flags);
+    else {
+        state = MRP_TRANSPORT_LISTENED;
+        sock  = s->sock;
+        s->lt = mrp_transport_create_from(srs->ml, type, &sock, &evt,
+                                          s, flags, state);
+    }
 
     if (s->lt == NULL) {
         mrp_log_error("Failed to create transport for native clients.");
@@ -457,14 +468,21 @@ static int transport_setup(server_t *s)
         goto fail;
     }
 
-    if (mrp_transport_bind(s->lt, &addr, alen) &&
-        mrp_transport_listen(s->lt, 0)) {
-        mrp_log_info("Listening on transport '%s'...", s->address);
+    if (s->sock < 0) {
+        if (mrp_transport_bind(s->lt, &addr, alen) &&
+            mrp_transport_listen(s->lt, 0)) {
+            mrp_log_info("Listening on transport '%s'...", s->address);
+
+            return TRUE;
+        }
+        else
+            mrp_log_error("Failed to bind/listen transport.");
+    }
+    else {
+        mrp_log_info("Using passed in socket fd %d...", s->sock);
 
         return TRUE;
     }
-    else
-        mrp_log_error("Failed to bind/listen transport.");
 
  fail:
     if (s->lt) {
@@ -513,7 +531,12 @@ static int config_native(srs_plugin_t *plugin, srs_cfg_t *cfg)
     mrp_debug("configure native client interface plugin");
 
     s->address = srs_get_string_config(cfg, CONFIG_ADDRESS, DEFAULT_ADDRESS);
-    mrp_log_info("Using native client transport address: '%s'.", s->address);
+    s->sock    = srs_get_int32_config (cfg, CONFIG_SOCKET , DEFAULT_SOCKET);
+
+    if (s->sock < 0)
+        mrp_log_info("Using native client transport: '%s'.", s->address);
+    else
+        mrp_log_info("Using native client socket: %d.", s->sock);
 
     return TRUE;
 }

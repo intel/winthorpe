@@ -32,11 +32,12 @@
 
 /** Configuration key for specifying the transport address. */
 #define CONFIG_ADDRESS  "native.address"
+#define CONFIG_SOCKET   "native.socket"
 
 /** Default transport address. */
 /*#define DEFAULT_ADDRESS "unxs:@/srs/native-client"*/
 #define DEFAULT_ADDRESS "tcp4:127.0.0.1:4100"
-
+#define DEFAULT_SOCKET  -1
 
 
 #endif /* __SRS_NATIVE_CLIENT_CONFIG_H__ */

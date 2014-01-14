@@ -40,6 +40,12 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
+#include "srs/config.h"
+
+#ifdef SYSTEMD_ENABLED
+#    include <systemd/sd-daemon.h>
+#endif
+
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 
@@ -139,13 +145,73 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
            "  -f, --foreground               don't daemonize\n"
            "  -h, --help                     show help on usage\n"
            "  -V, --valgrind[=VALGRIND-PATH] try to run under valgrind\n"
-           "  -W, --valgrind-full[=VALGRIND-PATH] try to run under valgrind\n",
+#ifdef SYSTEMD_ENABLED
+           "  -S, --sockets=var1[,var2...]   set sockets in by systemd\n"
+#endif
+,
            argv0, cfg, plg);
 
     if (exit_code < 0)
         return;
     else
         exit(exit_code);
+}
+
+
+static int set_passed_sockets(srs_context_t *srs, const char *variables)
+{
+#ifdef SYSTEMD_ENABLED
+    const char *b, *e;
+    char        key[256], val[64];
+    int         nfd, i, n;
+    size_t      len;
+
+    nfd = sd_listen_fds(0);
+
+    if (nfd <= 0)
+        return nfd;
+
+    i = 0;
+    b = variables;
+    while (b && *b) {
+        while (*b == ',' || *b == ' ' || *b == '\t')
+            b++;
+
+        if (!*b)
+            return 0;
+
+        if (i >= nfd)
+            return 0;
+
+        if ((e = strchr(b, ',')) != NULL)
+            len = e - b;
+        else
+            len = strlen(b);
+
+        if (len >= sizeof(key)) {
+            errno = EOVERFLOW;
+            return -1;
+        }
+
+        strncpy(key, b, len);
+        key[len] = '\0';
+
+        n = snprintf(val, sizeof(val), "%d", SD_LISTEN_FDS_START + i);
+
+        if (n < 0 || n >= sizeof(val))
+            return -1;
+
+        srs_set_config(srs, key, val);
+
+        b = e;
+        i++;
+    }
+
+    return 0;
+#else
+    errno = EOPNOTSUPP;
+    return -1;
+#endif
 }
 
 
@@ -284,7 +350,7 @@ static void config_parse_file(srs_context_t *srs, char *path)
 void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
                           char **envp)
 {
-#   define OPTIONS "c:P:L:l:t:B:s:fvd:DhV"
+#   define OPTIONS "c:P:L:l:t:B:s:fvd:DhS:V"
     struct option options[] = {
         { "config-file"  , required_argument, NULL, 'c' },
         { "plugin-dir"   , required_argument, NULL, 'P' },
@@ -297,6 +363,7 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
         { "list-debug"   , no_argument      , NULL, 'D' },
         { "foreground"   , no_argument      , NULL, 'f' },
         { "valgrind"     , optional_argument, NULL, 'V' },
+        { "sockets"      , required_argument, NULL, 'S' },
         { "help"         , no_argument      , NULL, 'h' },
         { NULL, 0, NULL, 0 }
     };
@@ -394,6 +461,13 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
         case 'V':
             valgrind(optarg, argc, argv, optind, saved_argc, saved_argv, envp);
             break;
+
+#ifdef SYSTEMD_ENABLED
+        case 'S':
+            SAVE_OPTARG("-S", optarg);
+            set_passed_sockets(srs, optarg);
+            break;
+#endif
 
         case 'h':
             SAVE_OPT("-h");
