@@ -464,7 +464,7 @@ int srs_get_bool_config(srs_cfg_t *settings, const char *key, int defval)
             return FALSE;
 
         mrp_log_error("Value '%s' for key '%s' is not a boolean.",
-                      cfg->key, cfg->value);
+                      cfg->value, cfg->key);
         exit(1);
     }
 
@@ -484,11 +484,11 @@ int32_t srs_get_int32_config(srs_cfg_t *settings, const char *key,
 
         val = (int32_t)strtol(cfg->value, &end, 0);
 
-        if (*end && !*end)
+        if (end && !*end)
             return val;
         else {
             mrp_log_error("Value '%s' for key '%s' is not an int32.",
-                          cfg->key, cfg->value);
+                          cfg->value, cfg->key);
             exit(1);
         }
     }
@@ -509,11 +509,11 @@ uint32_t srs_get_uint32_config(srs_cfg_t *settings, const char *key,
 
         val = (uint32_t)strtoul(cfg->value, &end, 0);
 
-        if (*end && !*end)
+        if (end && !*end)
             return val;
         else {
             mrp_log_error("Value '%s' for key '%s' is not an uint32.",
-                          cfg->key, cfg->value);
+                          cfg->value, cfg->key);
             exit(1);
         }
     }
