@@ -397,7 +397,7 @@ static void connect_to_server(context_t *ctx)
     pa_context_set_subscribe_callback(pactx, event_callback, ctx);
 
     mrp_log_error("bluetooth-plugin: Trying to connect to pulseaudio ...");
-    pa_context_connect(pactx, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL);
+    pa_context_connect(pactx, NULL, PA_CONTEXT_NOFAIL, NULL);
 }
 
 
