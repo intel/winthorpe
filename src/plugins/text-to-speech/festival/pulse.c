@@ -79,7 +79,7 @@ int pulse_setup(festival_t *f)
 
     pa_context_set_state_callback(p->pc, context_state_cb, p);
     pa_context_set_subscribe_callback(p->pc, context_event_cb, p);
-    pa_context_connect(p->pc, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL);
+    pa_context_connect(p->pc, NULL, PA_CONTEXT_NOFAIL, NULL);
 
     return 0;
 }
@@ -280,7 +280,7 @@ static void connect_timer_cb(mrp_timer_t *t, void *user_data)
 
     pa_context_set_state_callback(p->pc, context_state_cb, p);
     pa_context_set_subscribe_callback(p->pc, context_event_cb, p);
-    pa_context_connect(p->pc, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL);
+    pa_context_connect(p->pc, NULL, PA_CONTEXT_NOFAIL, NULL);
 
     p->reconn = NULL;
     mrp_del_timer(t);
