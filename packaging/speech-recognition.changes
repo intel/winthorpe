@@ -1,3 +1,8 @@
+* Wed Jan 15 17:35:21 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.5
+- Enable systemd socket-based activation for the native client API.
+- TIVI-2079: try autospawning pulseaudio if it is not running.
+- Load the wrt-media-client plugin (forgotten in 0.0.4).
+
 * Tue Jan 07 14:02:21 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.4
 - A few crash fixes.
 - Added native client library.

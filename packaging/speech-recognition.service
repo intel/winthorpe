@@ -1,11 +1,10 @@
 [Unit]
-Description=Speech recognition service
-After=sound.target
+Description=Winthorpe Speech Recognition and Synthesis Services
 
 [Service]
-EnvironmentFile=/etc/sysconfig/speech-recognition
-ExecStart=/usr/sbin/srs-daemon -f $CONFIG $MIKE $PLUGINS $CLIENTS
 Type=simple
+ExecStart=/usr/sbin/srs-daemon -P /usr/lib/srs/plugins -c /etc/speech-recognition/speech-recognition.conf -S native.socket -f -vvv
+KillSignal=SIGTERM
 
 [Install]
-WantedBy=tizen-middleware.target
+WantedBy=multi-user.target
