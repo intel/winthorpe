@@ -3,10 +3,11 @@
 %{!?_with_festival:%{!?_without_festival:%define _with_festival 1}}
 %{!?_with_wrt:%{!?_without_wrt:%define _with_wrt 1}}
 %{!?_with_dbus:%{!?_without_dbus:%define _without_dbus 1}}
+%{!?_with_systemd:%{!?_without_systemd:%define _with_systemd 1}}
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version: 0.0.4
+Version: 0.0.5
 Release: 0
 License: BSD-3-Clause
 Group: Base/Utilities
@@ -24,9 +25,9 @@ BuildRequires: pkgconfig(libpulse)
 # BuildRequires: pkgconfig(murphy-pulse) >= 0.0.42
 # BuildRequires: pkgconfig(murphy-glib) >= 0.0.42
 
-BuildRequires: murphy-devel >= 0.0.42
-BuildRequires: murphy-glib-devel >= 0.0.42
-BuildRequires: murphy-pulse-devel >= 0.0.42
+BuildRequires: murphy-devel >= 0.0.43
+BuildRequires: murphy-glib-devel >= 0.0.43
+BuildRequires: murphy-pulse-devel >= 0.0.43
 
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(json)
@@ -36,21 +37,19 @@ BuildRequires: pkgconfig(sphinxbase)
 %endif
 %if %{?_with_festival:1}%{!?_with_festival:0}
 BuildRequires: festival-devel
+Requires: festival
 %endif
 %if %{?_with_dbus:1}%{!?_with_dbus:0}
 BuildRequires: pkgconfig(dbus-1)
 %endif
-
 Requires: pulseaudio
 %if %{?_with_sphinx:1}%{!?_with_sphinx:0}
 Requires: sphinxbase
 Requires: pocketsphinx
 %endif
-%if %{?_with_festival:1}%{!?_with_festival:0}
-BuildRequires: festival-devel
-Requires: festival
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+BuildRequires: pkgconfig(libsystemd-daemon)
 %endif
-
 
 %description
 SRS/Winthorpe speech recognition system service.
@@ -107,6 +106,12 @@ CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-gpl --enable-dbus"
 CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-dbus"
 %endif
 
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-systemd"
+%else
+CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-systemd"
+%endif
+
 
 ./bootstrap && \
     %configure $CONFIG_OPTIONS && \
@@ -118,19 +123,21 @@ rm -fr $RPM_BUILD_ROOT
 %make_install
 
 # Install dictionaries, configuration and service files.
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig \
-    $RPM_BUILD_ROOT/lib/systemd/user \
+mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition \
+    $RPM_BUILD_ROOT/lib/systemd/user \
     $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     $RPM_BUILD_ROOT%{_libdir}/srs/scripts \
     $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
 /usr/bin/install -m 644 packaging/speech-recognition.conf \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
-/usr/bin/install -m 644 packaging/speech-recognition.env \
-    $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/speech-recognition
 /usr/bin/install -m 644 packaging/speech-recognition.service \
     $RPM_BUILD_ROOT/lib/systemd/user
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+/usr/bin/install -m 644 packaging/speech-recognition.socket \
+    $RPM_BUILD_ROOT/lib/systemd/user
+%endif
 /usr/bin/install -m 644 \
     -t $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     dictionaries/demo/demo.*
@@ -144,6 +151,14 @@ rm -rf $RPM_BUILD_ROOT
 
 %post
 ldconfig
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+systemctl --user enable speech-recognition.socket
+%endif
+
+%preun
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+systemctl --user disable speech-recognition.socket
+%endif
 
 %postun
 ldconfig
@@ -157,9 +172,11 @@ ldconfig
 %{_libdir}/srs
 %{_libdir}/libsrs*.so.*
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
-%{_sysconfdir}/sysconfig/speech-recognition
 %{_datadir}/speech-recognition/dictionaries
 /lib/systemd/user/speech-recognition.service
+%if %{?_with_systemd:1}%{!?_with_systemd:0}
+/lib/systemd/user/speech-recognition.socket
+%endif
 %{_datadir}/dbus-1/services/org.tizen.srs.service
 
 %files devel
