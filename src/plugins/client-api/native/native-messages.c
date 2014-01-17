@@ -40,20 +40,20 @@ mrp_typemap_t *register_message_types(void)
 {
     static bool          done       = false;
     static mrp_typemap_t type_map[] = {
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_REGISTER    },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_UNREGISTER  },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_FOCUS       },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_RENDERVOICE },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_CANCELVOICE },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REQUEST_QUERYVOICES },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REPLY_STATUS        },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REPLY_RENDERVOICE   },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_VOICE_ACTOR         },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_REPLY_QUERYVOICES   },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_EVENT_FOCUS         },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_EVENT_COMMAND       },
-        { .typeid = MRP_INVALID_TYPE, .mapped = SRS_EVENT_VOICE         },
-        { MRP_INVALID_TYPE, MRP_INVALID_TYPE },
+        MRP_TYPEMAP(SRS_REQUEST_REGISTER   , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REQUEST_UNREGISTER , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REQUEST_FOCUS      , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REQUEST_RENDERVOICE, MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REQUEST_CANCELVOICE, MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REQUEST_QUERYVOICES, MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REPLY_STATUS       , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REPLY_RENDERVOICE  , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_VOICE_ACTOR        , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_REPLY_QUERYVOICES  , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_EVENT_FOCUS        , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_EVENT_COMMAND      , MRP_INVALID_TYPE),
+        MRP_TYPEMAP(SRS_EVENT_VOICE        , MRP_INVALID_TYPE),
+        MRP_TYPEMAP_END
     };
 
     MRP_NATIVE_TYPE(reg_req, srs_req_register_t,
@@ -162,7 +162,7 @@ mrp_typemap_t *register_message_types(void)
         return map;
 
     for (t = types, m = type_map; t->type != NULL; t++, m++) {
-        if ((m->typeid = mrp_register_native(t->type)) == MRP_INVALID_TYPE)
+        if ((m->type_id = mrp_register_native(t->type)) == MRP_INVALID_TYPE)
             return NULL;
     }
 
@@ -174,19 +174,19 @@ mrp_typemap_t *register_message_types(void)
 uint32_t message_typeid(uint32_t type)
 {
     if (map != NULL && 0 < type && type < SRS_MSG_MAX)
-        return map[type - 1].typeid;
+        return map[type - 1].type_id;
     else
         return MRP_INVALID_TYPE;
 }
 
 
-uint32_t message_type(uint32_t typeid)
+uint32_t message_type(uint32_t type_id)
 {
     mrp_typemap_t *m;
 
     if (map != NULL) {
-        for (m = map; m->typeid != MRP_INVALID_TYPE; m++)
-            if (m->typeid == typeid)
+        for (m = map; m->type_id != MRP_INVALID_TYPE; m++)
+            if (m->type_id == type_id)
                 return m->mapped;
     }
 
@@ -196,10 +196,10 @@ uint32_t message_type(uint32_t typeid)
 
 int send_message(mrp_transport_t *t, srs_msg_t *msg)
 {
-    uint32_t typeid = message_typeid(msg->type);
+    uint32_t type_id = message_typeid(msg->type);
 
-    if (typeid != MRP_INVALID_TYPE) {
-        if (mrp_transport_sendnative(t, msg, typeid))
+    if (type_id != MRP_INVALID_TYPE) {
+        if (mrp_transport_sendnative(t, msg, type_id))
             return 0;
     }
     else

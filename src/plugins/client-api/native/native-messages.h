@@ -252,6 +252,6 @@ typedef union {
 mrp_typemap_t *register_message_types(void);
 int send_message(mrp_transport_t *t, srs_msg_t *msg);
 uint32_t message_typeid(uint32_t type);
-uint32_t message_type(uint32_t typeid);
+uint32_t message_type(uint32_t type_id);
 
 #endif /* __SRS_NATIVE_MESSAGES_H__ */
