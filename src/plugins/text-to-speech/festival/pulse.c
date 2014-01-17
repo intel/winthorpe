@@ -146,7 +146,6 @@ uint32_t pulse_play_stream(festival_t *f, void *sample_buf, int sample_rate,
     pa_buffer_attr   ba;
     pa_proplist     *props;
     size_t           pamin, pabuf;
-    uint32_t         min, tgt, id;
     int              flags;
 
     if ((s = mrp_allocz(sizeof(*s))) == NULL)
@@ -351,6 +350,13 @@ static void context_event_cb(pa_context *pc, pa_subscription_event_type_t e,
 {
     pulse_t *p = (pulse_t *)user_data;
 
+    MRP_UNUSED(pc);
+    MRP_UNUSED(e);
+    MRP_UNUSED(idx);
+    MRP_UNUSED(user_data);
+
+    MRP_UNUSED(p);
+
     return;
 }
 
@@ -359,7 +365,6 @@ static void stream_notify(stream_t *s, srs_voice_event_type_t event)
 {
     int                mask = (1 << event);
     srs_voice_event_t  e;
-    uint32_t           id;
 
     if (s->cb == NULL || !(s->event_mask & mask))
         return;
