@@ -122,8 +122,7 @@ pkgconfig_DATA  += plugins/client-api/native/srs-native-client.pc
 libsrs_native_client_ladir      = $(includedir)/srs/client-api/native
 libsrs_native_client_la_HEADERS =	\
 		plugins/client-api/native/native-client.h \
-		plugins/client-api/native/native-config.h \
-		plugins/client-api/native/native-messages.h
+		plugins/client-api/native/native-config.h
 
 libsrs_native_client_la_SOURCES =	\
 		plugins/client-api/native/native-client.c \
