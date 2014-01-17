@@ -3,7 +3,6 @@
 %{!?_with_festival:%{!?_without_festival:%define _with_festival 1}}
 %{!?_with_wrt:%{!?_without_wrt:%define _with_wrt 1}}
 %{!?_with_dbus:%{!?_without_dbus:%define _without_dbus 1}}
-%{!?_with_systemd:%{!?_without_systemd:%define _with_systemd 1}}
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
@@ -47,9 +46,7 @@ Requires: pulseaudio
 Requires: sphinxbase
 Requires: pocketsphinx
 %endif
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
 BuildRequires: pkgconfig(libsystemd-daemon)
-%endif
 
 %description
 SRS/Winthorpe speech recognition system service.
@@ -106,12 +103,7 @@ CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-gpl --enable-dbus"
 CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-dbus"
 %endif
 
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
 CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-systemd"
-%else
-CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-systemd"
-%endif
-
 
 ./bootstrap && \
     %configure $CONFIG_OPTIONS && \
@@ -125,7 +117,7 @@ rm -fr $RPM_BUILD_ROOT
 # Install dictionaries, configuration and service files.
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition \
-    $RPM_BUILD_ROOT/lib/systemd/user \
+    $RPM_BUILD_ROOT%{_unitdir_user} \
     $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     $RPM_BUILD_ROOT%{_libdir}/srs/scripts \
     $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
@@ -133,11 +125,9 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
 /usr/bin/install -m 644 packaging/speech-recognition.conf \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
 /usr/bin/install -m 644 packaging/speech-recognition.service \
-    $RPM_BUILD_ROOT/lib/systemd/user
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
+    $RPM_BUILD_ROOT%{_unitdir_user}
 /usr/bin/install -m 644 packaging/speech-recognition.socket \
-    $RPM_BUILD_ROOT/lib/systemd/user
-%endif
+    $RPM_BUILD_ROOT%{_unitdir_user}
 /usr/bin/install -m 644 \
     -t $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     dictionaries/demo/demo.*
@@ -146,37 +136,33 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
 /usr/bin/install -m 755 packaging/org.tizen.srs.service \
      $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
+%install_service ../user/weston.target.wants speech-recognition.socket
+
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %post
 ldconfig
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
-systemctl --user enable speech-recognition.socket
-%endif
+%systemd_post speech-recognition.service
 
 %preun
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
-systemctl --user disable speech-recognition.socket
-%endif
+%systemd_preun speech-recognition.service
 
 %postun
 ldconfig
+%systemd_postun speech-recognition.service
 
 %files
 %defattr(-,root,root,-)
 %{_sbindir}/srs-daemon
-%if %{?_with_dbus:1}%{!?_with_dbus:0}
-%{_bindir}/srs-client
-%endif
 %{_libdir}/srs
 %{_libdir}/libsrs*.so.*
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %{_datadir}/speech-recognition/dictionaries
-/lib/systemd/user/speech-recognition.service
-%if %{?_with_systemd:1}%{!?_with_systemd:0}
-/lib/systemd/user/speech-recognition.socket
-%endif
+%{_unitdir_user}/speech-recognition.service
+%{_unitdir_user}/speech-recognition.socket
+%{_unitdir_user}/weston.target.wants/speech-recognition.socket
+
 %{_datadir}/dbus-1/services/org.tizen.srs.service
 
 %files devel
@@ -188,3 +174,6 @@ ldconfig
 %files tests
 %defattr(-,root,root,-)
 %{_bindir}/srs-native-client
+%if %{?_with_dbus:1}%{!?_with_dbus:0}
+%{_bindir}/srs-client
+%endif
