@@ -1,3 +1,9 @@
+* Tue Mar 11 14:10:15 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.6
+- tts: added API support for TTS rate and pitch.
+- voice: properly administed cancellation of the active TTS request.
+- native-client: return proper request id from srs_render_voice.
+- test-client: minor TTS cancellation and help message fixes.
+
 * Wed Jan 15 17:35:21 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.5
 - Enable systemd socket-based activation for the native client API.
 - TIVI-2079: try autospawning pulseaudio if it is not running.
