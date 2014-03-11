@@ -830,6 +830,11 @@ void srs_cancel_voice(srs_context_t *srs, uint32_t rid, int notify)
 
     mrp_list_delete(&req->hook);
     mrp_free(req);
+
+    if (state->active == req) {
+        state->active = NULL;
+        activate_next(state);
+    }
 }
 
 
