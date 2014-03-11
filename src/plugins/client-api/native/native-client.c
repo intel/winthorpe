@@ -561,7 +561,10 @@ uint32_t srs_render_voice(srs_t *srs, const char *msg, const char *voice,
     data.voice_req.cb      = cb;
     data.voice_req.cb_data = cb_data;
 
-    return queue_request(srs, (srs_msg_t *)&req, &data);
+    if (queue_request(srs, (srs_msg_t *)&req, &data) < 0)
+        return -1;
+    else
+        return data.voice_req.cvid;
 }
 
 
