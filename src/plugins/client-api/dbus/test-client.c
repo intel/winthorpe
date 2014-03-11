@@ -1038,9 +1038,14 @@ static void execute_user_command(client_t *c, int narg, char **args)
             print(c, "  focus none|shared|exclusive  - request voice focus");
             print(c, "  add command <command>        - add new command");
             print(c, "  del command <command>        - delete a command");
-            print(c, "  tts render '<msg>' timeout subscribe");
-            print(c, "  tts cancel '<id>'");
+            print(c, "  render tts '<msg>' \\        - request TTS of <msg>");
+            print(c, "    [-voice:<voice>] \\");
+            print(c, "    [-timeout:<timeout>]\\");
+            print(c, "    [-events]");
+            print(c, "  cancel tts '<id>'            - cancel given TTS "
+                  "request");
             print(c, "  list commands                - list commands set");
+            print(c, "  list voices                  - list available voices");
             print(c, "  help                         - show this help");
             print(c, "  exit                         - exit from client");
         }
@@ -1065,6 +1070,8 @@ static void execute_user_command(client_t *c, int narg, char **args)
             list_commands(c);
         else if (!strcmp(cmd, "list" ) && !strcmp(args[0], "voices"))
             query_voices(c, NULL);
+        else if (!strcmp(cmd, "cancel"))
+            cancel_tts(c, narg-1, args+1);
         else
             print(c, "Invalid command.");
         break;
@@ -1081,8 +1088,6 @@ static void execute_user_command(client_t *c, int narg, char **args)
         else if (!strcmp(args[0], "tts")) {
             if (!strcmp(cmd, "render"))
                 request_tts(c, narg-1, args+1);
-            else if (!strcmp(cmd, "cancel"))
-                cancel_tts(c, narg-1, args+1);
             else
                 print(c, "Invalid TTS command.");
         }
