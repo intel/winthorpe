@@ -753,7 +753,7 @@ static void request_tts(client_t *c, int ntoken, char **tokens)
 
     print(c, "Requesting TTS for message: '%s'.", msg);
 
-    c->vreq = srs_render_voice(c->srs, msg, voice, timeout,
+    c->vreq = srs_render_voice(c->srs, msg, voice, 0, 0, timeout,
                                events ? SRS_VOICE_MASK_ALL:SRS_VOICE_MASK_NONE,
                                render_notify, NULL);
 }

@@ -625,8 +625,8 @@ static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
 
 static int parse_render_voice(mrp_dbus_msg_t *req, const char **id,
                               const char **msg, const char **voice,
-                              int *timeout, int *notify_events,
-                              const char **errmsg)
+                              double *rate, double *pitch, int *timeout,
+                              int *notify_events, const char **errmsg)
 {
     char    **events, *e;
     int       i;
@@ -638,8 +638,13 @@ static int parse_render_voice(mrp_dbus_msg_t *req, const char **id,
     if (*id == NULL)
         return EINVAL;
 
+    *rate = *pitch = 1;
+
     if (!mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, msg) ||
         !mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_STRING, voice) ||
+        (mrp_dbus_msg_arg_type(req, NULL) != MRP_DBUS_TYPE_DOUBLE ||
+         !(mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_DOUBLE, &rate) &&
+           mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_DOUBLE, &pitch))) ||
         !mrp_dbus_msg_read_basic(req, MRP_DBUS_TYPE_INT32 , &to) ||
         !mrp_dbus_msg_read_array(req, MRP_DBUS_TYPE_STRING,
                                  (void **)&events, &nevent)) {
@@ -681,12 +686,13 @@ static int render_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
     const char    *id, *msg, *voice, *errmsg;
+    double         rate, pitch;
     int            timeout, events, err;
     uint32_t       reqid;
     srs_client_t  *c;
 
-    err = parse_render_voice(req, &id, &msg, &voice, &timeout, &events,
-                             &errmsg);
+    err = parse_render_voice(req, &id, &msg, &voice, &rate, &pitch, &timeout,
+                             &events, &errmsg);
 
     if (err != 0) {
         reply_error(dbus, req, err, errmsg);
@@ -702,7 +708,7 @@ static int render_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
         return TRUE;
     }
 
-    reqid = client_render_voice(c, msg, voice, timeout, events);
+    reqid = client_render_voice(c, msg, voice, rate, pitch, timeout, events);
 
     if (reqid != SRS_VOICE_INVALID)
         reply_render(dbus, req, reqid);

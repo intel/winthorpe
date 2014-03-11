@@ -227,7 +227,7 @@ static void tts_request_cb(GDBusConnection *c, const gchar *sender,
     mrp_log_info("WRT media client: relaying TTS request '%s' in '%s' from %s.",
                  msg, voice, sender);
 
-    id = client_render_voice(wrtc->c, msg, voice, timeout, events);
+    id = client_render_voice(wrtc->c, msg, voice, 0, 0, timeout, events);
 
     g_dbus_method_invocation_return_value(inv, g_variant_new("(u)", id));
 }

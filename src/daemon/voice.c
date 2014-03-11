@@ -106,6 +106,8 @@ typedef struct {
     char               *msg;             /* message to render */
     char              **tags;            /* stream tags */
     uint32_t            actor;           /* actor id */
+    double              rate;            /* synthesis rate (1 = normal) */
+    double              pitch;           /* synthesis pitch (1 = default) */
     int                 timeout;         /* timeout */
 } queued_t;
 
@@ -606,9 +608,9 @@ static void request_timer_cb(mrp_timer_t *t, void *user_data)
 
 
 static request_t *enqueue_request(state_t *state, const char *msg, char **tags,
-                                  renderer_t *r, uint32_t actor, int timeout,
-                                  int notify_mask, srs_voice_notify_t notify,
-                                  void *notify_data)
+                                  renderer_t *r, uint32_t actor, double rate,
+                                  double pitch, int timeout, int notify_mask,
+                                  srs_voice_notify_t notify, void *notify_data)
 {
     queued_t *qr;
 
@@ -673,8 +675,8 @@ static request_t *activate_next(state_t *state)
     qr->req.timer = NULL;
 
     r = qr->req.r;
-    qr->req.vid = r->api.render(qr->msg, qr->tags, qr->actor,
-                                qr->req.notify_mask, r->api_data);
+    qr->req.vid = r->api.render(qr->msg, qr->tags, qr->actor, qr->rate,
+                                qr->pitch, qr->req.notify_mask, r->api_data);
 
     mrp_free(qr->msg);
     qr->msg = NULL;
@@ -706,9 +708,9 @@ static request_t *activate_next(state_t *state)
 
 
 request_t *render_request(state_t *state, const char *msg, char **tags,
-                          renderer_t *r, uint32_t actor, int timeout,
-                          int notify_mask, srs_voice_notify_t notify,
-                          void *notify_data)
+                          renderer_t *r, uint32_t actor, double rate,
+                          double pitch, int timeout, int notify_mask,
+                          srs_voice_notify_t notify, void *notify_data)
 {
     request_t *req;
 
@@ -720,7 +722,8 @@ request_t *render_request(state_t *state, const char *msg, char **tags,
     mrp_list_init(&req->hook);
     req->id  = state->nextid++;
     req->r   = r;
-    req->vid = r->api.render(msg, tags, actor, notify_mask, r->api_data);
+    req->vid = r->api.render(msg, tags, actor, rate, pitch,
+                             notify_mask, r->api_data);
 
     if (req->vid == SRS_VOICE_INVALID) {
         mrp_free(req);
@@ -738,9 +741,9 @@ request_t *render_request(state_t *state, const char *msg, char **tags,
 
 
 uint32_t srs_render_voice(srs_context_t *srs, const char *msg,
-                          char **tags, const char *voice, int timeout,
-                          int notify_mask, srs_voice_notify_t notify,
-                          void *user_data)
+                          char **tags, const char *voice, double rate,
+                          double pitch, int timeout, int notify_mask,
+                          srs_voice_notify_t notify, void *user_data)
 {
     state_t    *state = (state_t *)srs->synthesizer;
     renderer_t *r;
@@ -762,7 +765,7 @@ uint32_t srs_render_voice(srs_context_t *srs, const char *msg,
     }
 
     if (state->active == NULL)
-        req = render_request(state, msg, tags, r, actid, timeout,
+        req = render_request(state, msg, tags, r, actid, rate, pitch, timeout,
                              notify_mask, notify, user_data);
     else {
         if (timeout == SRS_VOICE_IMMEDIATE) {
@@ -770,8 +773,8 @@ uint32_t srs_render_voice(srs_context_t *srs, const char *msg,
             req   = NULL;
         }
         else
-            req = enqueue_request(state, msg, tags, r, actid, timeout,
-                                  notify_mask, notify, user_data);
+            req = enqueue_request(state, msg, tags, r, actid, rate, pitch,
+                                  timeout, notify_mask, notify, user_data);
     }
 
     if (req != NULL)

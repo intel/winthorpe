@@ -45,8 +45,8 @@ typedef void (*srs_voice_notify_t)(srs_voice_event_t *event, void *notify_data);
  */
 typedef struct {
     /** Render the given message. */
-    uint32_t (*render)(const char *msg, char **tags, int actor,
-                       int notify_events, void *api_data);
+    uint32_t (*render)(const char *msg, char **tags, int actor, double rate,
+                       double pitch, int notify_events, void *api_data);
     /** Cancel the given rendering, notify cancellation if asked for. */
     void (*cancel)(uint32_t id, void *api_data);
 } srs_voice_api_t;
@@ -63,9 +63,9 @@ void srs_unregister_voice(srs_context_t *srs, const char *name);
 
 /** Render the given message using the given parameters. */
 uint32_t srs_render_voice(srs_context_t *srs, const char *msg,
-                          char **tags, const char *voice, int timeout,
-                          int notify_events, srs_voice_notify_t notify,
-                          void *user_data);
+                          char **tags, const char *voice, double rate,
+                          double pitch, int timeout, int notify_events,
+                          srs_voice_notify_t notify, void *user_data);
 
 /** Cancel the given voice rendering. */
 void srs_cancel_voice(srs_context_t *srs, uint32_t id, int notify);

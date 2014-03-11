@@ -538,8 +538,8 @@ int srs_request_focus(srs_t *srs, srs_voice_focus_t focus)
 
 
 uint32_t srs_render_voice(srs_t *srs, const char *msg, const char *voice,
-                          int timeout, int events, srs_render_notify_t cb,
-                          void *cb_data)
+                          double rate, double pitch, int timeout, int events,
+                          srs_render_notify_t cb, void *cb_data)
 {
     srs_req_voice_t req;
     request_data_t  data;
@@ -550,6 +550,8 @@ uint32_t srs_render_voice(srs_t *srs, const char *msg, const char *voice,
     req.type    = SRS_REQUEST_RENDERVOICE;
     req.msg     = (char *)msg;
     req.voice   = (char *)voice;
+    req.rate    = rate;
+    req.pitch   = pitch;
     req.timeout = timeout;
     req.events  = events;
 

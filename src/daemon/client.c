@@ -371,7 +371,8 @@ static void client_voice_event(srs_voice_event_t *event, void *notify_data)
 
 
 uint32_t client_render_voice(srs_client_t *c, const char *msg,
-                             const char *voice, int timeout, int notify_events)
+                             const char *voice, double rate, double pitch,
+                             int timeout, int notify_events)
 {
     srs_context_t *srs    = c->srs;
     const char    *tags[] = { "media.role=speech", NULL };
@@ -385,9 +386,14 @@ uint32_t client_render_voice(srs_client_t *c, const char *msg,
     req->c             = c;
     req->notify_events = notify_events;
 
-    req->id = srs_render_voice(srs, msg, (char **)tags, voice, timeout,
-                               notify_events | forced, client_voice_event,
-                               req);
+    if (rate == 0)
+        rate = 1;
+    if (pitch == 0)
+        pitch = 1;
+
+    req->id = srs_render_voice(srs, msg, (char **)tags, voice, rate, pitch,
+                               timeout, notify_events | forced,
+                               client_voice_event, req);
 
     if (req->id != SRS_VOICE_INVALID) {
         mrp_list_append(&c->voices, &req->hook);

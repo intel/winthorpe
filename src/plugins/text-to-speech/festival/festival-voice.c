@@ -58,12 +58,16 @@ static void stream_event_cb(festival_t *f, srs_voice_event_t *event,
 
 
 static uint32_t festival_render(const char *msg, char **tags, int actor,
-                                int notify_events, void *api_data)
+                                double rate, double pitch, int notify_events,
+                                void *api_data)
 {
     festival_t *f = (festival_t *)api_data;
     void       *samples;
     uint32_t    nsample, id;
     int         srate, nchannel;
+
+    MRP_UNUSED(rate);
+    MRP_UNUSED(pitch);
 
     if (0 <= actor && actor < f->nactor)
         carnival_select_voice(f->actors[actor].name);

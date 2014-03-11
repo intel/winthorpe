@@ -140,6 +140,8 @@ typedef struct {
     uint32_t  reqno;                     /* request number */
     char     *msg;                       /* message to render */
     char     *voice;                     /* voice to use */
+    double    rate;                      /* voice pitch (0 or 1 = default) */
+    double    pitch;                     /* voice pitch (0 or 1 = default) */
     uint32_t  timeout;                   /* message timeout */
     uint32_t  events;                    /* mask of events to notify about */
 } srs_req_voice_t;

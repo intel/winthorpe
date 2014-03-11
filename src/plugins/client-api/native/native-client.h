@@ -88,8 +88,8 @@ int srs_request_focus(srs_t *srs, srs_voice_focus_t focus);
 
 /** Request rendering the given message, subscribing for the given events. */
 uint32_t srs_render_voice(srs_t *srs, const char *msg, const char *voice,
-                          int timeout, int events, srs_render_notify_t cb,
-                          void *cb_data);
+                          double rate, double pitch, int timeout,
+                          int events, srs_render_notify_t cb, void *cb_data);
 
 /** Cancel an ongoing voice render request. */
 int srs_cancel_voice(srs_t *srs, uint32_t id);

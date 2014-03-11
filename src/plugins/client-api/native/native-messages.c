@@ -89,6 +89,8 @@ mrp_typemap_t *register_message_types(void)
                     MRP_UINT32(srs_req_voice_t, reqno   , DEFAULT),
                     MRP_STRING(srs_req_voice_t, msg     , DEFAULT),
                     MRP_STRING(srs_req_voice_t, voice   , DEFAULT),
+                    MRP_DOUBLE(srs_req_voice_t, rate    , DEFAULT),
+                    MRP_DOUBLE(srs_req_voice_t, pitch   , DEFAULT),
                     MRP_UINT32(srs_req_voice_t, timeout , DEFAULT),
                     MRP_UINT32(srs_req_voice_t, events  , DEFAULT));
 

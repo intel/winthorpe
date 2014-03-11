@@ -132,7 +132,8 @@ void client_notify_command(srs_client_t *c, int idx, int ntoken,
 
 /** Request synthesizing a message. */
 uint32_t client_render_voice(srs_client_t *c, const char *msg,
-                             const char *voice, int timeout, int notify_events);
+                             const char *voice, double rate, double pitch,
+                             int timeout, int notify_events);
 
 /** Cancel/stop a synthesizing request. */
 void client_cancel_voice(srs_client_t *c, uint32_t id);
