@@ -108,6 +108,8 @@ static void stream_destroy(stream_t *s)
         pa_stream_disconnect(s->s);
         pa_stream_unref(s->s);
         s->s = NULL;
+        mrp_free(s->buf);
+        s->buf = NULL;
     }
 
     mrp_free(s);

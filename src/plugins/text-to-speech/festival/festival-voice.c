@@ -77,10 +77,13 @@ static uint32_t festival_render(const char *msg, char **tags, int actor,
     if (carnival_synthesize(msg, &samples, &srate, &nchannel, &nsample) != 0)
         return SRS_VOICE_INVALID;
     else
-        return pulse_play_stream(f, samples, srate, nchannel, nsample, tags,
-                                 notify_events, stream_event_cb, NULL);
+        id = pulse_play_stream(f, samples, srate, nchannel, nsample, tags,
+                               notify_events, stream_event_cb, NULL);
 
-    return 0;
+    if (id == SRS_VOICE_INVALID)
+        mrp_free(samples);
+
+    return id;
 }
 
 
