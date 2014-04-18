@@ -323,6 +323,24 @@ plugin_festival_voice_la_LDFLAGS =				\
 		-module -avoid-version
 endif
 
+if ESPEAK_ENABLED
+# espeak-voice synthesizer plugin
+plugin_LTLIBRARIES += plugin-espeak-voice.la
+
+plugin_espeak_voice_la_SOURCES =				\
+		plugins/text-to-speech/espeak/espeak-voice.c	\
+		plugins/text-to-speech/espeak/pulse.c
+
+plugin_espeak_voice_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_espeak_voice_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_espeak_voice_la_LIBADD =					\
+		$(ESPEAK_LIBS)
+endif
+
 # simple-voice synthesizer plugin
 #plugin_LTLIBRARIES += plugin-simple-voice.la
 #

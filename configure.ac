@@ -259,6 +259,36 @@ AC_SUBST(FESTIVAL_ENABLED)
 AC_SUBST(FESTIVAL_CXXFLAGS)
 AC_SUBST(FESTIVAL_LIBS)
 
+# Check if espeak support should be enabled.
+AC_ARG_ENABLE(espeak,
+              [  --enable-espeak           enable espeak synthesizer support],
+	      [enable_espeak=$enableval], [enable_espeak=auto])
+
+if test "$enable_espeak" != "no"; then
+    AC_CHECK_HEADERS([espeak/speak_lib.h], [have_espeak=yes], [have_espeak=no])
+
+    if test "$have_espeak" = "no" -a "$enable_espeak" = "yes"; then
+        AC_MSG_ERROR([espeak development libraries not found.])
+    fi
+
+    enable_espeak=$have_espeak
+fi
+
+if test "$enable_espeak" = "yes"; then
+    AC_MSG_NOTICE([espeak synthesizer support is enabled.])
+    AC_DEFINE([ESPEAK_ENABLED], 1, [Enable espeak support ?])
+    ESPEAK_INCLUDES="-I$prefix/include"
+    ESPEAK_CFLAGS="$ESPEAK_INCLUDES"
+    ESPEAK_LIBS="-lespeak"
+else
+    AC_MSG_NOTICE([espeak synthesizer support is disabled.])
+fi
+
+AM_CONDITIONAL(ESPEAK_ENABLED, [test "$enable_espeak" = "yes"])
+AC_SUBST(ESPEAK_ENABLED)
+AC_SUBST(ESPEAK_CFLAGS)
+AC_SUBST(ESPEAK_LIBS)
+
 # Check if systemd socket-based activation was enabled.
 AC_ARG_ENABLE(systemd,
               [  --enable-systemd       enable systemd socket-based activation],
@@ -304,6 +334,7 @@ echo "Extra C warnings flags: $WARNING_CFLAGS"
 echo "D-Bus support: $enable_dbus"
 echo "Sphinx support: $enable_sphinx"
 echo "Festival support: $enable_festival"
+echo "Espeak support: $enable_espeak"
 echo "systemd socket-based activation: $enable_systemd"
 
 if test "$DUMP_LIB_FLAGS" = "yes"; then
