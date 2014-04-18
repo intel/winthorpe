@@ -283,6 +283,27 @@ static void unregister_actors(renderer_t *r)
 }
 
 
+static actor_t *find_actor(state_t *state, const char *r, const char *v)
+{
+    mrp_list_hook_t *lp, *ln, *ap, *an;
+    language_t      *l;
+    actor_t         *a;
+
+    mrp_list_foreach(&state->languages, lp, ln) {
+        l = mrp_list_entry(lp, typeof(*l), hook);
+
+        mrp_list_foreach(&l->actors, ap, an) {
+            a = mrp_list_entry(ap, typeof(*a), hook);
+
+            if (!strcmp(a->r->name, r) && !strcmp(a->voice, v))
+                return a;
+        }
+    }
+
+    return NULL;
+}
+
+
 static void free_renderer(renderer_t *r)
 {
     if (r != NULL) {
@@ -432,13 +453,30 @@ static renderer_t *find_renderer(state_t *state, const char *voice,
     language_t      *l;
     actor_t         *a, *fallback;
     mrp_list_hook_t *ap, *an;
-    char             lang[128], *e;
+    char             lang[128], renderer[128], *e;
     int              n;
 
     if (state == NULL) {
         errno = ENOSYS;
 
         return NULL;
+    }
+
+    if ((e = strchr(voice, '/')) != NULL) {
+        n = e - voice;
+
+        if (n >= sizeof(renderer) - 1)
+            return NULL;
+
+        strncpy(renderer, voice, n);
+        renderer[n] = '\0';
+
+        if ((a = find_actor(state, renderer, e + 1)) != NULL) {
+            *actor = a->id;
+            return a->r;
+        }
+        else
+            return NULL;
     }
 
     if ((e = strchr(voice, '-')) == NULL)
