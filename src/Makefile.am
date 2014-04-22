@@ -18,7 +18,8 @@ QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 daemon_includedir  = $(includedir)/srs/daemon
 daemon_include_HEADERS = \
 		daemon/client-api-types.h	\
-		daemon/voice-api-types.h
+		daemon/voice-api-types.h	\
+		daemon/pulse.h
 
 srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
@@ -28,7 +29,8 @@ srs_daemon_SOURCES =				\
 		daemon/plugin.c			\
 		daemon/audiobuf.c		\
 		daemon/recognizer.c		\
-		daemon/voice.c
+		daemon/voice.c			\
+		daemon/pulse.c
 
 srs_daemon_CFLAGS = 				\
 		$(AM_CFLAGS)			\
@@ -328,8 +330,7 @@ if ESPEAK_ENABLED
 plugin_LTLIBRARIES += plugin-espeak-voice.la
 
 plugin_espeak_voice_la_SOURCES =				\
-		plugins/text-to-speech/espeak/espeak-voice.c	\
-		plugins/text-to-speech/espeak/pulse.c
+		plugins/text-to-speech/espeak/espeak-voice.c
 
 plugin_espeak_voice_la_CFLAGS  =				\
 		$(AM_CFLAGS)

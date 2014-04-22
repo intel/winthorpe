@@ -42,6 +42,7 @@
 
 /** SRS daemon context type. */
 typedef struct srs_context_s srs_context_t;
+typedef struct srs_pulse_s   srs_pulse_t;
 
 #include "srs/daemon/config.h"
 #include "srs/daemon/resctl.h"
@@ -54,6 +55,7 @@ struct srs_context_s {
     GMainLoop         *gl;               /* GMainLoop if enabled and used */
     void              *pl;               /* PA (native or glib) mainloop */
     pa_mainloop_api   *pa;               /* PA mainloop API */
+    srs_pulse_t       *pulse;            /* audio stream interface */
     mrp_mainloop_t    *ml;               /* associated murphy mainloop */
     mrp_list_hook_t    clients;          /* connected clients */
     mrp_list_hook_t    plugins;          /* loaded plugins */

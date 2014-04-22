@@ -42,6 +42,7 @@
 #include "srs/daemon/plugin.h"
 #include "srs/daemon/client.h"
 #include "srs/daemon/recognizer.h"
+#include "srs/daemon/pulse.h"
 
 static void cleanup_mainloop(srs_context_t *srs);
 static void resctl_state_change(srs_resctl_event_t *e, void *user_data);
@@ -50,6 +51,7 @@ static void cleanup_context(srs_context_t *srs)
 {
     if (srs != NULL) {
         srs_resctl_disconnect(srs);
+        srs_pulse_cleanup(srs->pulse);
         cleanup_mainloop(srs);
 
         /*
@@ -131,7 +133,9 @@ static void create_mainloop(srs_context_t *srs)
         srs->ml = mrp_mainloop_glib_get(srs->gl);
     }
 
-    if (srs->pa != NULL && srs->ml != NULL) {
+    srs->pulse = srs_pulse_setup(srs->pa, "SRS daemon");
+
+    if (srs->pa != NULL && srs->pulse != NULL && srs->ml != NULL) {
         if (srs_resctl_connect(srs, resctl_state_change, srs, TRUE))
             return;
     }
