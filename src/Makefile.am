@@ -310,8 +310,7 @@ plugin_LTLIBRARIES += plugin-festival-voice.la
 
 plugin_festival_voice_la_SOURCES =					\
 		plugins/text-to-speech/festival/festival-voice.c	\
-		plugins/text-to-speech/festival/libcarnival.cc		\
-		plugins/text-to-speech/festival/pulse.c
+		plugins/text-to-speech/festival/libcarnival.cc
 
 plugin_festival_voice_la_CFLAGS  =				\
 		$(AM_CFLAGS)

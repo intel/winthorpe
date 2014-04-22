@@ -32,10 +32,10 @@
 
 #include "srs/daemon/plugin.h"
 #include "srs/daemon/voice.h"
+#include "srs/daemon/pulse.h"
 
 #include "festival-voice.h"
 #include "libcarnival.h"
-#include "pulse.h"
 
 #define PLUGIN_NAME    "festival-voice"
 #define PLUGIN_DESCR   "A festival-based voice synthesizer plugin for SRS."
@@ -48,10 +48,12 @@
 #define DEFVAL_VOICES  DEFVOICE
 
 
-static void stream_event_cb(festival_t *f, srs_voice_event_t *event,
+static void stream_event_cb(srs_pulse_t *pulse, srs_voice_event_t *event,
                             void *user_data)
 {
-    MRP_UNUSED(user_data);
+    festival_t *f = (festival_t *)user_data;
+
+    MRP_UNUSED(pulse);
 
     f->voice.notify(event, f->voice.notify_data);
 }
@@ -77,8 +79,8 @@ static uint32_t festival_render(const char *msg, char **tags, int actor,
     if (carnival_synthesize(msg, &samples, &srate, &nchannel, &nsample) != 0)
         return SRS_VOICE_INVALID;
     else
-        id = pulse_play_stream(f, samples, srate, nchannel, nsample, tags,
-                               notify_events, stream_event_cb, NULL);
+        id = srs_play_stream(f->srs->pulse, samples, srate, nchannel, nsample,
+                             tags, notify_events, stream_event_cb, f);
 
     if (id == SRS_VOICE_INVALID)
         mrp_free(samples);
@@ -91,7 +93,7 @@ static void festival_cancel(uint32_t id, void *api_data)
 {
     festival_t *f = (festival_t *)api_data;
 
-    pulse_stop_stream(f, id, FALSE, FALSE);
+    srs_stop_stream(f->srs->pulse, id, FALSE, FALSE);
 }
 
 
@@ -235,7 +237,7 @@ static int start_festival(srs_plugin_t *plugin)
     char               *lang, *dial, *descr;
     int                 female, age, i;
 
-    if (pulse_setup(f) != 0)
+    if (f->srs->pulse == NULL)
         return FALSE;
 
     if (carnival_loaded_voices(&voices, &nvoice) != 0)
@@ -305,7 +307,6 @@ static void destroy_festival(srs_plugin_t *plugin)
         carnival_free_string(f->actors[i].description);
     }
 
-    pulse_cleanup(f);
     carnival_exit();
 
     mrp_free(f);

@@ -18,7 +18,6 @@ typedef struct {
     struct {
         const char    *voices;           /* configured festival voices */
     } config;
-    void              *pulse;            /* PA streams et al. state */
 } festival_t;
 
 #endif /* __SRS_FESTIVAL_VOICE_H__ */
