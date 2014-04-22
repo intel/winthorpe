@@ -1,11 +1,11 @@
-#ifndef __SRS_FESTIVAL_PULSE_H__
-#define __SRS_FESTIVAL_PULSE_H__
+#ifndef __SRS_ESPEAK_PULSE_H__
+#define __SRS_ESPEAK_PULSE_H__
 
 #include <stdint.h>
 #include <murphy/common/macros.h>
 #include <pulse/pulseaudio.h>
 
-#include "espeak-voice.h"
+#include "srs/daemon/voice.h"
 
 MRP_CDECL_BEGIN
 
@@ -35,26 +35,28 @@ typedef enum {
 #define PULSE_MASK_ALL       (PULSE_MASK_STARTED | PULSE_MASK_PROGRESS | \
                               PULSE_MASK_COMPLETED | PULSE_MASK_ABORTED)
 
+typedef struct pulse_s pulse_t;
+
 typedef srs_voice_event_t pulse_stream_event_t;
 
-typedef void (*pulse_stream_cb_t)(espeak_t *e, pulse_stream_event_t *event,
+typedef void (*pulse_stream_cb_t)(pulse_t *p, pulse_stream_event_t *event,
                                   void *user_data);
 
 /** Set up the PulseAudio interface. */
-int pulse_setup(espeak_t *e);
+pulse_t *pulse_setup(pa_mainloop_api *pa, const char *name);
 
 /** Clean up the audio interface. */
-void pulse_cleanup(espeak_t *e);
+void pulse_cleanup(pulse_t *p);
 
 /** Render an stream (a buffer of audio samples). */
-uint32_t pulse_play_stream(espeak_t *e, void *sample_buf, int sample_rate,
+uint32_t pulse_play_stream(pulse_t *p, void *sample_buf, int sample_rate,
                            int nchannel, uint32_t nsample, char **tags,
                            int event_mask, pulse_stream_cb_t cb,
                            void *user_data);
 
 /** Stop an ongoing stream. */
-int pulse_stop_stream(espeak_t *e, uint32_t id, int drain, int notify);
+int pulse_stop_stream(pulse_t *p, uint32_t id, int drain, int notify);
 
 MRP_CDECL_END
 
-#endif /* __SRS_FESTIVAL_PULSE_H__ */
+#endif /* __SRS_ESPEAK_PULSE_H__ */

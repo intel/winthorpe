@@ -60,10 +60,12 @@ typedef struct {
 } synth_data_t;
 
 
-static void stream_event_cb(espeak_t *e, srs_voice_event_t *event,
+static void stream_event_cb(pulse_t *p, srs_voice_event_t *event,
                             void *user_data)
 {
-    MRP_UNUSED(user_data);
+    espeak_t *e = (espeak_t *)user_data;
+
+    MRP_UNUSED(p);
 
     e->voice.notify(event, e->voice.notify_data);
 }
@@ -72,22 +74,9 @@ static void stream_event_cb(espeak_t *e, srs_voice_event_t *event,
 static int espeak_synth_cb(short *samples, int nsample, espeak_EVENT *events)
 {
     synth_data_t *data = events->user_data;
-    espeak_EVENT *evt;
 
-    if (samples == NULL) {
-        if (data->samples != NULL) {
-            int fd = open("espeak.data", O_CREAT|O_WRONLY, 0644);
-
-            if (fd >= 0) {
-                write(fd, data->samples, 2 * data->nsample);
-                close(fd);
-            }
-        }
-
+    if (samples == NULL)
         return ESPEAK_CONTINUE;
-    }
-
-    mrp_debug("got %d new samples from espeak", nsample);
 
     if (mrp_realloc(data->samples, 2 * (data->nsample + nsample)) == NULL)
         return ESPEAK_ABORT;
@@ -161,13 +150,13 @@ static uint32_t espeak_render(const char *msg, char **tags, int actor,
 
     if (0 <= actor && actor <= e->nactor) {
         if (espeak_SetVoiceByName(e->actors[actor].name) != EE_OK) {
-            mrp_log_error("Failed to activate espeak voice #%d ('%s').",
+            mrp_log_error("espeak: failed to activate espeak voice #%d ('%s').",
                           actor, e->actors[actor].name);
             return SRS_VOICE_INVALID;
         }
     }
     else {
-        mrp_log_error("Invalid espeak voice #%d requested.", actor);
+        mrp_log_error("espeak: invalid espeak voice #%d requested.", actor);
         return SRS_VOICE_INVALID;
     }
 
@@ -188,12 +177,13 @@ static uint32_t espeak_render(const char *msg, char **tags, int actor,
     espeak_setpitch(opitch);
 
     if (r != EE_OK || data.samples == NULL) {
-        mrp_log_error("Failed to synthesize message with espeak.");
+        mrp_log_error("espeak: failed to synthesize message with espeak.");
         return SRS_VOICE_INVALID;
     }
 
-    id = pulse_play_stream(e, data.samples, e->config.rate, 1, data.nsample,
-                           tags, notify_events, stream_event_cb, NULL);
+    id = pulse_play_stream(e->pulse, data.samples, e->config.rate, 1,
+                           data.nsample, tags, notify_events,
+                           stream_event_cb, e);
 
     if (id == SRS_VOICE_INVALID)
         mrp_free(data.samples);
@@ -206,7 +196,7 @@ static void espeak_cancel(uint32_t id, void *api_data)
 {
     espeak_t *e = (espeak_t *)api_data;
 
-    pulse_stop_stream(e, id, FALSE, FALSE);
+    pulse_stop_stream(e->pulse, id, FALSE, FALSE);
 }
 
 
@@ -248,11 +238,11 @@ static int config_espeak(srs_plugin_t *plugin, srs_cfg_t *cfg)
     rate = espeak_Initialize(out, blen, path, 0);
 
     if (rate <= 0) {
-        mrp_log_error("Failed to initialize espeak.");
+        mrp_log_error("espeak: failed to initialize espeak.");
         return FALSE;
     }
 
-    mrp_log_info("espeak chose %d Hz for sample rate.", rate);
+    mrp_log_info("espeak: chose %d Hz for sample rate.", rate);
 
     e->config.rate = rate;
 
@@ -315,13 +305,13 @@ static int start_espeak(srs_plugin_t *plugin)
     int            nvoice, i;
     int            nactor;
 
-    if (pulse_setup(e) != 0)
+    if ((e->pulse = pulse_setup(e->srs->pa, "espeak")) == NULL)
         return FALSE;
 
     voices = (espeak_VOICE **)espeak_ListVoices(NULL);
 
     if (voices == NULL) {
-        mrp_log_error("Could not find any espeak voices.");
+        mrp_log_error("espeak: could not find any voices.");
         return FALSE;
     }
 
@@ -331,7 +321,7 @@ static int start_espeak(srs_plugin_t *plugin)
     if ((e->actors = mrp_allocz_array(typeof(*e->actors), nvoice)) == NULL)
         goto fail;
 
-    mrp_log_info("Available espeak voices:");
+    mrp_log_info("espeak: found available voices:");
 
     for (i = 0; i < nvoice; i++) {
         v = voices[i];
@@ -389,13 +379,12 @@ static void destroy_espeak(srs_plugin_t *plugin)
         mrp_free(e->actors[i].description);
     }
 
-    pulse_cleanup(e);
+    pulse_cleanup(e->pulse);
 
     mrp_free(e);
 }
 
 
 SRS_DECLARE_PLUGIN(PLUGIN_NAME, PLUGIN_DESCR, PLUGIN_AUTHORS, PLUGIN_VERSION,
-                   create_espeak, config_espeak,
-                   start_espeak, stop_espeak,
+                   create_espeak, config_espeak, start_espeak, stop_espeak,
                    destroy_espeak)

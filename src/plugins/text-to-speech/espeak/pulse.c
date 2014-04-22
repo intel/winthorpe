@@ -11,15 +11,15 @@
 #define SPEECH "speech"
 #define TTS    "text-to-speech"
 
-typedef struct {
-    espeak_t        *e;                  /* espeak voice context */
+struct pulse_s {
     pa_mainloop_api *pa;                 /* PA mainloop API */
+    char            *name;               /* PA context name */
     pa_context      *pc;                 /* PA context */
     uint32_t         strmid;             /* next stream id */
     mrp_list_hook_t  streams;            /* active streams */
     int              connected;          /* whether connection is up */
-    mrp_timer_t     *reconn;             /* reconnect timer */
-} pulse_t;
+    pa_time_event   *reconn;             /* reconnect timer */
+};
 
 
 typedef struct {
@@ -55,42 +55,42 @@ static void stream_drain(stream_t *s);
 static void stream_notify(stream_t *s, srs_voice_event_type_t event);
 
 
-int pulse_setup(espeak_t *e)
+pulse_t *pulse_setup(pa_mainloop_api *pa, const char *name)
 {
     pulse_t *p;
 
     if ((p = mrp_allocz(sizeof(*p))) == NULL)
-        return -1;
+        return NULL;
 
     mrp_list_init(&p->streams);
-    p->e  = e;
-    p->pa = e->srs->pa;
-    p->pc = pa_context_new(p->pa, "festival");
+    p->pa   = pa;
+    p->name = name ? mrp_strdup(name) : mrp_strdup("Winthorpe");
+    p->pc   = pa_context_new(p->pa, p->name);
 
     if (p->pc == NULL) {
         mrp_free(p);
 
-        return -1;
+        return NULL;
     }
 
-    e->pulse  = p;
     p->strmid = 1;
 
     pa_context_set_state_callback(p->pc, context_state_cb, p);
     pa_context_set_subscribe_callback(p->pc, context_event_cb, p);
     pa_context_connect(p->pc, NULL, PA_CONTEXT_NOFAIL, NULL);
 
-    return 0;
+    return p;
 }
 
 
-void pulse_cleanup(espeak_t *e)
+void pulse_cleanup(pulse_t *p)
 {
-    pulse_t *p = (pulse_t *)e->pulse;
-
     if (p->pc != NULL) {
         pa_context_disconnect(p->pc);
         p->pc = NULL;
+        mrp_free(p->name);
+        p->name = NULL;
+        mrp_free(p);
     }
 }
 
@@ -135,12 +135,11 @@ static inline void stream_unref(stream_t *s)
 }
 
 
-uint32_t pulse_play_stream(espeak_t *e, void *sample_buf, int sample_rate,
+uint32_t pulse_play_stream(pulse_t *p, void *sample_buf, int sample_rate,
                            int nchannel, uint32_t nsample, char **tags,
                            int event_mask, pulse_stream_cb_t cb,
                            void *user_data)
 {
-    pulse_t         *p    = (pulse_t *)e->pulse;
     char           **t;
     stream_t        *s;
     pa_sample_spec   ss;
@@ -238,9 +237,8 @@ static void stream_stop(stream_t *s, int drain, int notify)
 }
 
 
-int pulse_stop_stream(espeak_t *e, uint32_t id, int drain, int notify)
+int pulse_stop_stream(pulse_t *p, uint32_t id, int drain, int notify)
 {
-    pulse_t         *p = (pulse_t *)e->pulse;
     mrp_list_hook_t *sp, *sn;
     stream_t        *se, *s;
 
@@ -267,7 +265,8 @@ int pulse_stop_stream(espeak_t *e, uint32_t id, int drain, int notify)
 }
 
 
-static void connect_timer_cb(mrp_timer_t *t, void *user_data)
+static void connect_timer_cb(pa_mainloop_api *api, pa_time_event *e,
+                             const struct timeval *tv, void *user_data)
 {
     pulse_t *p = (pulse_t *)user_data;
 
@@ -276,21 +275,21 @@ static void connect_timer_cb(mrp_timer_t *t, void *user_data)
         p->pc = NULL;
     }
 
-    p->pc = pa_context_new(p->pa, "festival");
+    p->pc = pa_context_new(p->pa, p->name);
 
     pa_context_set_state_callback(p->pc, context_state_cb, p);
     pa_context_set_subscribe_callback(p->pc, context_event_cb, p);
     pa_context_connect(p->pc, NULL, PA_CONTEXT_NOFAIL, NULL);
 
+    p->pa->time_free(p->reconn);
     p->reconn = NULL;
-    mrp_del_timer(t);
 }
 
 
 static void stop_reconnect(pulse_t *p)
 {
     if (p->reconn != NULL) {
-        mrp_del_timer(p->reconn);
+        p->pa->time_free(p->reconn);
         p->reconn = NULL;
     }
 }
@@ -298,9 +297,13 @@ static void stop_reconnect(pulse_t *p)
 
 static void start_reconnect(pulse_t *p)
 {
+    struct timeval tv;
+
     stop_reconnect(p);
 
-    p->reconn = mrp_add_timer(p->e->srs->ml, 5000, connect_timer_cb, p);
+    pa_timeval_add(pa_gettimeofday(&tv), 5000);
+
+    p->reconn = p->pa->time_new(p->pa, &tv, connect_timer_cb, p);
 }
 
 
@@ -310,34 +313,34 @@ static void context_state_cb(pa_context *pc, void *user_data)
 
     switch (pa_context_get_state(pc)) {
     case PA_CONTEXT_CONNECTING:
-        mrp_debug("PA connection: being established...");
+        mrp_debug("pulse: connection being established...");
         p->connected = FALSE;
         stop_reconnect(p);
         break;
 
     case PA_CONTEXT_AUTHORIZING:
-        mrp_debug("PA connection: being authenticated...");
+        mrp_debug("pulse: connection being authenticated...");
         p->connected = FALSE;
         break;
 
     case PA_CONTEXT_SETTING_NAME:
-        mrp_debug("PA connection: setting name...");
+        mrp_debug("pulse: setting connection name...");
         p->connected = FALSE;
         break;
 
     case PA_CONTEXT_READY:
-        mrp_log_info("festival: PA connection up and ready");
+        mrp_log_info("pulse: connection up and ready");
         p->connected = TRUE;
         break;
 
     case PA_CONTEXT_TERMINATED:
-        mrp_log_info("festival: PA connection terminated");
+        mrp_log_info("pulse: connection terminated");
         p->connected = FALSE;
         start_reconnect(p);
         break;
 
     case PA_CONTEXT_FAILED:
-        mrp_log_error("festival: PA connetion failed");
+        mrp_log_error("pulse: connetion failed");
     default:
         p->connected = FALSE;
         start_reconnect(p);
@@ -402,7 +405,7 @@ static void stream_notify(stream_t *s, srs_voice_event_type_t event)
     }
 
     stream_ref(s);
-    s->cb(s->p->e, &e, s->user_data);
+    s->cb(s->p, &e, s->user_data);
     stream_unref(s);
 }
 
@@ -421,18 +424,18 @@ static void stream_state_cb(pa_stream *ps, void *user_data)
 
     switch ((sst = pa_stream_get_state(s->s))) {
     case PA_STREAM_CREATING:
-        mrp_debug("stream #%u being created", s->id);
+        mrp_debug("pulse: stream #%u being created", s->id);
         break;
 
     case PA_STREAM_READY:
-        mrp_debug("stream #%u ready", s->id);
+        mrp_debug("pulse: stream #%u ready", s->id);
         stream_notify(s, PULSE_STREAM_STARTED);
         break;
 
     case PA_STREAM_TERMINATED:
     case PA_STREAM_FAILED:
     default:
-        mrp_debug("stream #%u state %d", s->id, sst);
+        mrp_debug("pulse: stream #%u state %d", s->id, sst);
 
         pa_stream_disconnect(s->s);
         pa_stream_set_state_callback(s->s, NULL, NULL);
@@ -451,7 +454,7 @@ static void stream_state_cb(pa_stream *ps, void *user_data)
 static void stream_drain(stream_t *s)
 {
     if (s->drain == NULL) {
-        mrp_debug("stream #%u done, draining", s->id);
+        mrp_debug("pulse: stream #%u done, draining", s->id);
         stream_ref(s);
         s->drain = pa_stream_drain(s->s, stream_drain_cb, s);
     }
@@ -462,7 +465,7 @@ static void stream_drain_cb(pa_stream *ps, int success, void *user_data)
 {
     stream_t *s = (stream_t *)user_data;
 
-    mrp_debug("stream #%u drained %s", s->id,
+    mrp_debug("pulse: stream #%u drained %s", s->id,
               success ? "successfully" : "failed");
 
     pa_operation_unref(s->drain);
@@ -495,7 +498,8 @@ static void stream_write_cb(pa_stream *ps, size_t size, void *user_data)
 
     if (pa_stream_write(s->s, s->buf + s->offs, size, NULL, 0,
                         PA_SEEK_RELATIVE) < 0) {
-        mrp_log_error("festival: failed to write %zd bytes", size);
+        mrp_log_error("pulse: failed to write %zd bytes to stream #%u",
+                      size, s->id);
         goto out;
     }
     else {
