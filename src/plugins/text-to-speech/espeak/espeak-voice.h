@@ -19,7 +19,6 @@ typedef struct {
         srs_voice_notify_t  notify;      /* voice notification callback */
         void               *notify_data; /* opaque notification data */
     } voice;
-    void              *pulse;            /* PA streams et al. state */
 } espeak_t;
 
 #endif /* __SRS_ESPEAK_VOICE_H__ */

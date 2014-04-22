@@ -40,9 +40,9 @@
 
 #include "srs/daemon/plugin.h"
 #include "srs/daemon/voice.h"
+#include "srs/daemon/pulse.h"
 
 #include "espeak-voice.h"
-#include "pulse.h"
 
 #define PLUGIN_NAME    "espeak-voice"
 #define PLUGIN_DESCR   "An espeak-based voice synthesizer plugin for SRS."
@@ -60,7 +60,7 @@ typedef struct {
 } synth_data_t;
 
 
-static void stream_event_cb(pulse_t *p, srs_voice_event_t *event,
+static void stream_event_cb(srs_pulse_t *p, srs_voice_event_t *event,
                             void *user_data)
 {
     espeak_t *e = (espeak_t *)user_data;
@@ -181,9 +181,9 @@ static uint32_t espeak_render(const char *msg, char **tags, int actor,
         return SRS_VOICE_INVALID;
     }
 
-    id = pulse_play_stream(e->pulse, data.samples, e->config.rate, 1,
-                           data.nsample, tags, notify_events,
-                           stream_event_cb, e);
+    id = srs_play_stream(e->srs->pulse, data.samples, e->config.rate, 1,
+                         data.nsample, tags, notify_events,
+                         stream_event_cb, e);
 
     if (id == SRS_VOICE_INVALID)
         mrp_free(data.samples);
@@ -196,7 +196,7 @@ static void espeak_cancel(uint32_t id, void *api_data)
 {
     espeak_t *e = (espeak_t *)api_data;
 
-    pulse_stop_stream(e->pulse, id, FALSE, FALSE);
+    srs_stop_stream(e->srs->pulse, id, FALSE, FALSE);
 }
 
 
@@ -305,7 +305,7 @@ static int start_espeak(srs_plugin_t *plugin)
     int            nvoice, i;
     int            nactor;
 
-    if ((e->pulse = pulse_setup(e->srs->pa, "espeak")) == NULL)
+    if (e->srs->pulse == NULL)
         return FALSE;
 
     voices = (espeak_VOICE **)espeak_ListVoices(NULL);
@@ -378,8 +378,6 @@ static void destroy_espeak(srs_plugin_t *plugin)
         mrp_free(e->actors[i].lang);
         mrp_free(e->actors[i].description);
     }
-
-    pulse_cleanup(e->pulse);
 
     mrp_free(e);
 }
