@@ -408,6 +408,7 @@ static void stream_notify(stream_t *s, srs_voice_event_type_t event)
 
     stream_ref(s);
     s->cb(s->p, &e, s->user_data);
+    s->fired_mask |= mask;
     stream_unref(s);
 }
 
