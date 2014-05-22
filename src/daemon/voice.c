@@ -29,6 +29,7 @@
 
 #include <unistd.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <murphy/common/macros.h>
 #include <murphy/common/mm.h>
@@ -167,14 +168,72 @@ static language_t *find_language(state_t *state, const char *lang, int create)
 }
 
 
+static char *canonical_actor_name(char *buf, size_t size,
+                                  language_t *language, actor_t *actor)
+{
+    const char *lang, *dialect, *gender, *s;
+    char       *d;
+    int         idx, i;
+    ssize_t     n;
+
+    lang    = language->lang;
+    dialect = actor->dialect;
+
+    if (actor->gender != SRS_VOICE_GENDER_FEMALE) {
+        gender = "-male";
+        idx    = language->nmale++;
+    }
+    else {
+        gender = "-female";
+        idx    = language->nfemale++;
+    }
+
+    d = buf;
+    s = lang;
+
+    while (*s && size > 0) {
+        if (isalnum(*s))
+            *d = tolower(*s);
+        else
+            *d = '-';
+
+        s++;
+        d++;
+        size--;
+    }
+
+    if (dialect != NULL && size > 0) {
+        s = dialect;
+        *d++ = '-';
+        size--;
+
+        while (*s && size > 0) {
+            if (isalnum(*s))
+                *d = tolower(*s);
+            else
+                *d = '-';
+
+            s++;
+            d++;
+            size--;
+        }
+    }
+
+    if (idx > 0)
+        snprintf(d, size, "%s-%d", gender, idx);
+    else
+        snprintf(d, size, "%s", gender);
+
+    return buf;
+}
+
+
 static int register_actor(renderer_t *r, srs_voice_actor_t *act)
 {
     state_t    *state = r->state;
     language_t *l;
     actor_t    *a;
     char        voice[256];
-    const char *g;
-    int        *n;
 
     l = find_language(state, act->lang, TRUE);
 
@@ -204,28 +263,7 @@ static int register_actor(renderer_t *r, srs_voice_actor_t *act)
         return -1;
     }
 
-    if (a->gender == SRS_VOICE_GENDER_MALE) {
-    male:
-        g = "-male";
-        n = &l->nmale;
-    }
-    else if (a->gender == SRS_VOICE_GENDER_FEMALE) {
-        g = "-female";
-        n = &l->nfemale;
-    }
-    else {
-        a->gender = SRS_VOICE_GENDER_MALE;
-        goto male;
-    }
-
-    if (*n > 0)
-        snprintf(voice, sizeof(voice), "%s%s%s%s-%d", l->lang,
-                 a->dialect ? "-" : "", a->dialect ? a->dialect : "", g, *n);
-    else
-        snprintf(voice, sizeof(voice), "%s%s%s%s", l->lang,
-                 a->dialect ? "-" : "", a->dialect ? a->dialect : "", g);
-
-    a->voice = mrp_strdup(voice);
+    a->voice = mrp_strdup(canonical_actor_name(voice, sizeof(voice), l, a));
 
     if (a->voice == NULL) {
         mrp_free(a->dialect);
@@ -236,7 +274,6 @@ static int register_actor(renderer_t *r, srs_voice_actor_t *act)
     }
 
     mrp_list_append(&l->actors, &a->hook);
-    *n += 1;
 
     mrp_log_info("Registered voice %s/%s.", r->name, voice);
 
