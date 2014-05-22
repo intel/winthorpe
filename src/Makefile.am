@@ -19,7 +19,8 @@ daemon_includedir  = $(includedir)/srs/daemon
 daemon_include_HEADERS = \
 		daemon/client-api-types.h	\
 		daemon/voice-api-types.h	\
-		daemon/pulse.h
+		daemon/pulse.h			\
+		daemon/iso-6391.h
 
 srs_daemon_SOURCES =				\
 		daemon/daemon.c			\
@@ -30,6 +31,7 @@ srs_daemon_SOURCES =				\
 		daemon/audiobuf.c		\
 		daemon/recognizer.c		\
 		daemon/voice.c			\
+		daemon/iso-6391.c		\
 		daemon/pulse.c
 
 srs_daemon_CFLAGS = 				\
