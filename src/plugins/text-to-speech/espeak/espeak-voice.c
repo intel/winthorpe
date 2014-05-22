@@ -40,6 +40,7 @@
 
 #include "srs/daemon/plugin.h"
 #include "srs/daemon/voice.h"
+#include "srs/daemon/iso-6391.h"
 #include "srs/daemon/pulse.h"
 
 #include "espeak-voice.h"
@@ -254,21 +255,42 @@ static int config_espeak(srs_plugin_t *plugin, srs_cfg_t *cfg)
 }
 
 
-static inline const char *espeak_language(const char *languages)
+static const char *espeak_parse_dialect(const char *lang, const char **dialect)
 {
-    /*
-     * XXX TODO:
-     *     We don't handle correctly potential multiple languages. The
-     *     documentation states that the 'languages' attribute of a
-     *     queried voice has a "list of pairs of (byte) priority +
-     *     (string) language[+dialect qualifier].
-     *
-     *     I haven't seen such a voice in practice yet but provided they
-     *     do exist we'd need to change our voice->actor mapping logic
-     *     to accomodate for this and in such a case extract all the
-     *     languages and separately map them to several actors.
-     */
-    return languages + 1;  /* just strip priority for now */
+    const char *dial, *l, *c, *d;
+    char        code_buf[8];
+    size_t      n;
+
+    c = lang;
+    d = strchr(lang, '-');
+
+    if (d == NULL || d - c > 3)
+        d = NULL;
+    else {
+        n = d - c;
+        strncpy(code_buf, c, n);
+        code_buf[n] = '\0';
+        c = code_buf;
+        d = d + 1;
+    }
+
+    mrp_debug("parsed '%s' into code '%s', dialect '%s'", lang, c, d ? d : "-");
+
+    l = srs_iso6391_language(c);
+
+    if (l == NULL)
+        dial = NULL;
+    else {
+        lang = l;
+
+        if (d != NULL && strcmp(c, d))
+            dial = srs_iso6391_dialect(d);
+        else
+            dial = NULL;
+    }
+
+    *dialect = dial;
+    return lang;
 }
 
 
@@ -303,6 +325,7 @@ static int start_espeak(srs_plugin_t *plugin)
     espeak_t      *e = (espeak_t *)plugin->plugin_data;
     espeak_VOICE **voices, *v;
     int            nvoice, i;
+    const char    *lang, *language, *dialect;
     int            nactor;
 
     if (e->srs->pulse == NULL)
@@ -321,26 +344,29 @@ static int start_espeak(srs_plugin_t *plugin)
     if ((e->actors = mrp_allocz_array(typeof(*e->actors), nvoice)) == NULL)
         goto fail;
 
-    mrp_log_info("espeak: found available voices:");
+    mrp_log_info("espeak: found %d available voices.", nvoice);
 
     for (i = 0; i < nvoice; i++) {
         v = voices[i];
 
-        mrp_log_info("    %s (%smale, age %d, languages: %s (id: %s))", v->name,
-                     v->gender == 2 ? "fe" : "", v->age,
-                     v->languages, v->identifier);
+        mrp_log_info("    %s (%s)", v->name, v->identifier);
 
-        e->actors[i].id          = i;
-        e->actors[i].name        = mrp_strdup(v->name);
-        e->actors[i].lang        = mrp_strdup(espeak_language(v->languages));
-        e->actors[i].dialect     = NULL;
-        e->actors[i].gender      = espeak_gender(v->gender);
-        e->actors[i].description = mrp_strdup(espeak_description(v));
+        for (lang = v->languages + 1; *lang; lang += strlen(lang)) {
+            mrp_log_info("      %s (priority %d)", lang, lang[-1]);
 
-        if (e->actors[i].name == NULL || e->actors[i].lang == NULL)
-            goto fail;
+            language = espeak_parse_dialect(lang, &dialect);
+            e->actors[i].id          = i;
+            e->actors[i].name        = mrp_strdup(v->name);
+            e->actors[i].lang        = mrp_strdup(language);
+            e->actors[i].dialect     = mrp_strdup(dialect);
+            e->actors[i].gender      = espeak_gender(v->gender);
+            e->actors[i].description = mrp_strdup(espeak_description(v));
 
-        e->nactor++;
+            if (e->actors[i].name == NULL || e->actors[i].lang == NULL)
+                goto fail;
+
+            e->nactor++;
+        }
     }
 
     if (srs_register_voice(e->self->srs, "espeak", &api, e,
