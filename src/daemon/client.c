@@ -58,12 +58,18 @@ void client_reset_resources(srs_context_t *srs)
 
 void client_create_resources(srs_context_t *srs)
 {
-    mrp_list_hook_t *p, *n;
-    srs_client_t    *c;
+    mrp_list_hook_t   *p, *n;
+    srs_client_t      *c;
+    srs_voice_focus_t  f;
 
     mrp_list_foreach(&srs->clients, p, n) {
         c = mrp_list_entry(p, typeof(*c), hook);
         c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
+        if (c->rset != NULL) {
+            f = c->requested;
+            c->requested = SRS_VOICE_FOCUS_NONE;
+            client_request_focus(c, f);
+        }
     }
 }
 
