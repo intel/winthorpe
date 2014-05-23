@@ -6,7 +6,7 @@
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version: 0.0.6
+Version: 0.0.7
 Release: 0
 License: BSD-3-Clause
 Group: Base/Utilities
@@ -15,18 +15,9 @@ Source0: %{name}-%{version}.tar.gz
 
 BuildRequires: pkgconfig(libpulse)
 
-# Termporarily had to replace these with explicit package-dependencies,
-# because the murphy pkgconfig files lack the correct version (needs to
-# be fixed) and now we need a new enough murphy with native-types support.
-# Switch these back once this is fixed on the murphy side.
-
-# BuildRequires: pkgconfig(murphy-common) >= 0.0.42
-# BuildRequires: pkgconfig(murphy-pulse) >= 0.0.42
-# BuildRequires: pkgconfig(murphy-glib) >= 0.0.42
-
-BuildRequires: murphy-devel >= 0.0.43
-BuildRequires: murphy-glib-devel >= 0.0.43
-BuildRequires: murphy-pulse-devel >= 0.0.43
+BuildRequires: pkgconfig(murphy-common)
+BuildRequires: pkgconfig(murphy-pulse)
+BuildRequires: pkgconfig(murphy-glib)
 
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(json)
