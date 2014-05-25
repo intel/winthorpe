@@ -55,6 +55,12 @@ struct plugin_s {
 };
 
 
+mrp_mainloop_t *plugin_get_mainloop(plugin_t *plugin)
+{
+    return plugin->self->srs->ml;
+}
+
+
 int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt)
 {
     plugin_t *pl;

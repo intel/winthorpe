@@ -186,9 +186,10 @@ plugin_sphinx_speech_la_SOURCES =				\
 		plugins/speech-to-text/sphinx/pulse-interface.c \
 		plugins/speech-to-text/sphinx/input-buffer.c    \
 		plugins/speech-to-text/sphinx/filter-buffer.c   \
-		plugins/speech-to-text/sphinx/utterance.c	      \
+		plugins/speech-to-text/sphinx/utterance.c	\
 		plugins/speech-to-text/sphinx/decoder-set.c     \
-		plugins/speech-to-text/sphinx/options.c
+		plugins/speech-to-text/sphinx/options.c		\
+		plugins/speech-to-text/sphinx/logger.c
 
 plugin_sphinx_speech_la_CFLAGS  =			\
 		$(AM_CFLAGS) 				\

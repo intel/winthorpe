@@ -4,9 +4,12 @@
 #include <string.h>
 #include <errno.h>
 
+#include <sphinxbase/err.h>
+
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 
+#include "logger.h"
 #include "options.h"
 
 #define DEFAULT_HMM  "/usr/share/pocketsphinx/model/hmm/en_US/hub4wsj_sc_8k"
@@ -99,6 +102,14 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
                     mrp_free((void *)decs->lm);
                     decs->lm = mrp_strdup(value);
                 }
+                else if (!strcmp(key, "log")) {
+                    mrp_log_info("Redirecting sphinx logs to '%s'.", value);
+                    mrp_free((void *)opts->logfn);
+                    opts->logfn = mrp_strdup(value);
+
+                    if (!strcmp(opts->logfn, "srs"))
+                        err_set_logfp(logger_create(ctx));
+                }
                 break;
 
             case 'p':
@@ -136,6 +147,20 @@ int options_create(context_t *ctx, int ncfg, srs_cfg_t *cfgs)
                         mrp_log_error("invalid value %s for topn", value);
                         sts = -1;
                     }
+                }
+                break;
+
+            case 'v':
+                if (!strcmp(key, "verbose")) {
+                    if (!strcmp(value, "true") ||
+                        !strcmp(value, "on") ||
+                        !strcmp(value, "yes"))
+                        ctx->verbose = verbose = true;
+                    else
+                        ctx->verbose = verbose = false;
+
+                    mrp_log_info("Sphinx verbosity turned %s", verbose ?
+                                 "on" : "off");
                 }
                 break;
 

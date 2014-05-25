@@ -41,7 +41,7 @@ struct context_s {
 
 
 int32_t plugin_utterance_handler(context_t *ctx, srs_srec_utterance_t *utt);
-
+mrp_mainloop_t *plugin_get_mainloop(plugin_t *plugin);
 
 #endif /* __SRS_POCKET_SPHINX_PLUGIN_H__ */
 

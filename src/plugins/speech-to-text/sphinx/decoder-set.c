@@ -16,8 +16,7 @@
 #include "decoder-set.h"
 #include "options.h"
 #include "utterance.h"
-
-
+#include "logger.h"
 
 
 int decoder_set_create(context_t *ctx)
@@ -147,10 +146,17 @@ int decoder_set_add(context_t *ctx, const char *decoder_name,
     cmd_ln_set_str_r(cfg, "-dict", dict);
     cmd_ln_set_int_r(cfg, "-topn", topn);
     cmd_ln_set_float_r(cfg, "-samprate", (double)opts->rate);
-    cmd_ln_set_boolean_r(cfg, "-verbose", ctx->verbose);
+    cmd_ln_set_boolean_r(cfg, "-verbose",
+                         (ctx->verbose || opts->logfn != NULL) ? true : false);
 
-    if (opts->logfn)
-        cmd_ln_set_str_r(cfg, "-logfn", opts->logfn);
+    if (opts->logfn != NULL) {
+        if (strcmp(opts->logfn, "srs"))
+            cmd_ln_set_str_r(cfg, "-logfn", opts->logfn);
+    }
+    else {
+        if (ctx->verbose)
+            err_set_logfp(stdout);
+    }
 
     if (fsg)
         cmd_ln_set_str_r(cfg, "-fsg", fsg);
