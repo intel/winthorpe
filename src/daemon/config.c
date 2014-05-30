@@ -58,10 +58,20 @@
 #endif
 #define MAX_ARGS 64
 
+#define MAX_DEPTH   16
+#define MAX_BLOCK   64
+#define MAX_PREFIX 128
+
 static void valgrind(const char *vg_path, int argc, char **argv, int vg_offs,
                      int saved_argc, char **saved_argv, char **envp);
 
 static srs_cfg_t *find_config(srs_cfg_t *settings, const char *key);
+
+
+static int  nblock = 0;
+static int  prflen = 0;
+static char blocks[MAX_DEPTH][MAX_BLOCK];
+static char prefix[MAX_PREFIX];
 
 
 /*
@@ -255,6 +265,68 @@ static void config_load_plugins(srs_context_t *srs, char *plugins)
 }
 
 
+static void push_block(const char *block, int blen)
+{
+    int plen;
+
+    if (nblock >= MAX_DEPTH) {
+        mrp_log_error("Too deeply nested configuration block: %s.%s",
+                      prefix, block);
+        exit(1);
+    }
+
+    if (blen >= MAX_BLOCK - 1) {
+        mrp_log_error("Too long block name '%s'.", block);
+        exit(1);
+    }
+
+    if (prflen + 1 + blen + 1 >= sizeof(prefix)) {
+        mrp_log_error("Too long nested block name '%s.%s'.", prefix, block);
+        exit(1);
+    }
+
+    strncpy(blocks[nblock], block, blen);
+    blocks[nblock][blen] = '\0';
+    if (nblock > 0)
+        prefix[prflen++] = '.';
+    strncpy(prefix + prflen, block, blen);
+    prefix[prflen + blen] = '\0';
+    nblock++;
+    prflen += blen;
+
+    mrp_debug("pushed block '%*.*s', prefix now '%s'", blen, blen, block,
+              prefix);
+}
+
+
+static void pop_block(void)
+{
+    char *block;
+    int   blen;
+
+    if (nblock <= 0) {
+        mrp_log_error("Unbalanced block open ({) and close (}).");
+        exit(1);
+    }
+
+    block = blocks[--nblock];
+    blen  = strlen(block);
+
+    if (nblock > 0 && prflen < blen + 1) {
+        mrp_log_error("Internal error in nested block book-keeping.");
+        exit(1);
+    }
+
+    if (nblock > 0)
+        prflen -= blen + 1;
+    else
+        prflen = 0;
+    prefix[prflen] = '\0';
+
+    mrp_debug("popped block '%s', prefix now '%s'", block, prefix);
+}
+
+
 static void config_parse_settings(srs_context_t *srs, char *settings)
 {
     char   *key, *val, *next;
@@ -268,6 +340,21 @@ static void config_parse_settings(srs_context_t *srs, char *settings)
 
     if (!strncmp(key, "load ", 5)) {
         config_load_plugins(srs, key + 5);
+        return;
+    }
+
+    if (*key == '}') {
+        key++;
+
+        while (*key == ' ' || *key == '\t')
+            key++;
+
+        if (*key != '\0') {
+            mrp_log_error("Invalid block closing '%s'.", settings);
+            exit(1);
+        }
+
+        pop_block();
         return;
     }
 
@@ -298,15 +385,23 @@ static void config_parse_settings(srs_context_t *srs, char *settings)
         while (vlen > 0 && val[vlen - 1] == ' ')
             vlen--;
 
-        if (klen >= sizeof(keybuf) || vlen >= sizeof(valbuf)) {
+        if (klen + prflen >= sizeof(keybuf) || vlen >= sizeof(valbuf)) {
             mrp_log_error("Configuration setting %*.*s = %*.*s too long.",
                           (int)klen, (int)klen, key,
                           (int)vlen, (int)vlen, val);
             exit(1);
         }
 
-        strncpy(keybuf, key, klen);
-        keybuf[klen] = '\0';
+        if (vlen == 1 && val[0] == '{') {
+            push_block(key, klen);
+            return;
+        }
+
+        if (nblock > 0)
+            snprintf(keybuf, sizeof(keybuf), "%s.%*.*s", prefix,
+                     klen, klen, key);
+        else
+            snprintf(keybuf, sizeof(keybuf), "%*.*s", klen, klen, key);
         strncpy(valbuf, val, vlen);
         valbuf[vlen] = '\0';
 
@@ -330,6 +425,9 @@ static void config_parse_file(srs_context_t *srs, char *path)
         exit(1);
     }
 
+    nblock = 0;
+    prflen = 0;
+
     while ((p = fgets(line, sizeof(line), fp)) != NULL) {
         while (*p == ' ' || *p == '\t')
             p++;
@@ -342,6 +440,9 @@ static void config_parse_file(srs_context_t *srs, char *path)
 
         config_parse_settings(srs, p);
     }
+
+    nblock = 0;
+    prflen = 0;
 
     fclose(fp);
 }
@@ -436,7 +537,11 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
 
         case 's':
             SAVE_OPTARG("-s", optarg);
+            nblock = 0;
+            prflen = 0;
             config_parse_settings(srs, optarg);
+            nblock = 0;
+            prflen = 0;
             break;
 
         case 'd':
