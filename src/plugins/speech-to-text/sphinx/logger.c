@@ -117,6 +117,10 @@ static void push_log(logger_t *logger)
         }
 
         b = e + 1;
+
+        while (*b == '\n')
+            b++;
+
         n = logger->n - (b - logger->buf);
 
         if (n <= 0)
