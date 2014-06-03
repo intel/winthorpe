@@ -451,7 +451,7 @@ static void config_parse_file(srs_context_t *srs, char *path)
 void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
                           char **envp)
 {
-#   define OPTIONS "c:P:L:l:t:B:s:fvd:DhS:V"
+#   define OPTIONS "c:P:L:l:t:B:s:fvd:hS:V"
     struct option options[] = {
         { "config-file"  , required_argument, NULL, 'c' },
         { "plugin-dir"   , required_argument, NULL, 'P' },
@@ -461,7 +461,6 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
         { "set"          , required_argument, NULL, 's' },
         { "verbose"      , optional_argument, NULL, 'v' },
         { "debug"        , required_argument, NULL, 'd' },
-        { "list-debug"   , no_argument      , NULL, 'D' },
         { "foreground"   , no_argument      , NULL, 'f' },
         { "valgrind"     , optional_argument, NULL, 'V' },
         { "sockets"      , required_argument, NULL, 'S' },
@@ -549,13 +548,6 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
             srs->log_mask |= MRP_LOG_MASK_DEBUG;
             mrp_debug_set_config(optarg);
             mrp_debug_enable(TRUE);
-            break;
-
-        case 'D':
-            SAVE_OPT("-D");
-            printf("Known debug sites:\n");
-            mrp_debug_dump_sites(stdout, 4);
-            exit(0);
             break;
 
         case 'f':
