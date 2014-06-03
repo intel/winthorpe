@@ -104,7 +104,8 @@ static void push_log(logger_t *logger)
         switch (lvl) {
         case 'I':
         default:
-            mrp_debug_at("sphinx", line, file, "%*.*s", n, n, b);
+            if (mrp_debug_check(file, "sphinx", line))
+                mrp_debug_msg("sphinx", line, file, "%*.*s", n, n, b);
             break;
         case 'W':
             mrp_log_msg(MRP_LOG_WARNING, file, line, "sphinx", "%*.*s", n, n, b);
