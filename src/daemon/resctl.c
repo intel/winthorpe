@@ -50,6 +50,7 @@ struct srs_resset_s {
     void                   *user_data;   /* opaque notification data */
     char                   *appclass;    /* application class */
     int                     shared : 1;  /* whether currently shared */
+    mrp_deferred_t         *emul;        /* deferred cb for emulation */
 };
 
 
@@ -61,6 +62,8 @@ static void stop_connect(srs_resctx_t *ctx);
 static void notify_connect(srs_resctx_t *ctx);
 static void notify_disconnect(srs_resctx_t *ctx, int requested);
 
+static int emul_acquire(srs_resset_t *set, int shared);
+static int emul_release(srs_resset_t *set);
 
 #define CONFIG_SREC  "resource.recognition"
 #define DEFAULT_SREC "speech_recognition"
@@ -217,14 +220,12 @@ static void notify_disconnect(srs_resctx_t *ctx, int requested)
     }
 
     e.type = SRS_RESCTL_EVENT_DESTROYED;
+
     mrp_list_foreach(&ctx->sets, p, n) {
         set = mrp_list_entry(p, typeof(*set), hook);
 
         if (set->cb != NULL)
             set->cb(&e, set->user_data);
-
-        mrp_list_delete(&set->hook);
-        mrp_free(set);
     }
 }
 
@@ -235,9 +236,6 @@ srs_resset_t *srs_resctl_create(srs_context_t *srs, char *appclass,
     srs_resctx_t *ctx = srs->rctx;
     srs_resset_t *set;
     int           shared;
-
-    if (ctx == NULL)
-        return NULL;
 
     set = mrp_allocz(sizeof(*set));
 
@@ -251,24 +249,13 @@ srs_resset_t *srs_resctl_create(srs_context_t *srs, char *appclass,
     set->shared    = shared = TRUE;
     set->appclass  = mrp_strdup(appclass);
 
-    set->set = mrp_res_create_resource_set(ctx->ctx, appclass, set_event, set);
-
-    if (set->set == NULL)
-        goto fail;
-
-    if (name_srec == NULL || name_ssyn == NULL)
-        get_resource_names(srs->settings);
-
-    if (!mrp_res_create_resource(ctx->ctx, set->set, name_srec, TRUE, shared) ||
-        !mrp_res_create_resource(ctx->ctx, set->set, name_ssyn, TRUE, shared))
-        goto fail;
-
-    mrp_list_append(&ctx->sets, &set->hook);
-
-    return set;
+    if (ctx == NULL || ctx->ctx == NULL || srs_resctl_online(srs, set)) {
+        mrp_list_append(&ctx->sets, &set->hook);
+        return set;
+    }
 
  fail:
-    if (set != NULL) {
+    if (ctx != NULL) {
         if (set->set != NULL)
             mrp_res_delete_resource_set(ctx->ctx, set->set);
 
@@ -285,6 +272,11 @@ void srs_resctl_destroy(srs_resset_t *set)
     srs_resctx_t *ctx = set ? set->ctx : NULL;
 
     if (set != NULL) {
+        if (set->emul != NULL) {
+            mrp_del_deferred(set->emul);
+            set->emul = NULL;
+        }
+
         if (ctx != NULL)
             mrp_res_delete_resource_set(ctx->ctx, set->set);
 
@@ -295,12 +287,56 @@ void srs_resctl_destroy(srs_resset_t *set)
 }
 
 
+int srs_resctl_online(srs_context_t *srs, srs_resset_t *set)
+{
+    srs_resctx_t *ctx    = srs->rctx;
+    int           shared = set->shared;
+
+    if (set == NULL)
+        return FALSE;
+
+    if (set->emul != NULL) {
+        mrp_del_deferred(set->emul);
+        set->emul = NULL;
+    }
+
+    set->ctx = ctx;
+    set->set = mrp_res_create_resource_set(ctx->ctx, set->appclass,
+                                           set_event, set);
+
+    if (set->set == NULL)
+        return FALSE;
+
+    if (name_srec == NULL || name_ssyn == NULL)
+        get_resource_names(srs->settings);
+
+    if (mrp_res_create_resource(ctx->ctx, set->set, name_srec, TRUE, shared) &&
+        mrp_res_create_resource(ctx->ctx, set->set, name_ssyn, TRUE, shared))
+        return TRUE;
+
+    mrp_res_delete_resource_set(ctx->ctx, set->set);
+    set->set = NULL;
+
+    return FALSE;
+}
+
+
+void srs_resctl_offline(srs_resset_t *set)
+{
+    if (set != NULL)
+        set->set = NULL;
+}
+
+
 int srs_resctl_acquire(srs_resset_t *set, int shared)
 {
     srs_resctx_t *ctx = set ? set->ctx : NULL;
 
-    if (ctx == NULL || ctx->ctx == NULL || set == NULL || set->set == NULL)
+    if (ctx == NULL)
         return FALSE;
+
+    if (ctx->ctx == NULL || set->set == NULL)
+        return emul_acquire(set, shared);
 
     if (!!shared != !!set->shared) {
         mrp_res_delete_resource_set(ctx->ctx, set->set);
@@ -339,8 +375,11 @@ int srs_resctl_release(srs_resset_t *set)
 {
     srs_resctx_t *ctx = set ? set->ctx : NULL;
 
-    if (ctx == NULL || ctx->ctx == NULL || set == NULL || set->set == NULL)
+    if (ctx == NULL)
         return FALSE;
+
+    if (ctx->ctx == NULL || set->set == NULL)
+        return emul_release(set);
 
     if (mrp_res_release_resource_set(ctx->ctx, set->set) >= 0)
         return TRUE;
@@ -376,4 +415,78 @@ static void set_event(mrp_res_context_t *rctx,
         e.resource.granted |= SRS_RESCTL_MASK_SYNT;
 
     set->cb(&e, set->user_data);
+}
+
+
+static void emul_acquire_cb(mrp_deferred_t *d, void *user_data)
+{
+    srs_resset_t       *set = (srs_resset_t *)user_data;
+    srs_resctl_event_t  e;
+
+    mrp_del_deferred(d);
+
+    if (set->emul == d)
+        set->emul = NULL;
+
+    e.resource.type    = SRS_RESCTL_EVENT_RESOURCE;
+    e.resource.granted = SRS_RESCTL_MASK_SREC | SRS_RESCTL_MASK_SYNT;
+
+    set->cb(&e, set->user_data);
+}
+
+
+static int emul_acquire(srs_resset_t *set, int shared)
+{
+    srs_resctx_t *ctx = set ? set->ctx : NULL;
+
+    MRP_UNUSED(shared);
+
+    if (ctx == NULL)
+        return FALSE;
+
+    if (set->emul != NULL)
+        return FALSE;
+
+    set->emul = mrp_add_deferred(ctx->srs->ml, emul_acquire_cb, set);
+
+    if (set->emul != NULL)
+        return TRUE;
+    else
+        return FALSE;
+}
+
+
+static void emul_release_cb(mrp_deferred_t *d, void *user_data)
+{
+    srs_resset_t       *set = (srs_resset_t *)user_data;
+    srs_resctl_event_t  e;
+
+    mrp_del_deferred(d);
+
+    if (set->emul == d)
+        set->emul = NULL;
+
+    e.resource.type    = SRS_RESCTL_EVENT_RESOURCE;
+    e.resource.granted = 0;
+
+    set->cb(&e, set->user_data);
+}
+
+
+static int emul_release(srs_resset_t *set)
+{
+    srs_resctx_t *ctx = set ? set->ctx : NULL;
+
+    if (ctx == NULL)
+        return FALSE;
+
+    if (set->emul != NULL)
+        return FALSE;
+
+    set->emul = mrp_add_deferred(set->ctx->srs->ml, emul_release_cb, set);
+
+    if (set->emul != NULL)
+        return TRUE;
+    else
+        return FALSE;
 }

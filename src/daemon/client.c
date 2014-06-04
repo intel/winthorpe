@@ -51,7 +51,7 @@ void client_reset_resources(srs_context_t *srs)
 
     mrp_list_foreach(&srs->clients, p, n) {
         c = mrp_list_entry(p, typeof(*c), hook);
-        c->rset = NULL;
+        srs_resctl_offline(c->rset);
     }
 }
 
@@ -64,7 +64,12 @@ void client_create_resources(srs_context_t *srs)
 
     mrp_list_foreach(&srs->clients, p, n) {
         c = mrp_list_entry(p, typeof(*c), hook);
-        c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
+
+        if (c->rset == NULL)
+            c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
+        else
+            srs_resctl_online(srs, c->rset);
+
         if (c->rset != NULL) {
             f = c->requested;
             c->requested = SRS_VOICE_FOCUS_NONE;
@@ -201,8 +206,7 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
         return NULL;
     }
 
-    if (srs->rctx != NULL)
-        c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
+    c->rset = srs_resctl_create(srs, c->appclass, resource_event, c);
 
     mrp_list_append(&srs->clients, &c->hook);
 
@@ -345,7 +349,7 @@ void client_notify_command(srs_client_t *c, int index,
     if (!c->enabled)
         return;
 
-    if (!(c->granted & SRS_RESCTL_MASK_SREC))
+    if (c->rset != NULL && !(c->granted & SRS_RESCTL_MASK_SREC))
         return;
 
     if (0 <= index && index < c->ncommand) {
