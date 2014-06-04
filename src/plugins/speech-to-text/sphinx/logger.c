@@ -10,6 +10,7 @@
 
 #include "sphinx-plugin.h"
 
+#define SPHINX_DEBUG  "DEBUG: "
 #define SPHINX_INFO   "INFO: "
 #define SPHINX_ERROR  "ERROR: "
 #define SPHINX_WARN   "WARNING: "
@@ -48,9 +49,85 @@ static ssize_t pull_log(logger_t *logger)
 }
 
 
+static char *dig_origin(char *msg, char *e, char *name, size_t size,
+                        char **file, int *line)
+{
+    char *nb, *ne, *lb, *le;
+    int   l, nlen;
+
+    nb = msg;
+
+    /*
+     * Sphinx can prefix messages with a location header (file/line number)
+     * in at least two different formats:
+     *
+     *  1) file-name(line-number) message
+     *  2) "file-name", line line-number: message
+     *
+     * We assume we get a message with a location header in either of the
+     * above formats, try to dig out the location information and set the
+     * message pointer past the header. If we fail we pass the message
+     * back as such.
+     */
+
+    if (*nb == '"') {
+        ne = strchr(nb + 1, '"');
+
+        if (ne == NULL || (ne > e && e != NULL)) {
+        parse_error:
+            if (*file == NULL)
+                *file = "<unknown file>";
+            return msg;
+        }
+
+        if (strncmp(ne + 1, ", line ", 7))
+            goto parse_error;
+
+        lb = ne + 1 + 7;
+        l  = (int)strtoul(lb + 1, &le, 10);
+
+        if (*le != ':')
+            goto parse_error;
+
+        nlen = ne - nb - 1;
+        snprintf(name, size - 1, "%*.*s", nlen, nlen, nb + 1);
+        *file = name;
+        *line = l;
+
+        msg = le + 1;
+    }
+    else {
+        lb = strchr(msg, '(');
+
+        if (lb == NULL || lb > e)
+            goto parse_error;
+
+        l = (int)strtoul(lb + 1, &le, 10);
+
+        if (le[0] != ')' || le[1] != ':' || le[2] != ' ')
+            goto parse_error;
+
+        nb   = msg;
+        ne   = lb;
+        nlen = ne - nb;
+
+        snprintf(name, size - 1, "%*.*s", nlen, nlen, nb);
+        *file = name;
+        *line = l;
+
+        msg = le + 2;
+    }
+
+    if (*msg == ' ' || *msg == '\t') /* strip single leading space */
+        msg++;
+
+    return msg;
+}
+
+
 static void push_log(logger_t *logger)
 {
-    char    *b, *e, *lb, *le, *file, lvl, name[1024];
+    char    *b, *e, *lb, *le, *file, lvl, name[1024], *msg;
     int      line, len, nlen;
     ssize_t  n;
 
@@ -58,6 +135,7 @@ static void push_log(logger_t *logger)
 
     lvl  = 0;
     file = NULL;
+    line = 0;
 
     while (logger->n > 0) {
         b = logger->buf;
@@ -69,7 +147,6 @@ static void push_log(logger_t *logger)
             !strncmp(b, SPHINX_FATAL , len = sizeof(SPHINX_FATAL ) - 1)) {
             lvl  = *b;
             b   += len;
-            lb  = strchr(b, '(');
         }
         else
             lvl = 0;
@@ -82,38 +159,33 @@ static void push_log(logger_t *logger)
             return;
         }
 
-        if (lb != NULL) {
-            line = (int)strtoul(lb + 1, &le, 10);
+        mrp_debug("got log message '%s'", b);
 
-            if (lb != NULL && *le == ')') {
-                nlen = lb - b;
-                snprintf(name, sizeof(name) - 1, "%*.*s", nlen, nlen, b);
-                file = name;
-                b = le + 1;
-                if (b[0] == ':' && b[1] == ' ')
-                    b += 2;
-            }
-        }
-        else {
-            if (file == NULL)
-                file = "<unknown-file>";
-        }
+        if (lvl != 0)
+            msg = dig_origin(b, e, name, sizeof(name), &file, &line);
+        else
+            msg = b;
 
-        n = e - b;
+        mrp_debug("stripped message '%s'", msg);
+
+        n = e - msg;
 
         switch (lvl) {
         case 'I':
         default:
             if (mrp_debug_check(file, "sphinx", line))
-                mrp_debug_msg("sphinx", line, file, "%*.*s", n, n, b);
+                mrp_debug_msg("sphinx", line, file,
+                              "%*.*s", n, n, msg);
             break;
         case 'W':
-            mrp_log_msg(MRP_LOG_WARNING, file, line, "sphinx", "%*.*s", n, n, b);
+            mrp_log_msg(MRP_LOG_WARNING, file, line, "sphinx",
+                        "%*.*s", n, n, msg);
             break;
         case 'E':
         case 'S':
         case 'F':
-            mrp_log_msg(MRP_LOG_ERROR, file, line, "sphinx", "%*.*s", n, n, b);
+            mrp_log_msg(MRP_LOG_ERROR, file, line, "sphinx",
+                        "%*.*s", n, n, msg);
             break;
         }
 
