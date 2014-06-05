@@ -223,7 +223,7 @@ void filter_buffer_utter(context_t *ctx, bool full_utterance)
         !(filtbuf = ctx->filtbuf))
         return;
 
-    printf("*** utter %d\n", filtbuf->len);
+    mrp_debug("utterance length %d samples", filtbuf->len);
 
     if (filtbuf->len > 0) {
         if (filtbuf->fdrec >= 0) {

@@ -325,20 +325,20 @@ static void print_utterance(context_t *ctx, srs_srec_utterance_t *utt)
     size_t i,j;
 
     if (ctx && (decset = ctx->decset) && (dec = decset->curdec)) {
-        mrp_log_info("*** %15s  (%.4lf) %zd candidates, length %u",
-                     utt->id, utt->score, utt->ncand, utt->length);
+        mrp_debug("utterance %15s (score %.4lf, length %u), %zd candidates",
+                  utt->id, utt->score, utt->length, utt->ncand);
 
         for (i = 0; (cand = utt->cands[i]) != NULL;  i++) {
-            mrp_log_info("  (%.4lf) ----------------------", cand->score);
+            mrp_debug("  (score %.4lf) ----------------------", cand->score);
 
             for (j = 0;  j < cand->ntoken;  j++) {
                 tkn = cand->tokens + j;
-                mrp_log_info("           %d - %d  %s",
-                             tkn->start, tkn->end, tkn->token);
+                mrp_debug("                   %d - %d  %s",
+                          tkn->start, tkn->end, tkn->token);
             }
         }
 
-        mrp_log_info("           ----------------------");
+        mrp_debug("                 ----------------------");
     }
 }
 
