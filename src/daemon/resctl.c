@@ -257,7 +257,7 @@ srs_resset_t *srs_resctl_create(srs_context_t *srs, char *appclass,
  fail:
     if (ctx != NULL) {
         if (set->set != NULL)
-            mrp_res_delete_resource_set(ctx->ctx, set->set);
+            mrp_res_delete_resource_set(set->set);
 
         mrp_free(set->appclass);
         mrp_free(set);
@@ -278,7 +278,7 @@ void srs_resctl_destroy(srs_resset_t *set)
         }
 
         if (ctx != NULL)
-            mrp_res_delete_resource_set(ctx->ctx, set->set);
+            mrp_res_delete_resource_set(set->set);
 
         mrp_list_delete(&set->hook);
         mrp_free(set->appclass);
@@ -310,11 +310,11 @@ int srs_resctl_online(srs_context_t *srs, srs_resset_t *set)
     if (name_srec == NULL || name_ssyn == NULL)
         get_resource_names(srs->settings);
 
-    if (mrp_res_create_resource(ctx->ctx, set->set, name_srec, TRUE, shared) &&
-        mrp_res_create_resource(ctx->ctx, set->set, name_ssyn, TRUE, shared))
+    if (mrp_res_create_resource(set->set, name_srec, TRUE, shared) &&
+        mrp_res_create_resource(set->set, name_ssyn, TRUE, shared))
         return TRUE;
 
-    mrp_res_delete_resource_set(ctx->ctx, set->set);
+    mrp_res_delete_resource_set(set->set);
     set->set = NULL;
 
     return FALSE;
@@ -339,7 +339,7 @@ int srs_resctl_acquire(srs_resset_t *set, int shared)
         return emul_acquire(set, shared);
 
     if (!!shared != !!set->shared) {
-        mrp_res_delete_resource_set(ctx->ctx, set->set);
+        mrp_res_delete_resource_set(set->set);
         set->shared = !!shared;
         set->set    = NULL;
 
@@ -349,21 +349,21 @@ int srs_resctl_acquire(srs_resset_t *set, int shared)
         if (set->set == NULL)
             goto fail;
 
-        if (!mrp_res_create_resource(ctx->ctx, set->set,
-                                     name_srec, TRUE, shared) ||
-            !mrp_res_create_resource(ctx->ctx, set->set,
-                                     name_ssyn, TRUE, shared))
+        if (!mrp_res_create_resource(set->set, name_srec,
+                                     TRUE, shared) ||
+            !mrp_res_create_resource(set->set, name_ssyn,
+                                     TRUE, shared))
             goto fail;
     }
 
-    if (mrp_res_acquire_resource_set(ctx->ctx, set->set) == 0)
+    if (mrp_res_acquire_resource_set(set->set) == 0)
         return TRUE;
     else
         /* fall through */;
 
  fail:
     if (set->set != NULL) {
-        mrp_res_delete_resource_set(ctx->ctx, set->set);
+        mrp_res_delete_resource_set(set->set);
         set->set = NULL;
     }
 
@@ -381,7 +381,7 @@ int srs_resctl_release(srs_resset_t *set)
     if (ctx->ctx == NULL || set->set == NULL)
         return emul_release(set);
 
-    if (mrp_res_release_resource_set(ctx->ctx, set->set) >= 0)
+    if (mrp_res_release_resource_set(set->set) >= 0)
         return TRUE;
     else
         return FALSE;
@@ -395,8 +395,8 @@ static void set_event(mrp_res_context_t *rctx,
     mrp_res_resource_t *srec, *ssyn;
     srs_resctl_event_t  e;
 
-    srec = mrp_res_get_resource_by_name(rctx, rset, name_srec);
-    ssyn = mrp_res_get_resource_by_name(rctx, rset, name_ssyn);
+    srec = mrp_res_get_resource_by_name(rset, name_srec);
+    ssyn = mrp_res_get_resource_by_name(rset, name_ssyn);
 
     if (srec == NULL || ssyn == NULL || srec->state != ssyn->state) {
         mrp_log_error("Inconsistent resources in set.");
