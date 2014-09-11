@@ -202,8 +202,8 @@ static int config_search(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configure search plugin");
 
-    dict = srs_get_string_config(settings, "search.dictionary", DICTIONARY);
-    cmd  = srs_get_string_config(settings, "search.command"   , COMMAND);
+    dict = srs_config_get_string(settings, "search.dictionary", DICTIONARY);
+    cmd  = srs_config_get_string(settings, "search.command"   , COMMAND);
 
     q = (char *)cmd + strlen(cmd);
     while (q > cmd && (*q == ' ' || *q == '\t'))

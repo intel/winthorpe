@@ -68,26 +68,26 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
                           char **env);
 
 /** Get the value of a string configuration variable. */
-const char *srs_get_string_config(srs_cfg_t *settings, const char *key,
+const char *srs_config_get_string(srs_cfg_t *settings, const char *key,
                                   const char *defval);
 
 /** Get the value of a boolean configuration variable. */
-int srs_get_bool_config(srs_cfg_t *settings, const char *key, int defval);
+int srs_config_get_bool(srs_cfg_t *settings, const char *key, int defval);
 
 /** Get the value of a 32-bit signed integer configuration variable. */
-int32_t srs_get_int32_config(srs_cfg_t *settings, const char *key,
+int32_t srs_config_get_int32(srs_cfg_t *settings, const char *key,
                              int32_t defval);
 
 /** Get the value of a 32-bit unsigned integer configuration variable. */
-uint32_t srs_get_uint32_config(srs_cfg_t *settings, const char *key,
+uint32_t srs_config_get_uint32(srs_cfg_t *settings, const char *key,
                                uint32_t defval);
 
 /** Collect configuration variable matching the given prefix. */
-int srs_collect_config(srs_cfg_t *settings, const char *prefix,
+int srs_config_collect(srs_cfg_t *settings, const char *prefix,
                        srs_cfg_t **matching);
 
 /** Free an array of configuration variables. */
-void srs_free_config(srs_cfg_t *settings);
+void srs_config_free(srs_cfg_t *settings);
 
 /** Set a configuration variable to the given value. */
 void srs_set_config(srs_context_t *srs, const char *key, const char *value);

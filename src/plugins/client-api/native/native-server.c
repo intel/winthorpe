@@ -532,8 +532,8 @@ static int config_native(srs_plugin_t *plugin, srs_cfg_t *cfg)
 
     mrp_debug("configure native client interface plugin");
 
-    s->address = srs_get_string_config(cfg, CONFIG_ADDRESS, DEFAULT_ADDRESS);
-    s->sock    = srs_get_int32_config (cfg, CONFIG_SOCKET , DEFAULT_SOCKET);
+    s->address = srs_config_get_string(cfg, CONFIG_ADDRESS, DEFAULT_ADDRESS);
+    s->sock    = srs_config_get_int32(cfg, CONFIG_SOCKET , DEFAULT_SOCKET);
 
     if (s->sock < 0)
         mrp_log_info("Using native client transport: '%s'.", s->address);

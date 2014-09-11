@@ -106,7 +106,7 @@ static void daemonize(srs_context_t *srs)
 
 static void create_mainloop(srs_context_t *srs)
 {
-    if (srs_get_bool_config(srs->settings, "gmainloop", FALSE)) {
+    if (srs_config_get_bool(srs->settings, "gmainloop", FALSE)) {
         mrp_log_info("Configured to run with glib mainloop.");
 
 #ifndef GLIB_VERSION_2_36
@@ -270,7 +270,7 @@ int main(int argc, char *argv[], char *env[])
         }
 
         cfg  = srs->settings;
-        srec = srs_get_string_config(cfg, "daemon.speech-backend", NULL);
+        srec = srs_config_get_string(cfg, "daemon.speech-backend", NULL);
         srs_activate_srec(srs, srec);
 
         daemonize(srs);

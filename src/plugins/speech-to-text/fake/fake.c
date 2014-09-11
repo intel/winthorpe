@@ -367,11 +367,11 @@ static int config_fake(srs_plugin_t *plugin, srs_cfg_t *settings)
         }
     }
 
-    n = srs_collect_config(settings, "fake.", &cfg);
+    n = srs_config_collect(settings, "fake.", &cfg);
     mrp_debug("Found %d own configuration keys.", n);
     for (i = 0; i < n; i++)
         mrp_debug("    %s = %s", cfg[i].key, cfg[i].value);
-    srs_free_config(cfg);
+    srs_config_free(cfg);
 
     return TRUE;
 }

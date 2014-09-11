@@ -230,7 +230,7 @@ static int config_espeak(srs_plugin_t *plugin, srs_cfg_t *cfg)
 
     mrp_debug("configure espeak voice plugin");
 
-    e->config.voicedir = srs_get_string_config(cfg, CONFIG_VOICEDIR, NULL);
+    e->config.voicedir = srs_config_get_string(cfg, CONFIG_VOICEDIR, NULL);
 
     out  = AUDIO_OUTPUT_SYNCHRONOUS;
     path = e->config.voicedir;

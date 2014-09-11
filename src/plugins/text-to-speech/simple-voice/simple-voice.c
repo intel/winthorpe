@@ -371,8 +371,8 @@ static int config_synth(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configure simple voice plugin");
 
-    tts  = srs_get_string_config(settings, "voice.say" , FESTIVAL);
-    play = srs_get_string_config(settings, "voice.play", PAPLAY);
+    tts  = srs_config_get_string(settings, "voice.say" , FESTIVAL);
+    play = srs_config_get_string(settings, "voice.play", PAPLAY);
 
     mrp_log_info("voice plugin TTS play command: '%s'", tts);
     mrp_log_info("voice plugin sound command: '%s'"   , play);

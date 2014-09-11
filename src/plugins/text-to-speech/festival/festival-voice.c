@@ -133,7 +133,7 @@ static int config_festival(srs_plugin_t *plugin, srs_cfg_t *cfg)
         return FALSE;
     }
 
-    f->config.voices = srs_get_string_config(cfg, CONFIG_VOICES, DEFVAL_VOICES);
+    f->config.voices = srs_config_get_string(cfg, CONFIG_VOICES, DEFVAL_VOICES);
 
     if (!strcmp(f->config.voices, AUTOLOAD)) {
         if (carnival_available_voices(&voices, &nvoice) == 0) {

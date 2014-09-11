@@ -387,7 +387,7 @@ static int config_wrtc(srs_plugin_t *plugin, srs_cfg_t *settings)
     }
 
     for (cfg = config; cfg->key; cfg++)
-        *cfg->addr = srs_get_string_config(settings, cfg->key, cfg->def);
+        *cfg->addr = srs_config_get_string(settings, cfg->key, cfg->def);
 
     mrp_log_info("WRT media client configuration:");
     mrp_log_info("    D-Bus: '%s'", wrtc->config.bus);

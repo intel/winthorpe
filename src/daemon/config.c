@@ -88,10 +88,9 @@ static void config_set_defaults(srs_context_t *srs, const char *bin)
     if ((e = strstr(bin, "/src/srs-daemon")) != NULL ||
         (e = strstr(bin, "/src/.libs/lt-srs-daemon")) != NULL) {
         static int     warned = 0;
-        mrp_log_mask_t saved;
 
         if (!warned) {
-            saved = mrp_log_set_mask(MRP_LOG_MASK_WARNING);
+            mrp_log_mask_t saved = mrp_log_set_mask(MRP_LOG_MASK_WARNING);
             mrp_log_warning("***");
             mrp_log_warning("*** Looks like we are run from the source tree.");
             mrp_log_warning("*** Runtime defaults will be set accordingly...");
@@ -607,7 +606,7 @@ static srs_cfg_t *find_config(srs_cfg_t *settings, const char *key)
 }
 
 
-const char *srs_get_string_config(srs_cfg_t *settings, const char *key,
+const char *srs_config_get_string(srs_cfg_t *settings, const char *key,
                                   const char *defval)
 {
     srs_cfg_t *cfg = find_config(settings, key);
@@ -622,7 +621,7 @@ const char *srs_get_string_config(srs_cfg_t *settings, const char *key,
 }
 
 
-int srs_get_bool_config(srs_cfg_t *settings, const char *key, int defval)
+int srs_config_get_bool(srs_cfg_t *settings, const char *key, int defval)
 {
     srs_cfg_t *cfg = find_config(settings, key);
 
@@ -643,7 +642,7 @@ int srs_get_bool_config(srs_cfg_t *settings, const char *key, int defval)
 }
 
 
-int32_t srs_get_int32_config(srs_cfg_t *settings, const char *key,
+int32_t srs_config_get_int32(srs_cfg_t *settings, const char *key,
                              int32_t defval)
 {
     srs_cfg_t *cfg = find_config(settings, key);
@@ -668,7 +667,7 @@ int32_t srs_get_int32_config(srs_cfg_t *settings, const char *key,
 }
 
 
-uint32_t srs_get_uint32_config(srs_cfg_t *settings, const char *key,
+uint32_t srs_config_get_uint32(srs_cfg_t *settings, const char *key,
                                uint32_t defval)
 {
     srs_cfg_t *cfg = find_config(settings, key);
@@ -693,7 +692,7 @@ uint32_t srs_get_uint32_config(srs_cfg_t *settings, const char *key,
 }
 
 
-int srs_collect_config(srs_cfg_t *settings, const char *prefix,
+int srs_config_collect(srs_cfg_t *settings, const char *prefix,
                        srs_cfg_t **matching)
 {
     srs_cfg_t *m = NULL;
@@ -753,7 +752,7 @@ int srs_collect_config(srs_cfg_t *settings, const char *prefix,
 }
 
 
-void srs_free_config(srs_cfg_t *settings)
+void srs_config_free(srs_cfg_t *settings)
 {
     srs_cfg_t *s;
 

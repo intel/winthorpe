@@ -86,7 +86,7 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configuring Mpris2 client plugin");
 
-    n = srs_collect_config(settings, MPRIS2_PREFIX, &cfgs);
+    n = srs_config_collect(settings, MPRIS2_PREFIX, &cfgs);
     pfxlen = strlen(MPRIS2_PREFIX);
 
     mrp_log_info("Found %d Mpris2 configuration keys.", n);
@@ -122,7 +122,7 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
         }
     }
 
-    srs_free_config(cfgs);
+    srs_config_free(cfgs);
 
     return TRUE;
 }

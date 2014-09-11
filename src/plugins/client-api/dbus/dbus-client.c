@@ -853,7 +853,7 @@ static int config_dbusif(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configure D-Bus client interface plugin");
 
-    bus->address = srs_get_string_config(settings, BUS_CONFIG, BUS_DEFAULT);
+    bus->address = srs_config_get_string(settings, BUS_CONFIG, BUS_DEFAULT);
 
     mrp_log_info("Client interface D-Bus address: '%s'", bus->address);
 

@@ -76,8 +76,8 @@ static const char *name_ssyn;
 
 static void get_resource_names(srs_cfg_t *cfg)
 {
-    name_srec = srs_get_string_config(cfg, CONFIG_SREC, DEFAULT_SREC);
-    name_ssyn = srs_get_string_config(cfg, CONFIG_SSYN, DEFAULT_SSYN);
+    name_srec = srs_config_get_string(cfg, CONFIG_SREC, DEFAULT_SREC);
+    name_ssyn = srs_config_get_string(cfg, CONFIG_SSYN, DEFAULT_SSYN);
 
     mrp_log_info("Using resource '%s' for speech recognition.", name_srec);
     mrp_log_info("Using resoruce '%s' for speech synthesis.", name_ssyn);

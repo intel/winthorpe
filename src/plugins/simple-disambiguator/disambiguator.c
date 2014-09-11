@@ -725,13 +725,13 @@ static int config_disamb(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configuring disambiguator");
 
-    n = srs_collect_config(settings, "disambiguator.", &cfg);
+    n = srs_config_collect(settings, "disambiguator.", &cfg);
 
     mrp_debug("found %d configuration keys%s", n, n ? ":" : "");
     for (i = 0; i < n; i++)
         mrp_debug("    %s = %s", cfg[i].key, cfg[i].value);
 
-    srs_free_config(cfg);
+    srs_config_free(cfg);
 
     return TRUE;
 }

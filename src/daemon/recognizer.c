@@ -412,7 +412,7 @@ static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
     }
 
 
-    cnt = srs_collect_config(srs->settings, "feedback.tts.", &cfg);
+    cnt = srs_config_collect(srs->settings, "feedback.tts.", &cfg);
 
     if (cnt > (int)MRP_ARRAY_SIZE(effects))
         cnt = (int)MRP_ARRAY_SIZE(effects);
@@ -424,7 +424,7 @@ static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
         mrp_log_info("Configured TTS effect '%s'.", cfg[i].value);
     }
 
-    cnt = srs_collect_config(srs->settings, "feedback.sound.", &cfg);
+    cnt = srs_config_collect(srs->settings, "feedback.sound.", &cfg);
 
     if (n + cnt > (int)MRP_ARRAY_SIZE(effects))
         cnt = (int)MRP_ARRAY_SIZE(effects) - n;

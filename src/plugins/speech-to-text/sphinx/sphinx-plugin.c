@@ -251,7 +251,7 @@ static int config_sphinx(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configuring CMU Sphinx speech recognition backend plugin");
 
-    n = srs_collect_config(settings, SPHINX_PREFIX, &cfg);
+    n = srs_config_collect(settings, SPHINX_PREFIX, &cfg);
 
     mrp_log_info("Found %d CMU Sphinx plugin configuration keys.", n);
 
@@ -264,7 +264,7 @@ static int config_sphinx(srs_plugin_t *plugin, srs_cfg_t *settings)
         return FALSE;
     }
 
-    srs_free_config(cfg);
+    srs_config_free(cfg);
 
     return TRUE;
 }

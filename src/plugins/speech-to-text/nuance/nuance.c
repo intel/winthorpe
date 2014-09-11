@@ -195,13 +195,13 @@ static int config_nuance(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_debug("configuring Nuance speech recognition backend plugin");
 
-    n = srs_collect_config(settings, NUANCE_PREFIX, &cfg);
+    n = srs_config_collect(settings, NUANCE_PREFIX, &cfg);
 
     mrp_log_info("Found %d Nuance plugin configuration keys.", n);
     for (i = 0; i < n; i++)
         mrp_log_info("    %s = %s", cfg[i].key, cfg[i].value);
 
-    srs_free_config(cfg);
+    srs_config_free(cfg);
 
     return TRUE;
 }
