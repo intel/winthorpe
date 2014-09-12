@@ -49,7 +49,6 @@
 
 static int create_bt_voicerec(srs_plugin_t *plugin)
 {
-    srs_context_t *srs = plugin->srs;
     context_t     *ctx = NULL;
 
     mrp_debug("creating bluetooth voice recognition client plugin");
@@ -57,8 +56,7 @@ static int create_bt_voicerec(srs_plugin_t *plugin)
     if ((ctx = mrp_allocz(sizeof(context_t)))) {
         ctx->plugin = plugin;
 
-        if (dbusif_create(ctx, srs->ml) == 0 &&
-            clients_create(ctx)         == 0  )
+        if (clients_create(ctx) == 0)
         {
             plugin->plugin_data = ctx;
             return TRUE;
@@ -77,29 +75,32 @@ static int create_bt_voicerec(srs_plugin_t *plugin)
 static int config_bt_voicerec(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
     srs_cfg_t *cfgs, *c;
-    const char *key;
+    srs_context_t *srs_ctx = plugin->srs;
+    context_t *ctx = (context_t *)plugin->plugin_data;
     int pfxlen;
     int n, i;
-    int success;
-
-    MRP_UNUSED(plugin);
 
     mrp_debug("configuring bluetooth voice recognition client plugin");
 
-    n = srs_collect_config(settings, BLUETOOTH_PREFIX, &cfgs);
+
+    n = srs_config_collect(settings, BLUETOOTH_PREFIX, &cfgs);
     pfxlen = strlen(BLUETOOTH_PREFIX);
 
     mrp_log_info("Found %d bluetooth voice recognition configuration keys.",n);
 
-    for (i = 0, success = TRUE;   i < n ;   i++) {
+    for (i = 0;   i < n ;   i++) {
+        const char *key = NULL;
+
         c = cfgs + i;
         key = c->key + pfxlen;
 
         c->used = FALSE;
-        success = FALSE;
+        mrp_debug("     '%s=%s'", key, c->value);
     }
 
-    srs_free_config(cfgs);
+    srs_config_free(cfgs);
+
+    dbusif_create(ctx, srs_ctx->ml);
 
     return TRUE;
 }

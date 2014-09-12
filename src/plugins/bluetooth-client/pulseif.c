@@ -28,7 +28,7 @@ static card_t *add_card(context_t *, uint32_t, const char *, const char *,
 static void remove_card(card_t *);
 
 static card_t *find_card_by_index(context_t *, uint32_t);
-static card_t *find_card_by_address(context_t *, const char *);
+//static card_t *find_card_by_address(context_t *, const char *);
 static card_t *find_card_by_sink(context_t *, uint32_t);
 static card_t *find_card_by_source(context_t *, uint32_t);
 
@@ -290,7 +290,7 @@ static card_t *find_card_by_index(context_t *ctx, uint32_t idx)
     return NULL;
 }
 
-
+#if 0
 static card_t *find_card_by_address(context_t *ctx, const char *addr)
 {
     pulseif_t *pulseif;
@@ -308,7 +308,7 @@ static card_t *find_card_by_address(context_t *ctx, const char *addr)
 
     return NULL;
 }
-
+#endif
 
 static card_t *find_card_by_sink(context_t *ctx, uint32_t idx)
 {

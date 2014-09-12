@@ -10,7 +10,7 @@ pkgconfig_DATA     =
 pkgconfigdir       = ${libdir}/pkgconfig
 
 AM_CPPFLAGS        = -I$(top_builddir)
-AM_CFLAGS          = $(GLIB_CFLAGS)
+AM_CFLAGS          = $(GLIB_CFLAGS) $(WARNING_CFLAGS)
 
 QUIET_GEN          = $(Q:@=@echo '  GEN   '$@;)
 
@@ -267,15 +267,13 @@ plugin_bluetooth_client_la_SOURCES =				\
 
 plugin_bluetooth_client_la_CFLAGS  =				\
 		$(AM_CFLAGS)					\
-		$(MURPHY_DBUS_CFLAGS)				\
-		$(DBUS_CFLAGS)
+		$(MURPHY_DBUS_CFLAGS)
 
 plugin_bluetooth_client_la_LDFLAGS =				\
 		-module -avoid-version
 
 plugin_bluetooth_client_la_LIBADD  =				\
-		$(MURPHY_DBUS_LIBS)				\
-		$(DBUS_LIBS)
+		$(MURPHY_DBUS_LIBS)
 
 endif
 

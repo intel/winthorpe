@@ -290,7 +290,6 @@ static int notify_command(srs_client_t *srs_client, int idx,
 {
     context_t *ctx;
     clients_t *clients;
-    device_t *device;
     char cmd[2048];
     uint32_t from;
     char *e, *p, *sep;
