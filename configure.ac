@@ -150,10 +150,6 @@ AC_SUBST(MURPHY_DBUS_LIBS)
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-# XXX TODO temporarily disable mpris2 and bluetooth plugins
-AM_CONDITIONAL(MPRIS2_ENABLED, [test "xno" = "xyes"])
-AC_SUBST(MPRIS2_ENABLED)
-
 # Set up common SRS compilation and linking flags.
 SRS_CFLAGS=""
 SRS_LIBS=""
@@ -171,6 +167,13 @@ AC_ARG_ENABLE(bluetooth,
               [enable_bluetooth=$enableval], [enable_bluetooth=auto])
 AM_CONDITIONAL(BLUETOOTH_ENABLED, [test "$enable_bluetooth" = "yes"])
 AC_SUBST(BLUETOOTH_ENABLED)
+
+# Check if mpris plugin was enabled
+AC_ARG_ENABLE(mpris,
+              [  --enable-mpris          enable mpris support],
+              [enable_mpris=$enableval], [enable_mpris=auto])
+AM_CONDITIONAL(MPRIS2_ENABLED, [test "$enable_mpris" = "yes"])
+AC_SUBST(MPRIS2_ENABLED)
 
 # Check if sphinx was enabled.
 AC_ARG_ENABLE(sphinx,
@@ -342,6 +345,7 @@ echo "Festival support: $enable_festival"
 echo "Espeak support: $enable_espeak"
 echo "systemd socket-based activation: $enable_systemd"
 echo "Bluetooth voice recording support: $enable_bluetooth"
+echo "Mediaplayer remote interface support: $enable_mpris"
 
 if test "$DUMP_LIB_FLAGS" = "yes"; then
     echo "MURPHY_COMMON:"

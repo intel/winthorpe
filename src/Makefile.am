@@ -243,15 +243,13 @@ plugin_mpris2_client_la_SOURCES =				\
 
 plugin_mpris2_client_la_CFLAGS  =				\
 		$(AM_CFLAGS)					\
-		$(MURPHY_DBUS_CFLAGS)				\
-		$(DBUS_CFLAGS)
+		$(MURPHY_DBUS_CFLAGS)
 
 plugin_mpris2_client_la_LDFLAGS =				\
 		-module -avoid-version
 
 plugin_mpris2_client_la_LIBADD  =				\
-		$(MURPHY_DBUS_LIBS)				\
-		$(DBUS_LIBS)
+		$(MURPHY_DBUS_LIBS)
 endif
 
 

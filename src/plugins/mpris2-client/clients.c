@@ -355,7 +355,7 @@ void clients_player_adjust_volume(player_t *player, double adjust)
         if (volume < 0.0) volume = 0;
         else if (volume > 1.0) volume = 1.0;
 
-        dbusif_set_player_property(player, "Volume", "d", &volume);
+        dbusif_set_player_volume(player, volume);
     }
 }
 

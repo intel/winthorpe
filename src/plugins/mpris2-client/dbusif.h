@@ -15,10 +15,9 @@ int  dbusif_register_player(context_t *ctx, const char *name);
 void dbusif_unregister_player(context_t *ctx, const char *name);
 
 void dbusif_query_player_properties(player_t *player);
-void dbusif_set_player_property(player_t *player, const char *name,
-                                const char *type, void *value);
 void dbusif_introspect_player(player_t *player);
 
+int dbusif_set_player_volume(player_t *player, double volume);
 void dbusif_set_player_state(player_t *player, player_state_t state);
 void dbusif_change_track(player_t *player, track_t track);
 

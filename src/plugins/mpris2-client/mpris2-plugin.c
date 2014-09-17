@@ -48,16 +48,14 @@
 
 static int create_mpris2(srs_plugin_t *plugin)
 {
-    srs_context_t *srs = plugin->srs;
-    context_t     *ctx = NULL;
+    context_t *ctx = NULL;
 
     mrp_debug("creating Mpris2 client plugin");
 
     if ((ctx = mrp_allocz(sizeof(context_t)))) {
         ctx->plugin = plugin;
 
-        if (dbusif_create(ctx, srs->ml) == 0 &&
-            clients_create(ctx)         == 0  )
+        if (clients_create(ctx) == 0)
         {
             plugin->plugin_data = ctx;
             return TRUE;
@@ -75,6 +73,7 @@ static int create_mpris2(srs_plugin_t *plugin)
 static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
     context_t *ctx = (context_t *)plugin->plugin_data;
+    srs_context_t *srs = plugin->srs;
     srs_cfg_t *cfgs, *c, *s;
     const char *service;
     const char *object;
@@ -82,7 +81,6 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
     char obj[256];
     int pfxlen;
     int n, i, j, l;
-    int success;
 
     mrp_debug("configuring Mpris2 client plugin");
 
@@ -91,7 +89,7 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
 
     mrp_log_info("Found %d Mpris2 configuration keys.", n);
 
-    for (i = 0, success = TRUE;   i < n ;   i++) {
+    for (i = 0;   i < n ;   i++) {
         c = cfgs + i;
 
         if (!strncmp("player", c->key + pfxlen, 6)) {
@@ -117,12 +115,13 @@ static int config_mpris2(srs_plugin_t *plugin, srs_cfg_t *settings)
                 !(l > 7 && !strcmp(c->key + (l - 7), ".object" ))  )
             {
                 c->used = FALSE;
-                success = FALSE;
             }
         }
     }
 
     srs_config_free(cfgs);
+
+    dbusif_create(ctx, srs->ml);
 
     return TRUE;
 }
