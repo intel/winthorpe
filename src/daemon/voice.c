@@ -173,8 +173,7 @@ static char *canonical_actor_name(char *buf, size_t size,
 {
     const char *lang, *dialect, *gender, *s;
     char       *d;
-    int         idx, i;
-    ssize_t     n;
+    int         idx;
 
     lang    = language->lang;
     dialect = actor->dialect;
@@ -353,7 +352,6 @@ static void free_renderer(renderer_t *r)
 
 static void notify_request(request_t *req, srs_voice_event_t *event)
 {
-    renderer_t        *r     = req->r;
     int                mask  = (1 << event->type);
     srs_voice_event_t  e;
 
@@ -409,7 +407,6 @@ int srs_register_voice(srs_context_t *srs, const char *name,
 {
     state_t           *state = (state_t *)srs->synthesizer;
     renderer_t        *r;
-    srs_voice_actor_t *a;
     int                i;
 
     if (state == NULL) {
@@ -502,7 +499,7 @@ static renderer_t *find_renderer(state_t *state, const char *voice,
     if ((e = strchr(voice, '/')) != NULL) {
         n = e - voice;
 
-        if (n >= sizeof(renderer) - 1)
+        if (n >= (int)sizeof(renderer) - 1)
             return NULL;
 
         strncpy(renderer, voice, n);
@@ -520,7 +517,8 @@ static renderer_t *find_renderer(state_t *state, const char *voice,
         l = find_language(state, voice, FALSE);
     else {
         n = e - voice;
-        if (snprintf(lang, sizeof(lang), "%*.*s", n, n, voice) >= sizeof(lang))
+        if (snprintf(lang, sizeof(lang), "%*.*s",
+                     (int)n, (int)n, voice) >= (int)sizeof(lang))
             l = NULL;
         else
             l = find_language(state, lang, FALSE);
@@ -662,6 +660,8 @@ static void request_timer_cb(mrp_timer_t *t, void *user_data)
     request_t         *req = &qr->req;
     srs_voice_event_t  event;
 
+    MRP_UNUSED(t);
+
     mrp_log_info("Voice/TTS request #%u timed out.", qr->req.id);
 
     mrp_del_timer(req->timer);
@@ -687,7 +687,11 @@ static request_t *enqueue_request(state_t *state, const char *msg, char **tags,
                                   double pitch, int timeout, int notify_mask,
                                   srs_voice_notify_t notify, void *notify_data)
 {
-    queued_t *qr;
+    queued_t *qr = NULL;
+
+    MRP_UNUSED(rate);
+    MRP_UNUSED(pitch);
+    MRP_UNUSED(timeout);
 
     qr = mrp_allocz(sizeof(*qr));
 
@@ -787,7 +791,9 @@ request_t *render_request(state_t *state, const char *msg, char **tags,
                           double pitch, int timeout, int notify_mask,
                           srs_voice_notify_t notify, void *notify_data)
 {
-    request_t *req;
+    request_t *req = NULL;
+
+    MRP_UNUSED(timeout);
 
     req = mrp_allocz(sizeof(*req));
 
@@ -870,14 +876,16 @@ static request_t *find_request(state_t *state, uint32_t rid, uint32_t vid)
     }
 
     if ((req = state->active) != NULL) {
-        if ((rid == -1 || req->id == rid) && (vid == -1 || req->vid == vid))
+        if ((rid == SRS_VOICE_INVALID || req->id == rid) &&
+            (vid == SRS_VOICE_INVALID || req->vid == vid))
             return req;
     }
 
     mrp_list_foreach(&state->requests, p, n) {
         req = mrp_list_entry(p, typeof(*req), hook);
 
-        if ((rid == -1 || req->id == rid) && (vid == -1 || req->vid == vid))
+        if ((rid == SRS_VOICE_INVALID || req->id == rid) &&
+            (vid == SRS_VOICE_INVALID || req->vid == vid))
             return req;
     }
 
@@ -893,6 +901,8 @@ void srs_cancel_voice(srs_context_t *srs, uint32_t rid, int notify)
     state_t    *state = (state_t *)srs->synthesizer;
     request_t  *req   = find_request(state, rid, -1);
     renderer_t *voice = req ? req->r : NULL;
+
+    MRP_UNUSED(notify);
 
     if (req == NULL)
         return;

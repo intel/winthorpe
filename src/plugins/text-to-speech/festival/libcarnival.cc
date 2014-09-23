@@ -91,7 +91,7 @@ static void update_available_voices(void)
 static void update_loaded_voices(void)
 {
     voice_t    *v;
-    LISP        ll, lentry, lname, llang, ldescr, lgender, lp, lk, lv;
+    LISP        ll, lentry, lname, ldescr, lp, lk, lv;
     const char *key;
 
     if ((ll = siod_get_lval("Voice_descriptions", NULL)) == NIL)
@@ -158,8 +158,6 @@ static void update_loaded_voices(void)
 
 int carnival_init(void)
 {
-    voice_t *v;
-
     festival_initialize(TRUE, FESTIVAL_HEAP_SIZE);
 
     update_available_voices();
@@ -301,7 +299,7 @@ int carnival_load_voice(const char *name)
     if ((v = find_voice_entry(name)) != NULL && v->language != NULL)
         return 0;                        /* already loaded, nothing to do */
 
-    if (snprintf(loader, sizeof(loader), "voice_%s", name) >= sizeof(loader)) {
+    if (snprintf(loader, sizeof(loader), "voice_%s", name) >= (int)sizeof(loader)) {
         errno = EOVERFLOW;
 
         return -1;
@@ -380,7 +378,7 @@ int carnival_select_voice(const char *name)
         return -1;                       /* not loaded, cannot select */
     }
 
-    if (snprintf(sel, sizeof(sel), "voice_%s", name) >= sizeof(sel)) {
+    if (snprintf(sel, sizeof(sel), "voice_%s", name) >= (int)sizeof(sel)) {
         errno = EOVERFLOW;
 
         return -1;

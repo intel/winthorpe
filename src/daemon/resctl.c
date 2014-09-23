@@ -174,7 +174,6 @@ static void context_event(mrp_res_context_t *rctx, mrp_res_error_t err,
                           void *user_data)
 {
     srs_resctx_t  *ctx = (srs_resctx_t *)user_data;
-    srs_context_t *srs = ctx->srs;
 
     MRP_UNUSED(err);
 
@@ -254,7 +253,6 @@ srs_resset_t *srs_resctl_create(srs_context_t *srs, char *appclass,
         return set;
     }
 
- fail:
     if (ctx != NULL) {
         if (set->set != NULL)
             mrp_res_delete_resource_set(set->set);
@@ -358,8 +356,9 @@ int srs_resctl_acquire(srs_resset_t *set, int shared)
 
     if (mrp_res_acquire_resource_set(set->set) == 0)
         return TRUE;
-    else
-        /* fall through */;
+    else {
+        /* fall through */
+    }
 
  fail:
     if (set->set != NULL) {
@@ -394,6 +393,8 @@ static void set_event(mrp_res_context_t *rctx,
     srs_resset_t       *set  = (srs_resset_t *)user_data;
     mrp_res_resource_t *srec, *ssyn;
     srs_resctl_event_t  e;
+
+    MRP_UNUSED(rctx);
 
     srec = mrp_res_get_resource_by_name(rset, name_srec);
     ssyn = mrp_res_get_resource_by_name(rset, name_ssyn);

@@ -187,7 +187,7 @@ static node_t *get_token_node(node_t *prnt, const char *token, int insert)
 
 static node_t *get_dictionary_node(node_t *prnt, const char *token, int insert)
 {
-    srs_dict_op_t    op;
+    srs_dict_op_t    op = SRS_DICT_OP_UNKNOWN;
     char             dict[MAX_DICT];
     mrp_list_hook_t *p, *n;
     node_t          *node;

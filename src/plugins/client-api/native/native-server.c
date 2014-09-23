@@ -216,7 +216,7 @@ static void cancel_voice(client_t *c, srs_ccl_voice_t *req)
 
 static void query_voices(client_t *c, srs_req_voiceqry_t *req)
 {
-    srs_voice_actor_t  *actors;
+    srs_voice_actor_t  *actors = NULL;
     int                 nactor;
 
     mrp_debug("received voice query request from native client #%d", c->id);
@@ -326,9 +326,6 @@ static int reply_voiceqry(client_t *c, uint32_t reqno,
 
     mrp_debug("replying to request #%u from native client #%d", reqno, c->id);
 
-    if (actors < 0)
-        actors = 0;
-
     rpl.type   = SRS_REPLY_QUERYVOICES;
     rpl.reqno  = reqno;
     rpl.actors = actors;
@@ -431,13 +428,13 @@ static int transport_setup(server_t *s)
     srs_context_t  *srs  = s->self->srs;
     mrp_sockaddr_t  addr;
     socklen_t       alen;
-    const char     *type, *opt, *val;
+    const char     *type;
     int             flags, state, sock;
     void           *typemap;
 
     alen = mrp_transport_resolve(NULL, s->address, &addr, sizeof(addr), &type);
 
-    if (alen < 0) {
+    if (alen == 0) {
         mrp_log_error("Failed to resolve transport address '%s'.",
                       s->address);
         goto fail;
@@ -518,11 +515,6 @@ static int create_native(srs_plugin_t *plugin)
     plugin->plugin_data = s;
 
     return TRUE;
-
- fail:
-    mrp_free(s);
-
-    return FALSE;
 }
 
 

@@ -445,7 +445,7 @@ int client_query_voices(srs_client_t *c, const char *language,
     srs_context_t *srs  = c->srs;
     const char    *lang = language && *language ? language : NULL;
 
-    return srs_query_voices(c->srs, lang, actorsp);
+    return srs_query_voices(srs, lang, actorsp);
 }
 
 

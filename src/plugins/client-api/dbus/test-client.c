@@ -251,9 +251,8 @@ static void request_tts(client_t *c, int ntoken, char **tokens)
     int         timeout = 5000;
     int         events  = FALSE;
     char        msg[1024], *t, *e, *p;
-    int         i, o;
+    int         i, o, n;
     size_t      l;
-    ssize_t     n;
 
     if (c->registered) {
         print(c, "You need to unregister first to modify commands.");
@@ -281,7 +280,7 @@ static void request_tts(client_t *c, int ntoken, char **tokens)
         }
         else {
             n = snprintf(p, l, "%s%s", sep, t);
-            if (n >= l) {
+            if ((size_t)n >= l) {
                 print(c, "TTS message too long.");
                 return;
             }
@@ -948,10 +947,9 @@ static void voice_query_reply(mrp_dbus_t *dbus, mrp_dbus_msg_t *rpl,
                               void *user_data)
 {
     client_t  *c = (client_t *)user_data;
-    uint32_t   nvoice;
+    uint32_t   nvoice, i;
     char     **voices, **lang, **dialect, **gender, **description;
     size_t     dummy;
-    int        i, n;
 
     MRP_UNUSED(dbus);
 

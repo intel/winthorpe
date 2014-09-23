@@ -577,6 +577,8 @@ static void connect_notify(srs_t *srs, int status, const char *msg,
 {
     client_t *c = (client_t *)user_data;
 
+    MRP_UNUSED(srs);
+
     if (status == 1) {
         set_prompt(c, "connected");
         print(c, "Connection to server established.");
@@ -593,6 +595,8 @@ static void focus_notify(srs_t *srs, srs_voice_focus_t focus, void *user_data)
 {
     client_t *c = (client_t *)user_data;
 
+    MRP_UNUSED(srs);
+
     print(c, "Client has now %sfocus.", !focus ? "no " :
           focus == SRS_VOICE_FOCUS_SHARED ? "shared " : "exclusive ");
 }
@@ -603,9 +607,9 @@ static void command_notify(srs_t *srs, int idx, char **tokens, int ntoken,
                            void *user_data)
 {
     client_t *c = (client_t *)user_data;
-    char      cmd[1024], *p;
-    size_t    size;
     int       i;
+
+    MRP_UNUSED(srs);
 
     print(c, "Got command #%d: ", idx);
     for (i = 0; i < ntoken; i++)
@@ -651,6 +655,7 @@ static void query_voices_reply(srs_t *srs, srs_voice_actor_t *actors,
     srs_voice_actor_t *a;
     int                i;
 
+    MRP_UNUSED(srs);
     MRP_UNUSED(notify_data);
 
     print(c, "Server has %d available matching voices.", nactor);
@@ -696,18 +701,6 @@ static void request_focus(client_t *c, const char *focusstr)
 }
 
 
-static void tts_progress_cb(srs_t *srs, srs_voice_event_t *event,
-                            void *user_data, void *notify_data)
-{
-    client_t *c = (client_t *)user_data;
-
-    MRP_UNUSED(srs);
-    MRP_UNUSED(notify_data);
-
-    print(c, "Got voice rendering event 0x%x.", event->type);
-}
-
-
 static void request_tts(client_t *c, int ntoken, char **tokens)
 {
     const char *sep     = "";
@@ -715,9 +708,8 @@ static void request_tts(client_t *c, int ntoken, char **tokens)
     int         timeout = SRS_VOICE_QUEUE;
     int         events  = FALSE;
     char        msg[1024], *t, *e, *p;
-    int         i, o;
+    int         i, o, n;
     size_t      l;
-    ssize_t     n;
 
     p = msg;
     l = sizeof(msg);
@@ -740,7 +732,7 @@ static void request_tts(client_t *c, int ntoken, char **tokens)
         }
         else {
             n = snprintf(p, l, "%s%s", sep, t);
-            if (n >= l) {
+            if ((size_t)n >= l) {
                 print(c, "TTS message too long.");
                 return;
             }

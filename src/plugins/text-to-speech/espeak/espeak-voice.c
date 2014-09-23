@@ -121,7 +121,7 @@ static int espeak_setrate(double drate)
 
 static int espeak_setpitch(double dpitch)
 {
-    int min, max, step, pitch, orig;
+    int pitch, orig;
 
     if (0.0 < dpitch && dpitch <= 2.0) {
         pitch = (int)(50 * dpitch);
@@ -326,7 +326,6 @@ static int start_espeak(srs_plugin_t *plugin)
     espeak_VOICE **voices, *v;
     int            nvoice, i;
     const char    *lang, *language, *dialect;
-    int            nactor;
 
     if (e->srs->pulse == NULL)
         return FALSE;
@@ -387,6 +386,8 @@ static int start_espeak(srs_plugin_t *plugin)
 
 static void stop_espeak(srs_plugin_t *plugin)
 {
+    MRP_UNUSED(plugin);
+
     return;
 }
 

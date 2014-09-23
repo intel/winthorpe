@@ -105,13 +105,13 @@ static int check_config(loader_t *l)
         while (*s && *s != ' ' && *s != '\t' && *s != ',' && *s != ':') {
             *b++ = *s++;
 
-            if (b - buf >= sizeof(buf) - 1) {
+            if (b - buf >= (int)sizeof(buf) - 1) {
                 errno = ENOBUFS;
                 return -1;
             }
         }
 
-        if (b - buf >= sizeof(buf) - 1) {
+        if (b - buf >= (int)sizeof(buf) - 1) {
             errno = ENOBUFS;
             return -1;
         }
@@ -131,13 +131,13 @@ static int check_config(loader_t *l)
         while (*s && *s != ' ' && *s != '\t' && *s != ',' && *s != ':') {
             *b++ = *s++;
 
-            if (b - buf >= sizeof(buf) - 1) {
+            if (b - buf >= (int)sizeof(buf) - 1) {
                 errno = ENOBUFS;
                 return -1;
             }
         }
 
-        if (b - buf >= sizeof(buf) - 1) {
+        if (b - buf >= (int)sizeof(buf) - 1) {
             errno = ENOBUFS;
             return -1;
         }
@@ -156,14 +156,14 @@ static char *find_matching(char *buf, size_t size, const char *dir,
 {
     char           pattern[PATH_MAX], path[PATH_MAX], *p;
     const char    *l;
-    int            len, prfx, match, ok;
+    int            len, prfx, ok;
     DIR           *dp;
     struct dirent *de;
     regex_t        re;
     regmatch_t     rm;
 
     if (strchr(lib, '*') == NULL && strchr(lib, '?') == NULL) {
-        if (snprintf(buf, size, "%s/%s", dir, lib) >= size)
+        if ((size_t)snprintf(buf, size, "%s/%s", dir, lib) >= size)
             return NULL;
         if (access(buf, R_OK) == 0)
             return buf;
@@ -224,14 +224,15 @@ static char *find_matching(char *buf, size_t size, const char *dir,
             if (prfx > 0 && strncmp(de->d_name, pattern, prfx) != 0)
                 continue;
 
-            if (regexec(&re, de->d_name, 1, &rm, 0) == 0) {
-                ok = snprintf(buf, size, "%s/%s", dir, de->d_name) < size;
+            if (regexec(&re, de->d_name, 1, &rm, 0) != 0)
+                continue;
 
-                closedir(dp);
-                regfree(&re);
+            ok = (size_t)snprintf(buf, size, "%s/%s", dir, de->d_name) < size;
 
-                return ok ? buf : NULL;
-            }
+            closedir(dp);
+            regfree(&re);
+
+            return ok ? buf : NULL;
         }
         else if (de->d_type == DT_LNK) {
             struct stat st;
@@ -337,6 +338,8 @@ static int config_loader(srs_plugin_t *plugin, srs_cfg_t *settings)
 
 static int start_loader(srs_plugin_t *plugin)
 {
+    MRP_UNUSED(plugin);
+
     return TRUE;
 }
 

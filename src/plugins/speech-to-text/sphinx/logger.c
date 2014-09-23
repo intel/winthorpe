@@ -127,8 +127,8 @@ static char *dig_origin(char *msg, char *e, char *name, size_t size,
 
 static void push_log(logger_t *logger)
 {
-    char    *b, *e, *lb, *le, *file, lvl, name[1024], *msg;
-    int      line, len, nlen;
+    char    *b, *e, *file, lvl, name[1024], *msg;
+    int      line, len;
     ssize_t  n;
 
     name[sizeof(name) - 1] = '\0';
@@ -152,7 +152,7 @@ static void push_log(logger_t *logger)
             lvl = 0;
 
         if ((e = strchr(b, '\n')) == NULL) {
-            if (logger->n >= sizeof(logger->buf) - 1) {
+            if (logger->n >= (ssize_t)sizeof(logger->buf) - 1) {
                 mrp_log_warning("Discarding too long sphinx log buffer.");
                 logger->n = 0;
             }
@@ -175,17 +175,17 @@ static void push_log(logger_t *logger)
         default:
             if (mrp_debug_check(file, "sphinx", line))
                 mrp_debug_msg("sphinx", line, file,
-                              "%*.*s", n, n, msg);
+                              "%*.*s", (int)n, (int)n, msg);
             break;
         case 'W':
             mrp_log_msg(MRP_LOG_WARNING, file, line, "sphinx",
-                        "%*.*s", n, n, msg);
+                        "%*.*s", (int)n, (int)n, msg);
             break;
         case 'E':
         case 'S':
         case 'F':
             mrp_log_msg(MRP_LOG_ERROR, file, line, "sphinx",
-                        "%*.*s", n, n, msg);
+                        "%*.*s", (int)n, (int)n, msg);
             break;
         }
 
@@ -225,7 +225,7 @@ static void log_cb(mrp_io_watch_t *w, int fd, mrp_io_event_t events,
 
 FILE *logger_create(context_t *ctx)
 {
-    static logger_t  logger = { { -1, -1 }, NULL, 0 };
+    static logger_t  logger = { { -1, -1 }, NULL, NULL, "", 0 };
     mrp_mainloop_t  *ml     = plugin_get_mainloop(ctx->plugin);
     mrp_io_event_t   events = MRP_IO_EVENT_IN | MRP_IO_EVENT_HUP;
 

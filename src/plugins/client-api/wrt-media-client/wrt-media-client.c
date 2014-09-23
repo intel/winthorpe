@@ -216,6 +216,10 @@ static void tts_request_cb(GDBusConnection *c, const gchar *sender,
     char       *voice, *msg;
     uint32_t    id;
 
+    MRP_UNUSED(c);
+    MRP_UNUSED(path);
+    MRP_UNUSED(interface);
+
     if (strcmp(method, "synthesize"))
         return;
 
@@ -235,7 +239,7 @@ static void tts_request_cb(GDBusConnection *c, const gchar *sender,
 
 static void tts_setup(wrtc_t *wrtc)
 {
-    static GDBusInterfaceVTable vtable = { tts_request_cb, NULL, NULL };
+    static GDBusInterfaceVTable vtable = { tts_request_cb, NULL, NULL, {} };
 
     wrtc->intr = g_dbus_node_info_new_for_xml(TTS_INTERFACE_XML, NULL);
 
@@ -416,6 +420,8 @@ static int start_wrtc(srs_plugin_t *plugin)
 static void stop_wrtc(srs_plugin_t *plugin)
 {
     wrtc_t *wrtc = (wrtc_t *)plugin->plugin_data;
+
+    MRP_UNUSED(wrtc);
 
     mrp_debug("stop WRT media client plugin");
 

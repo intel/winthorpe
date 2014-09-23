@@ -104,6 +104,8 @@ static int config_input(srs_plugin_t *plugin, srs_cfg_t *settings)
 {
     context_t *ctx = (context_t *)plugin->plugin_data;
 
+    MRP_UNUSED(settings);
+
     mrp_log_info("configuring input plugin");
 
     ctx->key = KEY_PAUSE;
@@ -150,7 +152,6 @@ static void stop_input(srs_plugin_t *plugin)
 static void destroy_input(srs_plugin_t *plugin)
 {
     context_t *ctx = (context_t *)plugin->plugin_data;
-    size_t i;
 
     mrp_log_info("destroying input plugin");
 
@@ -234,7 +235,6 @@ static void handle_device(context_t *ctx, struct udev_device *dev)
     const char *path;
     const char *kbd;
     const char *key;
-    int fd;
 
     if ((path = udev_device_get_property_value(dev, "DEVNAME"))) {
         key = udev_device_get_property_value(dev, "ID_INPUT_KEY");

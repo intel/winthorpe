@@ -125,7 +125,6 @@ static void recv_message(mrp_transport_t *t, void *data, uint32_t type_id,
 {
     srs_t     *srs = (srs_t *)user_data;
     srs_msg_t *msg = (srs_msg_t *)data;
-    request_t *req;
 
     MRP_UNUSED(t);
     MRP_UNUSED(user_data);
@@ -164,6 +163,8 @@ static void closed_event(mrp_transport_t *t, int error, void *user_data)
     srs_t *srs    = (srs_t *)user_data;
     int    status = 0;
     char  *msg    = !error ? "connection closed" : "connection error";
+
+    MRP_UNUSED(t);
 
     mrp_debug("transport closed by server");
 
@@ -361,7 +362,7 @@ srs_t *srs_create(const char *name, const char *appclass, char **commands,
                   srs_command_notify_t cmd_notify, void *user_data)
 {
     srs_t *srs;
-    int    i;
+    size_t    i;
 
     if (conn_notify == NULL)
         return NULL;
@@ -423,7 +424,7 @@ srs_t *srs_create(const char *name, const char *appclass, char **commands,
 
 void srs_destroy(srs_t *srs)
 {
-    int i;
+    size_t i;
 
     if (srs == NULL)
         return;
@@ -459,10 +460,12 @@ int srs_connect(srs_t *srs, const char *server, int reconnect)
 
     mrp_sockaddr_t      addr;
     socklen_t           alen;
-    const char         *atype, *opt, *val;
+    const char         *atype;
     int                 flags;
     void               *typemap;
     srs_req_register_t  reg;
+
+    MRP_UNUSED(reconnect);
 
     if (server == NULL)
         server = DEFAULT_ADDRESS;
@@ -520,6 +523,8 @@ static int check_connection(srs_t *srs)
         errno = ENOTCONN;
         return -1;
     }
+
+    return 0;
 }
 
 

@@ -11,7 +11,7 @@ AC_INIT([speech-recognition],
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADER([src/config.h])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 AC_SUBST(ACLOCAL_AMFLAGS, "-I m4")
 

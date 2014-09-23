@@ -160,7 +160,6 @@ static int dbusif_setup(dbusif_t *bus)
 
 static void dbusif_cleanup(dbusif_t *bus)
 {
-    srs_context_t  *srs = bus->self->srs;
     const char     *path, *iface, *method;
     int           (*cb)(mrp_dbus_t *, mrp_dbus_msg_t *, void *);
 
@@ -310,23 +309,6 @@ static void reply_voice_query(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, int nactor,
                    MRP_DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &d , n,
                    MRP_DBUS_TYPE_INVALID);
 }
-
-
-static int parse_commands(mrp_dbus_msg_t *msg, char **commands, int ncommand)
-{
-    int n;
-
-    n = 0;
-    while (n < ncommand - 1) {
-        if (mrp_dbus_msg_read_basic(msg, MRP_DBUS_TYPE_STRING, commands + n))
-            n++;
-        else
-            return -1;
-    }
-
-    return n;
-}
-
 
 static int parse_register(mrp_dbus_msg_t *req, const char **id,
                           const char **name, const char **appclass,
@@ -524,7 +506,6 @@ static int focus_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, void *user_data)
 static int focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 {
     dbusif_t      *bus   = (dbusif_t *)c->user_data;
-    srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
     const char    *path  = SRS_CLIENT_PATH;
     const char    *iface = SRS_CLIENT_INTERFACE;
@@ -547,7 +528,6 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
                           uint32_t *start, uint32_t *end, srs_audiobuf_t *audio)
 {
     dbusif_t      *bus   = (dbusif_t *)c->user_data;
-    srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
     const char    *path  = SRS_CLIENT_PATH;
     const char    *iface = SRS_CLIENT_INTERFACE;
@@ -584,7 +564,6 @@ static int command_notify(srs_client_t *c, int idx, int ntoken, char **tokens,
 static int voice_notify(srs_client_t *c, srs_voice_event_t *event)
 {
     dbusif_t      *bus   = (dbusif_t *)c->user_data;
-    srs_context_t *srs   = c->srs;
     const char    *dest  = c->id;
     const char    *path  = SRS_CLIENT_PATH;
     const char    *iface = SRS_CLIENT_INTERFACE;
@@ -629,8 +608,7 @@ static int parse_render_voice(mrp_dbus_msg_t *req, const char **id,
                               int *notify_events, const char **errmsg)
 {
     char    **events, *e;
-    int       i;
-    size_t    nevent;
+    size_t    i, nevent;
     int32_t   to;
 
     *id = mrp_dbus_msg_sender(req);
@@ -685,7 +663,7 @@ static int render_voice_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req,
 {
     dbusif_t      *bus = (dbusif_t *)user_data;
     srs_context_t *srs = bus->self->srs;
-    const char    *id, *msg, *voice, *errmsg;
+    const char    *id, *msg, *voice, *errmsg = NULL;
     double         rate, pitch;
     int            timeout, events, err;
     uint32_t       reqid;
@@ -876,6 +854,8 @@ static int start_dbusif(srs_plugin_t *plugin)
 static void stop_dbusif(srs_plugin_t *plugin)
 {
     dbusif_t *bus = (dbusif_t *)plugin->plugin_data;
+
+    MRP_UNUSED(bus);
 
     mrp_debug("stop D-Bus client interface plugin");
 

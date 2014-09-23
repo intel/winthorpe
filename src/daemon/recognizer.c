@@ -397,7 +397,7 @@ static void process_ambiguity(srs_srec_t *srec, srs_srec_result_t *res)
     return;
 }
 
-
+#if 0
 static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
 {
     static effect_t effects[32];
@@ -446,7 +446,7 @@ static int get_effect_config(srs_context_t *srs, effect_t **cfgp)
 
     return neffect;
 }
-
+#endif
 
 static void process_unrecognized(srs_srec_t *srec, srs_srec_result_t *res)
 {
@@ -471,7 +471,10 @@ static void process_unrecognized(srs_srec_t *srec, srs_srec_result_t *res)
         srs_play_sound_file(srec->srs, e->data, NULL, NULL);
     else
         srs_say_msg(srec->srs, e->data, NULL, NULL);
+#else
+    MRP_UNUSED(srec);
 #endif
+    MRP_UNUSED(res);
 }
 
 

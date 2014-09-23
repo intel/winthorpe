@@ -69,7 +69,7 @@ static srs_cfg_t *find_config(srs_cfg_t *settings, const char *key);
 
 
 static int  nblock = 0;
-static int  prflen = 0;
+static size_t  prflen = 0;
 static char blocks[MAX_DEPTH][MAX_BLOCK];
 static char prefix[MAX_PREFIX];
 
@@ -167,9 +167,9 @@ static void print_usage(const char *argv0, int exit_code, const char *fmt, ...)
 }
 
 
+#ifdef SYSTEMD_ENABLED
 static int set_passed_sockets(srs_context_t *srs, const char *variables)
 {
-#ifdef SYSTEMD_ENABLED
     const char *b, *e;
     char        key[256], val[64];
     int         nfd, i, n;
@@ -207,7 +207,7 @@ static int set_passed_sockets(srs_context_t *srs, const char *variables)
 
         n = snprintf(val, sizeof(val), "%d", SD_LISTEN_FDS_START + i);
 
-        if (n < 0 || n >= sizeof(val))
+        if (n < 0 || n >= (int)sizeof(val))
             return -1;
 
         srs_set_config(srs, key, val);
@@ -217,11 +217,8 @@ static int set_passed_sockets(srs_context_t *srs, const char *variables)
     }
 
     return 0;
-#else
-    errno = EOPNOTSUPP;
-    return -1;
-#endif
 }
+#endif
 
 
 static void config_load_plugins(srs_context_t *srs, char *plugins)
@@ -266,8 +263,6 @@ static void config_load_plugins(srs_context_t *srs, char *plugins)
 
 static void push_block(const char *block, int blen)
 {
-    int plen;
-
     if (nblock >= MAX_DEPTH) {
         mrp_log_error("Too deeply nested configuration block: %s.%s",
                       prefix, block);
@@ -301,7 +296,7 @@ static void push_block(const char *block, int blen)
 static void pop_block(void)
 {
     char *block;
-    int   blen;
+    size_t blen;
 
     if (nblock <= 0) {
         mrp_log_error("Unbalanced block open ({) and close (}).");
@@ -398,9 +393,10 @@ static void config_parse_settings(srs_context_t *srs, char *settings)
 
         if (nblock > 0)
             snprintf(keybuf, sizeof(keybuf), "%s.%*.*s", prefix,
-                     klen, klen, key);
+                     (int)klen, (int)klen, key);
         else
-            snprintf(keybuf, sizeof(keybuf), "%*.*s", klen, klen, key);
+            snprintf(keybuf, sizeof(keybuf), "%*.*s",
+                     (int)klen, (int)klen, key);
         strncpy(valbuf, val, vlen);
         valbuf[vlen] = '\0';
 
@@ -462,7 +458,9 @@ void config_parse_cmdline(srs_context_t *srs, int argc, char **argv,
         { "debug"        , required_argument, NULL, 'd' },
         { "foreground"   , no_argument      , NULL, 'f' },
         { "valgrind"     , optional_argument, NULL, 'V' },
+#ifdef SYSTEMD_ENABLED
         { "sockets"      , required_argument, NULL, 'S' },
+#endif
         { "help"         , no_argument      , NULL, 'h' },
         { NULL, 0, NULL, 0 }
     };

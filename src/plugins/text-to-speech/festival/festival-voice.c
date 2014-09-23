@@ -65,8 +65,8 @@ static uint32_t festival_render(const char *msg, char **tags, int actor,
 {
     festival_t *f = (festival_t *)api_data;
     void       *samples;
-    uint32_t    nsample, id;
-    int         srate, nchannel;
+    uint32_t    id;
+    int         srate, nchannel, nsample;
 
     MRP_UNUSED(rate);
     MRP_UNUSED(pitch);
@@ -156,7 +156,7 @@ static int config_festival(srs_plugin_t *plugin, srs_cfg_t *cfg)
             if (e != NULL) {
                 len = e - b;
 
-                if (len >= sizeof(voice) - 1) {
+                if (len >= (int)sizeof(voice) - 1) {
                 toolong:
                     mrp_log_error("Voice name '%*.*s' too long.", len, len, b);
                     return FALSE;
@@ -166,7 +166,7 @@ static int config_festival(srs_plugin_t *plugin, srs_cfg_t *cfg)
                 voice[len] = '\0';
             }
             else {
-                if ((len = strlen(b)) >= sizeof(voice) - 1)
+                if ((len = strlen(b)) >= (int)sizeof(voice) - 1)
                     goto toolong;
 
                 strcpy(voice, b);
@@ -231,11 +231,10 @@ static int start_festival(srs_plugin_t *plugin)
     };
 
     festival_t         *f = (festival_t *)plugin->plugin_data;
-    int                 nactor;
     char              **voices;
     int                 nvoice;
     char               *lang, *dial, *descr;
-    int                 female, age, i;
+    int                 female, i;
 
     if (f->srs->pulse == NULL)
         return FALSE;
@@ -289,6 +288,8 @@ static int start_festival(srs_plugin_t *plugin)
 
 static void stop_festival(srs_plugin_t *plugin)
 {
+    MRP_UNUSED(plugin);
+
     return;
 }
 

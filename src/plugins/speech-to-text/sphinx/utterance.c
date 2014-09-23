@@ -133,7 +133,7 @@ static void acoustic_processor(context_t *ctx,
     int32_t frlen;
     int32 start, end;
     size_t ncand;
-    srs_srec_candidate_t *cand;
+    srs_srec_candidate_t *cand = cands;
     srs_srec_token_t *tkn;
     int32_t length;
 

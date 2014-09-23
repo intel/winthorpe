@@ -272,6 +272,10 @@ static void connect_timer_cb(pa_mainloop_api *api, pa_time_event *e,
 {
     srs_pulse_t *p = (srs_pulse_t *)user_data;
 
+    MRP_UNUSED(api);
+    MRP_UNUSED(e);
+    MRP_UNUSED(tv);
+
     if (p->pc != NULL) {
         pa_context_unref(p->pc);
         p->pc = NULL;
@@ -420,6 +424,8 @@ static void stream_state_cb(pa_stream *ps, void *user_data)
     pa_context_state_t  cst = pa_context_get_state(p->pc);
     pa_stream_state_t   sst;
 
+    MRP_UNUSED(ps);
+
     if (cst == PA_CONTEXT_TERMINATED || cst == PA_CONTEXT_FAILED)
         return;
 
@@ -468,6 +474,8 @@ static void stream_drain_cb(pa_stream *ps, int success, void *user_data)
 {
     stream_t *s = (stream_t *)user_data;
 
+    MRP_UNUSED(ps);
+
     mrp_debug("pulse: stream #%u drained %s", s->id,
               success ? "successfully" : "failed");
 
@@ -482,6 +490,8 @@ static void stream_write_cb(pa_stream *ps, size_t size, void *user_data)
 {
     stream_t *s = (stream_t *)user_data;
     int       done;
+
+    MRP_UNUSED(ps);
 
     stream_notify(s, SRS_STREAM_EVENT_PROGRESS);
 

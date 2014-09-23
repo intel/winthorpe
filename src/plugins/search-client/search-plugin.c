@@ -166,7 +166,10 @@ static int command_cb(srs_client_t *c, int idx, int ntoken, char **tokens,
 
         if (l < (int)sizeof(cmd)) {
             mrp_log_info("search-client executing '%s'", cmd);
-            system(cmd);
+            if (system(cmd) < 0) {
+              mrp_log_error("search-client: failed to execute search command \
+                  '%s'", cmd);
+            }
         }
     }
     else
