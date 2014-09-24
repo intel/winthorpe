@@ -39,8 +39,8 @@ static int set_player_property(player_t *player,
     if (!msg)
         return FALSE;
 
-    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)&interface);
-    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)&name);
+    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)interface);
+    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)name);
     mrp_dbus_msg_open_container(msg, MRP_DBUS_TYPE_VARIANT, type_str);
     mrp_dbus_msg_append_basic(msg, (char)type, value);
     mrp_dbus_msg_close_container(msg);
@@ -486,7 +486,7 @@ void dbusif_query_playlists(player_t *player)
 
     mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_UINT32, (void *)&index);
     mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_UINT32, (void *)&max_count);
-    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)&order);
+    mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_STRING, (void *)order);
     mrp_dbus_msg_append_basic(msg, MRP_DBUS_TYPE_BOOLEAN, (void *)&reverse);
 
     mrp_dbus_send(dbusif->dbus,
