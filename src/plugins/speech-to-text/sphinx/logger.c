@@ -26,6 +26,7 @@ typedef struct {
     mrp_io_watch_t *w;                   /* log I/O watch */
     char            buf[4096];           /* log line buffer */
     ssize_t         n;
+    char            file[PATH_MAX];      /* last known origin */
 } logger_t;
 
 
@@ -49,8 +50,7 @@ static ssize_t pull_log(logger_t *logger)
 }
 
 
-static char *dig_origin(char *msg, char *e, char *name, size_t size,
-                        char **file, int *line)
+static char *dig_origin(char *msg, char *e, char *name, size_t size, int *line)
 {
     char *nb, *ne, *lb, *le;
     int   l, nlen;
@@ -75,8 +75,6 @@ static char *dig_origin(char *msg, char *e, char *name, size_t size,
 
         if (ne == NULL || (ne > e && e != NULL)) {
         parse_error:
-            if (*file == NULL)
-                *file = "<unknown file>";
             return msg;
         }
 
@@ -91,7 +89,6 @@ static char *dig_origin(char *msg, char *e, char *name, size_t size,
 
         nlen = ne - nb - 1;
         snprintf(name, size - 1, "%*.*s", nlen, nlen, nb + 1);
-        *file = name;
         *line = l;
 
         msg = le + 1;
@@ -112,7 +109,6 @@ static char *dig_origin(char *msg, char *e, char *name, size_t size,
         nlen = ne - nb;
 
         snprintf(name, size - 1, "%*.*s", nlen, nlen, nb);
-        *file = name;
         *line = l;
 
         msg = le + 2;
@@ -134,7 +130,7 @@ static void push_log(logger_t *logger)
     name[sizeof(name) - 1] = '\0';
 
     lvl  = 0;
-    file = NULL;
+    file = logger->file;
     line = 0;
 
     while (logger->n > 0) {
@@ -162,7 +158,7 @@ static void push_log(logger_t *logger)
         mrp_debug("got log message '%s'", b);
 
         if (lvl != 0)
-            msg = dig_origin(b, e, name, sizeof(name), &file, &line);
+            msg = dig_origin(b, e, logger->file, sizeof(logger->file), &line);
         else
             msg = b;
 
@@ -225,7 +221,7 @@ static void log_cb(mrp_io_watch_t *w, int fd, mrp_io_event_t events,
 
 FILE *logger_create(context_t *ctx)
 {
-    static logger_t  logger = { { -1, -1 }, NULL, NULL, "", 0 };
+    static logger_t  logger = { { -1, -1 }, NULL, NULL, "", 0, "" };
     mrp_mainloop_t  *ml     = plugin_get_mainloop(ctx->plugin);
     mrp_io_event_t   events = MRP_IO_EVENT_IN | MRP_IO_EVENT_HUP;
 
