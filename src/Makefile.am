@@ -340,6 +340,37 @@ plugin_espeak_voice_la_LIBADD =					\
 		$(ESPEAK_LIBS)
 endif
 
+# W3C Speech API plugin and test client
+if W3C_SPEECH_ENABLED
+plugin_LTLIBRARIES += plugin-w3c-speech.la
+
+plugin_w3c_speech_la_SOURCES =					\
+		plugins/client-api/w3c-speech/w3c-server.c	\
+		plugins/client-api/w3c-speech/w3c-message.c
+
+plugin_w3c_speech_la_CFLAGS  =				\
+		$(AM_CFLAGS)
+
+plugin_w3c_speech_la_LDFLAGS =				\
+		-module -avoid-version
+
+plugin_w3c_speech_la_LIBADD =
+
+bin_PROGRAMS += srs-w3c-client
+
+srs_w3c_client_SOURCES = 					\
+		plugins/client-api/w3c-speech/w3c-client.c
+
+srs_w3c_client_CFLAGS =						\
+		$(AM_CFLAGS)					\
+		$(MURPHY_BREEDLINE_CFLAGS)			\
+		$(MURPHY_COMMON_CFLAGS)
+
+srs_w3c_client_LDADD =						\
+		$(MURPHY_BREEDLINE_LIBS)			\
+		$(MURPHY_COMMON_LIBS)
+endif
+
 # simple-voice synthesizer plugin
 #plugin_LTLIBRARIES += plugin-simple-voice.la
 #
