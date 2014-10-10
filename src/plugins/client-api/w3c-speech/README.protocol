@@ -1,0 +1,580 @@
+
+0. Introduction
+---------------
+
+This document describes the simple JSON-based protocol used between
+the Winthorpe W3C Speech plugin and an external entity talking to it.
+In this document the term 'server' is generally used to refer to the
+Winthorpe W3C Speech plugin while the term 'client' is used to refer
+to any external entity using the protocol described here to interact
+with the plugin. A client is typically but not necessarily an entity
+within a Web Runtime or a Web Browser that wishes to use Winthorpe as
+the backend for rendering speech recognition and synthesis services.
+
+
+1. Message Encoding, Framing, And IPC
+-------------------------------------
+
+The Winthorpe W3C protocol uses JSON to encode messages. Connection-
+oriented stream sockets are used for the actual transmission of the
+bytes comprising an encoded messages. A simple framing scheme is used
+to help the receiving end to stay in sync with message boundaries for
+decoding. Every message transmitted over the wire is prefixed with a
+4-byte header containing the length of the following encoded message
+in network byte order, as depicted below.
+
+
+  +---------------------------------------------------------------------+
+  |       frame #0      |      frame #1       |   |      frame #N       |
+  +---------------------------------------------------------------------+
+  | size0 :  message#0  | size1 :  message#1  |...| sizeN :  message#N  |
+  +---------------------------------------------------------------------+
+  |       | size0 bytes |       | size1 bytes |   |       | sizeN bytes |
+  +---------------------------------------------------------------------+
+
+
+2. Message Types
+----------------
+
+Messages can be logically divided into three categories:
+
+  - requests
+  - replies
+  - events
+
+A request is a message that is sent by a client to the server. For
+example, to create a new speech recognizer instance a client sends a
+request of the appropriate type to Winthorpe. A reply is a message
+that Winthorpe sends to a client in response to a request. For example,
+when a speech recognizer instance has been succefully created, the
+server sends a reply with recognizer ID to the client. Events are
+unsolicited messages that Winthorpe sends to clients to notify them
+about events that the client might be interested in. For example, when
+a speech utterance has been succesfully recognized, Winthorpe sends a
+corresponding event to the client that has started speech recognition.
+
+
+3. Message Structure
+--------------------
+
+Every message consists of a fixed number of common, type-agnostic
+fields and a variable number of type-specific fields. The type-agnostic
+fields are the following.
+
+Request Number (reqno)
+
+The request number is a monotonically increasing integer assigned by
+the requestor, IOW the client. It is used to correlate between requests
+and replies. A reply to a request will always have the same request
+number as the request itself. Events will always have 0 as their request
+number.
+
+Message Type (type)
+
+The message type field indicates what type of information the message is
+carrying. It can be one of
+
+Object Creation Request (create)
+
+An object creation request creates an object of the specified type on
+the server side and optionally initializes it with a set of initial
+variables which could alternatively be also set later with an Attribute
+Set Request (set, see below). Upon success, the server replies with a
+successful status message that contains the object ID of the newly
+created object. Upon failure, the server responds with an error status
+reply. Here is a sample create request:
+  {
+      reqno: 1,
+      type: 'create',
+      object: 'recognizer',
+      set: {
+          grammars: [ { src: 'winthorpe://player', weight: 1.0 } ],
+          lang: 'en-GB',
+          continuous: true,
+      },
+  }
+
+Object Deletion Request (delete)
+
+An object deletion request deletes the object with specified ID from
+the server. Upon success, the server replies with a success status
+reply, upon error with an error status reply. Here is a sample delete
+request:
+  {
+      reqno: 1,
+      type: 'delete',
+      id: 1,
+  }
+
+Attribute Setting Request (set)
+
+And object configuration request changes the given parameters of the
+given object. Upon success, the server replies with a success status
+reply. Upon error the server responds with an error status reply.
+Here is a sample set request:
+  {
+      reqno: 1,
+      type: 'set',
+      id: 1,
+      set: {
+          grammars: [ { src: 'winthorpe://player', weight: 1.0 } ],
+          lang: 'en-GB',
+          continuous: true,
+      },
+  }
+
+
+Reply Message (status)
+
+The server responds to all requests with a status reply. Successful
+requests are responded to with a success status reply. Unsuccessful
+requests are respondes to with an error status reply. Here is a
+sample success reply:
+  {
+      reqno: 1,
+      type: 'status',
+      status: 0,
+      message: 'recognizer instance created'
+  }
+
+Here is a sample error status reply:
+  {
+      reqno: 1,
+      type: 'status',
+      status: 5,
+      error: 'bad-grammar',
+      message: 'Unknown grammar player requested.'
+  }
+
+
+Method Invocation Request (invoke)
+
+A method invocation request asks the server to invoke the specified
+method on the given object with the given argument list. Upon succesful
+completion the server responds with a success status reply. Upon error
+the server responds with an error status reply. Here is a sample method
+invocation call request:
+  {
+      reqno: 5,
+      type: 'invoke',
+      id: 1,
+      method: 'start',
+      args: []
+  }
+
+Event Message (event)
+
+Event messages are sent by the server to notify clients about events of
+potential interest. Clients then decide whether and how to react to the
+events they received. Events are never replied to. From the servers point
+of view they are fire-and-forget type of messages. Here is a sample
+event:
+  {
+      reqno: 0,
+      type: 'event',
+      id: 0,
+      event: 'match',
+      timestamp: { sec: 1412792206, usec: 742317 },
+      match: {
+          final: true,
+          length: 1,
+          results: [ { confidence: 0.89, transcript: "play next" } ]
+      }
+  }
+
+
+Timestamp Request (timestamp)
+
+A timestamp request asks the server for its notion of time used in
+timestamps. The server responds to a timestamp request with a success
+status reply containing the timestamp obtained (right before) at the
+moment of sending the reply. Here is a sample timestamp request:
+  {
+      reqno: 5,
+      type: 'typestamp'
+  }
+
+And here is a sample reply:
+  {
+      reqno: 5,
+      type: 'status',
+      status: 0,
+      timestamp: { sec: 1412792206, usec: 742317 },
+  }
+
+The timestamp request can be used to establish a correlation between
+the clock on the server side and the clock on the client side, for
+instance in the events to be emitted in a WRT JS engine).
+
+The timestamp request can also be used to estimate/compensate for the
+communication delay associated with message delivery, although in the
+case of using unix domain sockets or TCP sockets over the loopback
+device this delay should probably be neglible from the JS engine point
+of view for all practical purposes.
+
+
+4. Speech Recognition Protocol
+------------------------------
+
+4.1 Creating An Instance
+
+A speech recognition instance can be created by sending a 'create'
+request with object type 'recognizer'.
+
+  {
+      reqno: 1,
+      type: 'create',
+      object: 'recognizer',
+      set: {
+          lang: 'en-GB',
+          grammars: [ { src: 'winthorpe://player', weight: 1.0 } ],
+          continuous: true,
+          interimResults: false,
+          maxAlternatives: 1,
+          events: [ 'result', 'nomatch', 'error', 'start', 'end' ]
+          shared: true,
+      }
+  }
+
+Although the server allows all standard attributes to be set, currently
+the interimResults, maxAlternatives and serviceURI attributes are silently
+ignored.
+
+In addition to the standard attributes, Winthorpe allows the following non-
+standard ones to be set:
+
+  - events: The set of events the client wants to be notified about. This
+    should reflect which event handlers have been set up for the related
+    JS object in the WRT.
+
+  - shared: Go for shared Winthorpe voice focus, instead of exclusive one.
+
+Upon successful creation, the server responds with a sucess status reply
+containing the object ID of the newly created recognizer.
+
+
+  {
+      reqno: 1,
+      type: 'status',
+      status: 0,
+      id: 1,
+      message: 'recognizer 1 created'
+  }
+
+
+This ID needs to be used in all subsequent requests releated to this
+instance.
+
+Upon error the server responds with an error status reply, containing an
+error status code, an error string, and optionally a verbose error message
+further clarifying to reason for failure.
+
+4.2 Explicit Deletion
+
+An existing recognizer instance can be explicitly deleted by sending a
+delete request to the server with the object ID of the recognizer.
+
+  {
+      reqno: 2,
+      type: 'delete',
+      id: 1,
+  }
+
+The server responds to the deletion request with a status reply.
+
+  {
+      reqno: 2,
+      type: 'status',
+      status: 0,
+  }
+
+4.3 Setting Recognizer Attributes
+
+Recognizer attributes can either be set during creation of the instance,
+or later using an attribute setting request. For a list of settable
+attributes, see the recognizer creation request above. The server might
+not be able to change certain attributes, depending on the state of the
+recognizer. If setting an attribute fails, the server will respond with
+an error status reply to the request.
+
+4.4 Starting, Stopping, And Aborting The Recognizer
+
+The recognizer start, stop, and abort methods can be invoked using a
+method invocation request.
+
+  {
+      reqno: 15,
+      type: 'invoke',
+      id: 1,
+      method: 'start', (or 'stop', or 'abort')
+      args: []
+  }
+
+The server responds with a status reply.
+
+4.5 Recognition Events
+
+Winthorpe delivers recognition events to the clients using a 'match'
+event message.
+
+  {
+      reqno: 0,
+      type: 'event',
+      id: 1,
+      event: 'match',
+      match: {
+          final: true,
+          length: 1,
+          results: [
+              {
+                  transcript: 'hal open the pod bay doors',
+                  confidence: 0.89,
+              }
+          ]
+      }
+  }
+
+The server will not provide any 'EMMA' or 'interpretation' attributes for
+the recognition event.
+
+4.6 Status Codes and Errors
+
+TBD.
+
+
+5. Synthesizer Protocol
+-----------------------
+
+5.1 Creating a Synthesizer Instance
+
+The speech synthesizer object is an implicitly create per-connection
+singleton object. It does not need to and cannot be explicitly created.
+The implicit singleton synthesizer object always exists with object ID
+0.
+
+
+5.2 Deleting the Synthesizer Instance
+
+The implicitly created singleton speech synthesizer object cannot be
+explicitly deleted.
+
+5.3 Creating an Utterance
+
+An utterance can be created by sending an utterance creation request
+to the server.
+
+  {
+      reqno: 16,
+      type: 'create',
+      object: 'utterance',
+      set: {
+          text: 'this is a test message',
+          lang: 'en-GB',
+          events: [ 'start', 'end', 'error' ],
+          volume: 1.0,
+          rate: 1.0,
+      }
+  }
+
+Although the server allows all standard attributes to be set, currently
+volume is always ignored and depending on the backend, rate and pitch
+might be ignore.
+
+In addition to the standard attributes, Winthirpe allows the following
+non-standard ones to be set:
+
+  - events: the set of events the client wants to be notified about. This
+    should reflect which event handlers have been set up for the related
+    JS object in the WRT. Currently only the start, stop and error events
+    are generated by the server, but rendering progress events will be
+    added in the soon future.
+
+  - timeout: timeout after which the utterance gets automatically cancelled
+    if its rendering has not been started. The timeout period is specified
+    in milliseconds.
+
+Upon sucessful creation the server responds with a success status reply
+containing the object ID of the newly created utterance.
+
+  {
+      reqno: 16,
+      type: 'status',
+      status: '0',
+      id: 3
+  }
+
+The supplied ID needs to be used in all subsequent requests related to this
+utterance instance.
+
+5.4 Setting Utterance Attributes
+
+Utterance attributes can either be set during creation of the instance,
+or later using an attribute setting request. For the list of settable
+attributes, see the utterance creation request above. The server might
+not be able to change certain attributes, depending on the state of
+the utterance. If setting an attribute fails, the server will respond with
+an error status reply to the request, otherwise with a sucessful status
+reply with status 0.
+
+5.5 Rendering an Utterance
+
+An utterance can be rendered by invoking the speak method of the singleton
+synthesizer object (with ID 0) and passing it the ID of the utterance in
+the utterance field.
+
+  {
+      reqno: 17,
+      type: 'invoke',
+      id: 0,
+      method: 'speak'
+      utterance: 3
+  }
+
+Upon success, the server will respond with a success status reply.
+
+  {
+      reqno: 17,
+      type: 'status',
+      status: 0
+  }
+
+5.6 Cancelling All Utterances
+
+All utterance can be cancelled by invoking the cancel method of the singleton
+synthesizer object (ID 0).
+
+  {
+      reqno: 18,
+      type: 'invoke',
+      id: 0,
+      method: 'cancel'
+  }
+
+This will cancel all queued utterances. Upon success the server responds with
+a sucess status reply.
+
+  {
+      reqno: 18,
+      type: 'status',
+      status: 0
+  }
+
+5.7 Pausing and Resuming Utterance Rendering
+
+Rendering of pending utterances can be paused and resumed by invoking the
+pause and resume methods of the singleton synthesizer object (ID 0).
+
+  {
+      reqno: 19,
+      type: 'invoke',
+      id: 0,
+      method: 'pause' (or resume)
+  }
+
+Once paused, rendering will not resume until the resume method is invoked.
+Upon success the server responds with a sucess status reply.
+
+  {
+      reqno: 19,
+      type: 'status',
+      status: 0
+  }
+
+5.8 Listing Available Voices
+
+The set of available voices can be queried by invoking the get-voices method
+of the singleton synthesizer objec (ID 0).
+
+  {
+      reqno: 20,
+      type: 'invoke',
+      id: 0,
+      method: 'get-voices'
+  }
+
+Upon success the server replies with the set of available voices.
+  {
+     reqno: 20,
+     type: 'status',
+     status: 0,
+     voices: [
+         {
+              voiceURI: 'english-male',
+              lang: 'English',
+              name: 'english-male',
+              localService: true,
+              default: false
+         },
+         {
+              voiceURI: 'english-british-male-1',
+              lang: 'English',
+              name: 'english-british-male-1',
+              localService: true,
+              default: false
+         },
+         {
+           voiceURI: 'english-scottish-male',
+           lang: 'English',
+           name: 'english-scottish-male',
+           localService: true,
+           default: false
+         }
+    ]
+  }
+
+5.9 Emitted Events
+
+The server emits event whenever the speaking, pending, or paused
+state of the server changes, ie. whenever
+  - rendering starts,
+  - rendering stops,
+  - the first utterance is inserted into an empty utterance queue,
+  - the last utterance is removed from the utterance queue,
+  - the utterance queue is paused, or
+  - the utterance queue is resumed
+
+These events are emitted with the ID (0) of the global singleton synthesizer
+object.
+
+Utterance specific events (start, end, error) are emitted with the utterance
+ID as the object id of the event. Rendering progress events will be similarly
+emitted in the future.
+
+
+6. Object Lifecycle
+-------------------
+
+The lifecycle of the objects created on the server side is tied to the
+lifecycle of the socket connection via which the objects have been
+created. If the client closes the connection, all objects associated with
+the connection/client will be automatically destroyed on the server side.
+
+
+7. Other Considerations
+-----------------------
+
+Attributes can optionally be initialized during object creation, or they
+can be set later using an attribute set request. In principle it does not
+matter whether any attributes are set during construction. You can always
+create an empty object and configure it with subsequent attribute setting
+requests.
+
+However, most objects are not possible/meaningful to use or sometimes even
+to construct on the backend side before certain attributes have been set.
+For instance, a recognition object is practically inactive from the clients
+point of view before an omatch handler has been set on it. Similarly, the
+recognition object cannot be constructed on the backend side before the
+grammars attribute has been set.
+
+For the sake of completeness and to allow implementation to attempt
+opportunistic optimizations of object creation and message exchange, the
+protocol supports attribute initialization during object creation. If it
+wishes to do so, an implementation can cache locally attribute settings
+until it sees fit to construct the object (once enough attributes has been
+set for the object to become fully operational) and only then create and
+initialize the object with a single message exchange in one go.
+
+However, it is also perfectly fine to not do so. The gains are mostly in
+doing less communication for the cost of more complex client-side object-
+state handling logic. Whether this makes sense and whether it is a real
+gain depends on the implementation details case by case.
