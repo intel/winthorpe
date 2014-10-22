@@ -198,10 +198,12 @@ srs_client_t *client_create(srs_context_t *srs, srs_client_type_t type,
         return NULL;
     }
 
-    c->commands = parse_commands(commands, ncommand);
-    c->ncommand = ncommand;
+    if (commands != NULL) {
+        c->commands = parse_commands(commands, ncommand);
+        c->ncommand = ncommand;
+    }
 
-    if (c->commands == NULL || srs_srec_add_client(srs, c) != 0) {
+    if ((c->commands == NULL && ncommand) || srs_srec_add_client(srs, c) != 0) {
         client_destroy(c);
         return NULL;
     }
