@@ -359,11 +359,12 @@ static void setup_signals(client_t *c)
 
 static int split_input(char *input, int narg, char **args)
 {
-    int   n;
-    char *p;
+    int   n, l;
+    char *p, *e;
 
     n = 0;
     p = input;
+    e = NULL;
 
     while (*p) {
         while (*p == ' ' || *p == '\t')
@@ -376,11 +377,34 @@ static int split_input(char *input, int narg, char **args)
             return -1;
         }
 
-        while (*p && *p != ' ' && *p != '\t')
+        while (*p && ((e && *p != *e) || (!e && (*p != ' ' && *p != '\t')))) {
+            if (*p == '\\') {
+                if ((l = strlen(p)) > 1) {
+                    memmove(p, p + 1, l - 1);
+                    goto next;
+                }
+                else {
+                    *p = '\0';
+                    break;
+                }
+            }
+
+            if (!e && (*p == '\'' || *p == '"'))
+                e = p;
+
+        next:
+            p++;
+        }
+
+        if (e && *p == *e)
             p++;
 
         if (*p)
             *p++ = '\0';
+
+        e = NULL;
+
+        mrp_debug("arg #%d: '%s'\n", n, args[n-1]);
     }
 
     return n;
@@ -821,9 +845,10 @@ static int cmd_start_recognizer(client_t *c, int narg, char **args)
         id = strtoul(args[i], NULL, 10);
 
         if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
-            mrp_json_add_integer(req, "reqno", c->reqno++);
-            mrp_json_add_string (req, "type" , "start");
-            mrp_json_add_integer(req, "id"   , id);
+            mrp_json_add_integer(req, "reqno" , c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "start");
+            mrp_json_add_integer(req, "id"    , id);
 
             if (transport_send(c, req) < 0)
                 status = -1;
@@ -856,9 +881,10 @@ static int cmd_stop_recognizer(client_t *c, int narg, char **args)
         id = strtoul(args[i], NULL, 10);
 
         if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
-            mrp_json_add_integer(req, "reqno", c->reqno++);
-            mrp_json_add_string (req, "type" , "stop");
-            mrp_json_add_integer(req, "id"   , id);
+            mrp_json_add_integer(req, "reqno" , c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "stop");
+            mrp_json_add_integer(req, "id"    , id);
 
             if (transport_send(c, req) < 0)
                 status = -1;
@@ -880,7 +906,7 @@ static int cmd_abort_recognizer(client_t *c, int narg, char **args)
         return -1;
 
     if (narg <= 0) {
-        print(c, "Can't start recognizer, no ID given.");
+        print(c, "Can't abort recognizer, no ID given.");
         errno = EINVAL;
 
         return -1;
@@ -892,7 +918,304 @@ static int cmd_abort_recognizer(client_t *c, int narg, char **args)
 
         if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
             mrp_json_add_integer(req, "reqno", c->reqno++);
-            mrp_json_add_string (req, "type" , "abort");
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "abort");
+            mrp_json_add_integer(req, "id"   , id);
+
+            if (transport_send(c, req) < 0)
+                status = -1;
+
+            mrp_json_unref(req);
+        }
+    }
+
+    return status;
+}
+
+
+static int cmd_list_voices(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    const char *lang;
+    int         status;
+
+    switch (narg) {
+    case 0: lang = NULL;    break;
+    case 1: lang = args[0]; break;
+    default:
+        print(c, "list-voices expects either a single or no arguments.");
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if ((req = mrp_json_create(MRP_JSON_OBJECT)) == NULL)
+        return -1;
+
+    mrp_json_add_integer(req, "reqno" , c->reqno++);
+    mrp_json_add_string (req, "type"  , "invoke");
+    mrp_json_add_string (req, "method", "list-voices");
+    if (lang != NULL)
+        mrp_json_add_string(req, "lang", lang);
+
+    if (transport_send(c, req) < 0)
+        status = -1;
+    else
+        status = 0;
+
+    mrp_json_unref(req);
+
+
+    return status;
+}
+
+
+static int cmd_create_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req, *set;
+    int         status;
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+        mrp_json_add_integer(req, "reqno" , c->reqno++);
+        mrp_json_add_string (req, "type"  , "create");
+        mrp_json_add_string (req, "object", "utterance");
+
+        if (narg > 0) {
+            mrp_json_add(req, "set", set = mrp_json_create(MRP_JSON_OBJECT));
+
+            if (parse_set(c, set, narg, args) < 0)
+                goto fail;
+        }
+
+        if (transport_send(c, req) < 0)
+            status = -1;
+        else
+            status = 0;
+
+        mrp_json_unref(req);
+
+        return status;
+    }
+
+ fail:
+    return -1;
+}
+
+
+static int cmd_delete_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    int         i, id, status;
+
+    if (narg <= 0) {
+        print(c, "Can't delete utterance, no ID given.");
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    status = 0;
+    for (i = 0; i < narg; i++) {
+        id = strtoul(args[i], NULL, 10);
+
+        if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+            mrp_json_add_integer(req, "reqno", c->reqno++);
+            mrp_json_add_string (req, "type" , "delete");
+            mrp_json_add_integer(req, "id"   , id);
+
+            if (transport_send(c, req) < 0)
+                status = -1;
+
+            mrp_json_unref(req);
+        }
+    }
+
+    return status;
+}
+
+
+static int cmd_set_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req, *set;
+    int         id, status;
+
+    if (narg < 2) {
+        print(c, "Can't set variable, need ID, and variable assignment.");
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    id = strtoul(args[0], NULL, 10);
+    args++;
+    narg--;
+
+    if ((req = mrp_json_create(MRP_JSON_OBJECT)) == NULL)
+        return -1;
+
+    mrp_json_add_integer(req, "reqno", c->reqno++);
+    mrp_json_add_string (req, "type" , "set");
+    mrp_json_add_integer(req, "id"   , id);
+    mrp_json_add        (req, "set"  , set = mrp_json_create(MRP_JSON_OBJECT));
+
+    if (parse_set(c, set, narg, args) < 0) {
+        errno  = EINVAL;
+        status = -1;
+    }
+    else {
+        if (transport_send(c, req) < 0)
+            status = -1;
+        else
+            status = 0;
+    }
+
+    mrp_json_unref(req);
+
+    return status;
+}
+
+
+static int cmd_speak_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    int         i, id, status;
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if (narg <= 0) {
+        print(c, "Can't speak utterance, no ID given.");
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    status = 0;
+    for (i = 0; i < narg; i++) {
+        id = strtoul(args[i], NULL, 10);
+
+        if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+            mrp_json_add_integer(req, "reqno", c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "speak");
+            mrp_json_add_integer(req, "id"   , id);
+
+            if (transport_send(c, req) < 0)
+                status = -1;
+
+            mrp_json_unref(req);
+        }
+    }
+
+    return status;
+}
+
+
+static int cmd_cancel_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    int         i, id, status;
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if (narg <= 0) {
+        print(c, "Can't cancel utterance, no ID given.");
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    status = 0;
+    for (i = 0; i < narg; i++) {
+        id = strtoul(args[i], NULL, 10);
+
+        if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+            mrp_json_add_integer(req, "reqno", c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "cancel");
+            mrp_json_add_integer(req, "id"   , id);
+
+            if (transport_send(c, req) < 0)
+                status = -1;
+
+            mrp_json_unref(req);
+        }
+    }
+
+    return status;
+}
+
+
+static int cmd_pause_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    int         i, id, status;
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if (narg <= 0) {
+        print(c, "Can't pause utterance, no ID given.");
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    status = 0;
+    for (i = 0; i < narg; i++) {
+        id = strtoul(args[i], NULL, 10);
+
+        if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+            mrp_json_add_integer(req, "reqno", c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "pause");
+            mrp_json_add_integer(req, "id"   , id);
+
+            if (transport_send(c, req) < 0)
+                status = -1;
+
+            mrp_json_unref(req);
+        }
+    }
+
+    return status;
+}
+
+
+static int cmd_resume_utterance(client_t *c, int narg, char **args)
+{
+    mrp_json_t *req;
+    int         i, id, status;
+
+    if (check_connection(c, TRUE) < 0)
+        return -1;
+
+    if (narg <= 0) {
+        print(c, "Can't resume utterance, no ID given.");
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    status = 0;
+    for (i = 0; i < narg; i++) {
+        id = strtoul(args[i], NULL, 10);
+
+        if ((req = mrp_json_create(MRP_JSON_OBJECT)) != NULL) {
+            mrp_json_add_integer(req, "reqno", c->reqno++);
+            mrp_json_add_string (req, "type"  , "invoke");
+            mrp_json_add_string (req, "method", "resume");
             mrp_json_add_integer(req, "id"   , id);
 
             if (transport_send(c, req) < 0)
@@ -953,6 +1276,14 @@ static void execute_command(client_t *c, int narg, char **args)
         { "start-recognizer"    , cmd_start_recognizer     },
         { "stop-recognizer"     , cmd_stop_recognizer      },
         { "abort-recognizer"    , cmd_abort_recognizer     },
+        { "list-voices"         , cmd_list_voices          },
+        { "create-utterance"    , cmd_create_utterance     },
+        { "delete-utterance"    , cmd_delete_utterance     },
+        { "set-utterance"       , cmd_set_utterance        },
+        { "speak-utterance"     , cmd_speak_utterance      },
+        { "cancel-utterance"    , cmd_cancel_utterance     },
+        { "pause-utterance"     , cmd_pause_utterance      },
+        { "resume-utterance"    , cmd_resume_utterance     },
         { "connect"             , cmd_connect              },
         { "disconnect"          , cmd_disconnect           },
         { "quit"                , cmd_quit                 },

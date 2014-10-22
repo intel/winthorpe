@@ -36,6 +36,7 @@
 #define W3C_OBJECT     "object"
 #define W3C_EVENT      "event"
 #define W3C_RECOGNIZER "recognizer"
+#define W3C_UTTERANCE  "utterace"
 
 #define W3C_CREATE     "create"
 #define W3C_DELETE     "delete"
@@ -48,5 +49,11 @@
 #define W3C_MALFORMED  "malformed request"
 #define W3C_FAILED     "request failed"
 #define W3C_BADGRAMMAR "bad-grammar"
+#define W3C_SERVERERR  "internal server error"
+#define W3C_NOMEM      "server out of memory"
+#define W3C_BADEVENTS  "invalid event array"
+#define W3C_BADEVENT   "invalid event"
+#define W3C_BUSY       "busy, request not possible now"
+#define W3C_BADVOICE   "unset, or unknown voice or language"
 
 #endif /* __SRS_W3C_PROTOCOL_H__ */
