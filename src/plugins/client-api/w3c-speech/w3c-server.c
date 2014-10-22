@@ -188,7 +188,9 @@ struct w3c_synthesizer_s {
     w3c_client_t    *c;                  /* client we belong to */
     w3c_syn_attr_t   attr;               /* synthesizer attributes */
     srs_client_t    *srsc;               /* associated backend client */
-    mrp_list_hook_t  utterances;         /* pending/active utterances */
+    mrp_list_hook_t  utterances;         /* existing utterances */
+    mrp_list_hook_t  pending;            /* pending utterances */
+    bool             paused;             /* whether paused */
 };
 
 
@@ -209,7 +211,8 @@ typedef struct {
 
 
 typedef struct {
-    mrp_list_hook_t    hook;             /* to pending client utterances */
+    mrp_list_hook_t    hook;             /* to utterance list */
+    mrp_list_hook_t    pending;          /* to pending list */
     w3c_synthesizer_t *syn;              /* associated synthesizer */
     int                id;               /* (W3C) utterance object id */
     w3c_utt_attr_t     attr;             /* utterance attributes */
@@ -571,6 +574,34 @@ static int malformed_request(mrp_transport_t *t, mrp_json_t *req,
 }
 
 
+static inline int update_speaking(w3c_synthesizer_t *syn, bool state)
+{
+    w3c_client_t *c = syn->c;
+
+    return send_event(c->t, 0, "speaking", "state", MRP_JSON_BOOLEAN, state);
+}
+
+
+static inline int update_pending(w3c_synthesizer_t *syn, bool prev)
+{
+    w3c_client_t *c    = syn->c;
+    bool          curr = !mrp_list_empty(&c->syn->pending);
+
+    if (curr != prev)
+        return send_event(c->t, 0, "pending", "state", MRP_JSON_BOOLEAN, curr);
+    else
+        return 0;
+}
+
+
+static inline int update_paused(w3c_synthesizer_t *syn, bool state)
+{
+    w3c_client_t *c = syn->c;
+
+    return send_event(c->t, 0, "paused", "state", MRP_JSON_BOOLEAN, state);
+}
+
+
 static int w3c_focus_notify(srs_client_t *c, srs_voice_focus_t focus)
 {
     w3c_recognizer_t *rec = (w3c_recognizer_t *)c->user_data;
@@ -785,8 +816,9 @@ static int stop_recognizer_client(w3c_recognizer_t *rec, int *errc,
 
 static int w3c_voice_notify(srs_client_t *c, srs_voice_event_t *e)
 {
-    w3c_synthesizer_t *syn = (w3c_synthesizer_t *)c->user_data;
-    w3c_utterance_t   *utt = lookup_utterance(syn->c, -1, e->id);
+    w3c_synthesizer_t *syn  = (w3c_synthesizer_t *)c->user_data;
+    w3c_utterance_t   *utt  = lookup_utterance(syn->c, -1, e->id);
+    int                mask = 1 << e->type;
 
     switch (e->type) {
     case SRS_VOICE_EVENT_STARTED:
@@ -813,8 +845,16 @@ static int w3c_voice_notify(srs_client_t *c, srs_voice_event_t *e)
         break;
     }
 
-    if ((1 << e->type) & SRS_VOICE_MASK_DONE)
+    if (mask & SRS_VOICE_MASK_STARTED) {
+        update_speaking(utt->syn, true);
+    }
+    else if (mask & SRS_VOICE_MASK_DONE) {
         utt->vid = SRS_VOICE_INVALID;
+        mrp_list_delete(&utt->pending);
+
+        update_speaking(utt->syn, false);
+        update_pending(utt->syn, true);
+    }
 
     return 0;
 }
@@ -877,6 +917,7 @@ static int create_synthesizer(w3c_client_t *c)
         return -1;
 
     mrp_list_init(&syn->utterances);
+    mrp_list_init(&syn->pending);
 
     syn->c = c;
     c->syn = syn;
@@ -913,6 +954,7 @@ static w3c_utterance_t *create_utterance(w3c_synthesizer_t *syn)
 
     if ((utt = mrp_allocz(sizeof(*utt))) != NULL) {
         mrp_list_init(&utt->hook);
+        mrp_list_init(&utt->pending);
 
         utt->syn = syn;
         utt->id  = W3C_OBJECT_ID(W3C_TYPE_UTTERANCE, syn->c->next_id++);
@@ -933,6 +975,7 @@ static w3c_utterance_t *create_utterance(w3c_synthesizer_t *syn)
 static void destroy_utterance(w3c_utterance_t *utt)
 {
     mrp_list_delete(&utt->hook);
+    mrp_list_delete(&utt->pending);
 
     mrp_free(utt->attr.text);
     mrp_free(utt->attr.lang);
@@ -958,6 +1001,64 @@ static w3c_utterance_t *lookup_utterance(w3c_client_t *c, int id, uint32_t vid)
     }
 
     return NULL;
+}
+
+
+static int activate_utterance(w3c_utterance_t *utt)
+{
+    const char *msg, *voice;
+    double      rate, pitch;
+    int         timeout, events;
+
+    if (utt->vid != SRS_VOICE_INVALID)
+        return 0;
+
+    msg     = utt->attr.text;
+    voice   = utt->attr.voice ? utt->attr.voice : utt->attr.lang;
+    rate    = utt->attr.rate;
+    pitch   = utt->attr.pitch;
+    timeout = utt->attr.timeout;
+
+    events  = SRS_VOICE_MASK_ALL;
+
+    if (!utt->syn->paused) {
+        utt->vid = client_render_voice(utt->syn->srsc, msg, voice, rate, pitch,
+                                       timeout, events);
+
+        if (utt->vid == SRS_VOICE_INVALID) {
+            errno = EINVAL;
+            return -1;
+        }
+    }
+
+    mrp_list_delete(&utt->pending);
+    mrp_list_append(&utt->syn->pending, &utt->pending);
+
+    return 0;
+}
+
+
+static int cancel_utterance(w3c_utterance_t *utt)
+{
+    client_cancel_voice(utt->syn->srsc, utt->vid);
+    utt->vid = SRS_VOICE_INVALID;
+    mrp_list_delete(&utt->pending);
+
+    return 0;
+}
+
+
+static int pause_utterance(w3c_utterance_t *utt)
+{
+    /* XXX TODO: since we can't pause ATM, for now we cancel */
+    return cancel_utterance(utt);
+}
+
+
+static int resume_utterance(w3c_utterance_t *utt)
+{
+    /* XXX TODO: since we can't resume ATM, for now we restart from scratch */
+    return activate_utterance(utt);
 }
 
 
@@ -1837,7 +1938,6 @@ static int w3c_abort_recognizer(w3c_client_t *c, int reqno, mrp_json_t *req)
 }
 
 
-
 static int w3c_create_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
     w3c_synthesizer_t *syn = c->syn;
@@ -1877,17 +1977,22 @@ static int w3c_speak_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
     w3c_utterance_t   *utt;
     w3c_synthesizer_t *syn;
-    int                id;
-    const char        *msg, *voice;
-    double             rate, pitch;
-    int                timeout, events;
+    int                id, uid;
     int                errc;
     const char        *errs;
+    bool               had_pending;
 
     if (check_id(c, req, &id) < 0)
         return -1;
 
-    if ((utt = check_utterance(c, req, id)) == NULL)
+    if (id != 0)
+        return reply_error(c->t, reqno, EINVAL, W3C_MALFORMED, req,
+                           "speak must use implicit ID 0");
+
+    if (!mrp_json_get_integer(req, "utterance", &uid))
+        return malformed_request(c->t, req, "missing utterace ID");
+
+    if ((utt = check_utterance(c, req, uid)) == NULL)
         return -1;
 
     if (utt->vid != SRS_VOICE_INVALID) {
@@ -1918,83 +2023,118 @@ static int w3c_speak_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
         }
     }
 
-    msg     = utt->attr.text;
-    voice   = utt->attr.voice ? utt->attr.voice : utt->attr.lang;
-    rate    = utt->attr.rate;
-    pitch   = utt->attr.pitch;
-    timeout = utt->attr.timeout;
+    had_pending = !mrp_list_empty(&syn->pending);
 
-    events  = SRS_VOICE_MASK_ALL;
-    utt->vid = client_render_voice(syn->srsc, msg, voice, rate, pitch,
-                                   timeout, events);
-
-    if (utt->vid == SRS_VOICE_INVALID) {
+    if (activate_utterance(utt) < 0) {
         reply_error(c->t, reqno, EINVAL, W3C_FAILED, req,
                     "synthesizer backend failed");
         return -1;
     }
 
-    return reply_status(c->t, reqno, 0);
+    reply_status(c->t, reqno, 0);
+    update_pending(syn, had_pending);
+
+    return 0;
 }
 
 
 static int w3c_cancel_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
-    w3c_utterance_t *utt;
-    int              id;
+    w3c_synthesizer_t *syn = c->syn;
+    w3c_utterance_t   *utt;
+    mrp_list_hook_t   *p, *n;
+    int                id;
+    bool               cancelled;
 
     if (check_id(c, req, &id) < 0)
         return -1;
 
-    if ((utt = check_utterance(c, req, id)) == NULL)
-        return -1;
+    cancelled = false;
 
-    if (utt->vid != SRS_VOICE_INVALID) {
-        client_cancel_voice(utt->syn->srsc, utt->vid);
-        utt->vid = SRS_VOICE_INVALID;
+    if (id != 0) {
+        if ((utt = check_utterance(c, req, id)) == NULL)
+            return -1;
+
+        cancel_utterance(utt);
+    }
+    else {
+        mrp_list_foreach(&syn->pending, p, n) {
+            utt = mrp_list_entry(p, typeof(*utt), pending);
+
+            cancel_utterance(utt);
+            cancelled = true;
+        }
     }
 
-    return reply_status(c->t, reqno, 0);
+    reply_status(c->t, reqno, 0);
+    update_pending(syn, cancelled);
+
+    return 0;
 }
 
 
 static int w3c_pause_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
-    w3c_utterance_t *utt;
-    int              id;
+    w3c_synthesizer_t *syn = c->syn;
+    w3c_utterance_t   *utt;
+    mrp_list_hook_t   *p, *n;
+    int                id;
 
     if (check_id(c, req, &id) < 0)
         return -1;
 
-    if ((utt = check_utterance(c, req, id)) == NULL)
-        return -1;
+    if (id != 0)
+        return reply_error(c->t, reqno, EINVAL, W3C_MALFORMED, req,
+                           "pause must use implicit ID 0");
 
-    if (utt->vid != SRS_VOICE_INVALID) {
-        /* should pause instead */
-        client_cancel_voice(utt->syn->srsc, utt->vid);
-        utt->vid = SRS_VOICE_INVALID;
+    mrp_list_foreach(&syn->pending, p, n) {
+        utt = mrp_list_entry(p, typeof(*utt), pending);
+
+        pause_utterance(utt);
     }
 
-    return reply_status(c->t, reqno, 0);
+    reply_status(c->t, reqno, 0);
+
+    syn->paused = true;
+    update_paused(syn, true);
+
+    return 0;
 }
 
 
 static int w3c_resume_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
-    w3c_utterance_t *utt;
-    int              id;
+    w3c_synthesizer_t *syn = c->syn;
+    w3c_utterance_t   *utt;
+    mrp_list_hook_t   *p, *n;
+    int                id;
+    bool               first;
 
     if (check_id(c, req, &id) < 0)
         return -1;
 
-    if ((utt = check_utterance(c, req, id)) == NULL)
-        return -1;
+    if (id != 0)
+        return reply_error(c->t, reqno, EINVAL, W3C_MALFORMED, req,
+                           "pause must have ID 0");
 
-    if (utt->vid != SRS_VOICE_INVALID) {
-        /* should resume voice */
+    syn->paused = false;
+
+    first = true;
+    mrp_list_foreach(&syn->pending, p, n) {
+        utt = mrp_list_entry(p, typeof(*utt), pending);
+
+        if (first)
+            resume_utterance(utt);
+        else
+            activate_utterance(utt);
+
+        first = false;
     }
 
-    return reply_status(c->t, reqno, 0);
+    reply_status(c->t, reqno, 0);
+    update_paused(syn, false);
+
+    return 0;
 }
 
 
