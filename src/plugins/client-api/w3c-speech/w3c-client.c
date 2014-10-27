@@ -933,7 +933,7 @@ static int cmd_abort_recognizer(client_t *c, int narg, char **args)
 }
 
 
-static int cmd_list_voices(client_t *c, int narg, char **args)
+static int cmd_get_voices(client_t *c, int narg, char **args)
 {
     mrp_json_t *req;
     const char *lang;
@@ -956,7 +956,8 @@ static int cmd_list_voices(client_t *c, int narg, char **args)
 
     mrp_json_add_integer(req, "reqno" , c->reqno++);
     mrp_json_add_string (req, "type"  , "invoke");
-    mrp_json_add_string (req, "method", "list-voices");
+    mrp_json_add_integer(req, "id"    , 0);
+    mrp_json_add_string (req, "method", "get-voices");
     if (lang != NULL)
         mrp_json_add_string(req, "lang", lang);
 
@@ -1261,7 +1262,7 @@ static void execute_command(client_t *c, int narg, char **args)
         { "start-recognizer"    , cmd_start_recognizer     },
         { "stop-recognizer"     , cmd_stop_recognizer      },
         { "abort-recognizer"    , cmd_abort_recognizer     },
-        { "list-voices"         , cmd_list_voices          },
+        { "get-voices"          , cmd_get_voices           },
         { "create-utterance"    , cmd_create_utterance     },
         { "delete-utterance"    , cmd_delete_utterance     },
         { "set-utterance"       , cmd_set_utterance        },

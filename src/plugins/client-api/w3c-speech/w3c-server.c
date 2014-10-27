@@ -2045,7 +2045,7 @@ static int w3c_cancel_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
     w3c_synthesizer_t *syn = c->syn;
     w3c_utterance_t   *utt;
     mrp_list_hook_t   *p, *n;
-    int                id;
+    int                id, uid;
     bool               cancelled;
 
     if (check_id(c, req, &id) < 0)
@@ -2053,8 +2053,12 @@ static int w3c_cancel_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 
     cancelled = false;
 
-    if (id != 0) {
-        if ((utt = check_utterance(c, req, id)) == NULL)
+    if (id != 0)
+        return reply_error(c->t, reqno, EINVAL, W3C_MALFORMED, req,
+                           "cancel must use implicit ID 0");
+
+    if (mrp_json_get_integer(req, "utterance", &uid)) {
+        if ((utt = check_utterance(c, req, uid)) == NULL)
             return -1;
 
         cancel_utterance(utt);
@@ -2117,7 +2121,7 @@ static int w3c_resume_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 
     if (id != 0)
         return reply_error(c->t, reqno, EINVAL, W3C_MALFORMED, req,
-                           "pause must have ID 0");
+                           "pause must use implicit ID 0");
 
     syn->paused = false;
 
@@ -2140,7 +2144,7 @@ static int w3c_resume_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 }
 
 
-static int w3c_list_voices(w3c_client_t *c, int reqno, mrp_json_t *req)
+static int w3c_get_voices(w3c_client_t *c, int reqno, mrp_json_t *req)
 {
     srs_context_t     *srs    = c->s->self->srs;
     mrp_json_t        *voices = NULL;
@@ -2202,19 +2206,19 @@ static request_handler_t get_handler(w3c_client_t *c, mrp_json_t *req,
         const char        *value;
         request_handler_t  handler;
     } *h, handlers[] = {
-        { "create"   , "object" , "recognizer" , w3c_create_recognizer },
-        { "create"   , "object" , "utterance"  , w3c_create_utterance  },
-        { "delete"   , NULL     , NULL         , w3c_delete_object     },
-        { "set"      , NULL     , NULL         , w3c_set_attribute     },
-        { "timestamp", NULL     , NULL         , w3c_get_timestamp     },
-        { "invoke"   , "method" , "start"      , w3c_start_recognizer  },
-        { "invoke"   , "method" , "stop"       , w3c_stop_recognizer   },
-        { "invoke"   , "method" , "abort"      , w3c_abort_recognizer  },
-        { "invoke"   , "method" , "speak"      , w3c_speak_utterance   },
-        { "invoke"   , "method" , "cancel"     , w3c_cancel_utterance  },
-        { "invoke"   , "method" , "pause"      , w3c_pause_utterance   },
-        { "invoke"   , "method" , "resume"     , w3c_resume_utterance  },
-        { "invoke"   , "method" , "list-voices", w3c_list_voices       },
+        { "create"   , "object" , "recognizer", w3c_create_recognizer },
+        { "create"   , "object" , "utterance" , w3c_create_utterance  },
+        { "delete"   , NULL     , NULL        , w3c_delete_object     },
+        { "set"      , NULL     , NULL        , w3c_set_attribute     },
+        { "timestamp", NULL     , NULL        , w3c_get_timestamp     },
+        { "invoke"   , "method" , "start"     , w3c_start_recognizer  },
+        { "invoke"   , "method" , "stop"      , w3c_stop_recognizer   },
+        { "invoke"   , "method" , "abort"     , w3c_abort_recognizer  },
+        { "invoke"   , "method" , "speak"     , w3c_speak_utterance   },
+        { "invoke"   , "method" , "cancel"    , w3c_cancel_utterance  },
+        { "invoke"   , "method" , "pause"     , w3c_pause_utterance   },
+        { "invoke"   , "method" , "resume"    , w3c_resume_utterance  },
+        { "invoke"   , "method" , "get-voices", w3c_get_voices        },
         { NULL, NULL, NULL, NULL }
     };
 
