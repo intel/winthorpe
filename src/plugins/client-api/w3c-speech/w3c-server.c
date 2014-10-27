@@ -1297,7 +1297,7 @@ static int w3c_set_attributes(mrp_json_t *set, void *obj, size_t base,
 {
     w3c_attrdef_t *d;
     mrp_json_t    *v;
-    int            i, mask;
+    int            i, mask, vtype;
 
     if (set == NULL)
         return 0;
@@ -1319,10 +1319,12 @@ static int w3c_set_attributes(mrp_json_t *set, void *obj, size_t base,
         if (v == NULL)
             continue;
 
-        if ((int)mrp_json_get_type(v) != d->type) {
-            *errc = EINVAL;
-            *errs = W3C_MALFORMED;
-            return -(i + 1);
+        if ((vtype = (int)mrp_json_get_type(v)) != d->type) {
+            if (!(vtype = MRP_JSON_INTEGER && d->type == MRP_JSON_DOUBLE)) {
+                *errc = EINVAL;
+                *errs = W3C_MALFORMED;
+                return -(i + 1);
+            }
         }
 
         if (d->parser(v, obj, base, d, errc, errs) < 0)
@@ -1964,7 +1966,7 @@ static int w3c_create_utterance(w3c_client_t *c, int reqno, mrp_json_t *req)
 
     if (mask < 0) {
         reply_error(c->t, reqno, errc, errs, req,
-                    "failed to set utterance attributes");
+                    "failed to set utterance attribute (#%d)", -mask);
         destroy_utterance(utt);
         return -1;
     }
