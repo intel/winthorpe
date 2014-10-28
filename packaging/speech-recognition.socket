@@ -1,5 +1,7 @@
 [Socket]
-ListenStream=127.0.0.1:4100
+ListenStream=@winthorpe.native
+ListenStream=@winthorpe.w3c-speech
+Accept=false
 Accept=false
 
 [Install]

@@ -3,7 +3,7 @@ Description=Winthorpe Speech Recognition and Synthesis Services
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/srs-daemon -P /usr/lib/srs/plugins -c /etc/speech-recognition/speech-recognition.conf -S native.socket -f -vvv
+ExecStart=/usr/sbin/srs-daemon -P @LIBDIR@/srs/plugins -c /etc/speech-recognition/speech-recognition.conf -S native.socket,w3c-speech.socket -f -vvv
 KillSignal=SIGTERM
 
 [Install]
