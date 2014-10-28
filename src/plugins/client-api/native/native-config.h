@@ -35,8 +35,8 @@
 #define CONFIG_SOCKET   "native.socket"
 
 /** Default transport address. */
-/*#define DEFAULT_ADDRESS "unxs:@/srs/native-client"*/
-#define DEFAULT_ADDRESS "tcp4:127.0.0.1:4100"
+#define DEFAULT_ADDRESS "unxs:@winthorpe.native"
+/*#define DEFAULT_ADDRESS "tcp4:127.0.0.1:4100"*/
 #define DEFAULT_SOCKET  -1
 
 
