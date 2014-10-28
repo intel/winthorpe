@@ -94,6 +94,7 @@ CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-gpl --enable-dbus"
 CONFIG_OPTIONS="$CONFIG_OPTIONS --disable-dbus"
 %endif
 
+CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-w3c-speech"
 CONFIG_OPTIONS="$CONFIG_OPTIONS --enable-systemd"
 
 ./bootstrap && \
@@ -108,6 +109,7 @@ rm -fr $RPM_BUILD_ROOT
 # Install dictionaries, configuration and service files.
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition \
+    $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition/w3c-grammars \
     $RPM_BUILD_ROOT%{_unitdir_user} \
     $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/demo \
     $RPM_BUILD_ROOT%{_libdir}/srs/scripts \
@@ -115,8 +117,19 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
 
 /usr/bin/install -m 644 packaging/speech-recognition.conf \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
+
+case %{_arch} in
+    *64) LIBDIR=/usr/lib64;;
+      *) LIBDIR=/usr/lib;;
+esac
+
+cat packaging/speech-recognition.service.in | \
+    sed "s#@LIBDIR@#$LIBDIR#g" \
+        > packaging/speech-recognition.service
+
 /usr/bin/install -m 644 packaging/speech-recognition.service \
     $RPM_BUILD_ROOT%{_unitdir_user}
+
 /usr/bin/install -m 644 packaging/speech-recognition.socket \
     $RPM_BUILD_ROOT%{_unitdir_user}
 /usr/bin/install -m 644 \
@@ -124,6 +137,8 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
     dictionaries/demo/demo.*
 /usr/bin/install -m 755 packaging/start-speech-service.sh \
      $RPM_BUILD_ROOT%{_libdir}/srs/scripts
+
+
 /usr/bin/install -m 755 packaging/org.tizen.srs.service \
      $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
@@ -149,6 +164,7 @@ ldconfig
 %{_libdir}/srs
 %{_libdir}/libsrs*.so.*
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
+%dir %{_sysconfdir}/speech-recognition/w3c-grammars
 %{_datadir}/speech-recognition/dictionaries
 %{_unitdir_user}/speech-recognition.service
 %{_unitdir_user}/speech-recognition.socket
@@ -165,6 +181,7 @@ ldconfig
 %files tests
 %defattr(-,root,root,-)
 %{_bindir}/srs-native-client
+%{_bindir}/srs-w3c-client
 %if %{?_with_dbus:1}%{!?_with_dbus:0}
 %{_bindir}/srs-client
 %endif
