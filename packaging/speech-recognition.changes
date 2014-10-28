@@ -1,3 +1,7 @@
+* Tue Oct 28 16:12:00 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.8
+- packaging: enabled W3C speech plugin.
+- synced with latest upstream fixes.
+
 * Fri May 23 14:10:15 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.7
 - client: (re-)request last focus upon resource connection establishment.
 - festival: don't leak rendered sample buffers.
