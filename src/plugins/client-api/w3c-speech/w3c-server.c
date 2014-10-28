@@ -95,8 +95,9 @@ typedef enum {
     W3C_EVENT_SPEECHSTART = 0x0200,
     W3C_EVENT_SPEECHEND   = 0x0400,
     W3C_EVENT_PAUSE       = 0x0800,
-    W3C_EVENT_MARK        = 0x1000,
-    W3C_EVENT_BOUNDARY    = 0x2000,
+    W3C_EVENT_RESUME      = 0x1000,
+    W3C_EVENT_MARK        = 0x2000,
+    W3C_EVENT_BOUNDARY    = 0x4000,
 } w3c_event_t;
 
 
@@ -1163,6 +1164,7 @@ static int parse_events(mrp_json_t *attr, void *obj, size_t base,
         E("speechstart" , SPEECHSTART  ),
         E("speechend"   , SPEECHEND    ),
         E("pause"       , PAUSE        ),
+        E("resume"      , RESUME       ),
         E("mark"        , MARK         ),
         E("boundary"    , BOUNDARY     ),
 #undef E
