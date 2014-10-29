@@ -1051,8 +1051,11 @@ static int cancel_utterance(w3c_utterance_t *utt)
 
 static int pause_utterance(w3c_utterance_t *utt)
 {
-    /* XXX TODO: since we can't pause ATM, for now we cancel */
-    return cancel_utterance(utt);
+    /* XXX TODO: not right pause since will restart from the start. */
+    client_cancel_voice(utt->syn->srsc, utt->vid);
+    utt->vid = SRS_VOICE_INVALID;
+
+    return 0;
 }
 
 
