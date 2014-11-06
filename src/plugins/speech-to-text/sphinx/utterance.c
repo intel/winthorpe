@@ -144,7 +144,7 @@ static void acoustic_processor(context_t *ctx,
     frlen = filtbuf->frlen;
     lmath = ps_get_logmath(dec->ps);
     uttid = "<unknown>";
-    hyp = ps_get_hyp(dec->ps, &score, &uttid);
+    /*hyp = */ps_get_hyp(dec->ps, &score, &uttid);
     prob = logmath_exp(lmath, score);
     length = 0;
 
