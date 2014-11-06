@@ -372,7 +372,7 @@ int carnival_select_voice(const char *name)
     LISP     lf, lr;
     int      r;
 
-    if ((v = find_voice_entry(name)) == NULL && v->language == NULL) {
+    if ((v = find_voice_entry(name)) == NULL || v->language == NULL) {
         errno = ENOENT;
 
         return -1;                       /* not loaded, cannot select */
