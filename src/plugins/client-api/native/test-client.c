@@ -322,10 +322,12 @@ static int create_mainloop(client_t *c)
 
 static void run_mainloop(client_t *c)
 {
-    if (c != NULL && c->pa != NULL)
-        pa_mainloop_run(c->pa, &c->exit_status);
-    else
-        g_main_loop_run(c->gml);
+    if (c != NULL) {
+        if (c->pa != NULL)
+            pa_mainloop_run(c->pa, &c->exit_status);
+        else
+            g_main_loop_run(c->gml);
+    }
 }
 
 
