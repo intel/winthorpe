@@ -360,7 +360,7 @@ static int register_req(mrp_dbus_t *dbus, mrp_dbus_msg_t *req, void *user_data)
     int              ncmd, err;
     srs_client_t    *c;
 
-    ncmd = MRP_ARRAY_SIZE(cmds);
+    ncmd = 0;
     err  = parse_register(req, &id, &name, &appcls, &cmds, &ncmd, &errmsg);
 
     if (err) {
