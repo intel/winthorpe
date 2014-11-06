@@ -95,6 +95,7 @@ int clients_start(context_t *ctx)
 
     callbacks.notify_focus = notify_focus;
     callbacks.notify_command = notify_command;
+    callbacks.notify_render = NULL;
 
     clients->srs_client = client_create(srs, SRS_CLIENT_TYPE_BUILTIN,
                                         PLUGIN_NAME, "voicerec",
