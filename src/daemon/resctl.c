@@ -287,8 +287,7 @@ void srs_resctl_destroy(srs_resset_t *set)
 
 int srs_resctl_online(srs_context_t *srs, srs_resset_t *set)
 {
-    srs_resctx_t *ctx    = srs->rctx;
-    int           shared = set->shared;
+    srs_resctx_t *ctx = srs->rctx;
 
     if (set == NULL)
         return FALSE;
@@ -308,8 +307,8 @@ int srs_resctl_online(srs_context_t *srs, srs_resset_t *set)
     if (name_srec == NULL || name_ssyn == NULL)
         get_resource_names(srs->settings);
 
-    if (mrp_res_create_resource(set->set, name_srec, TRUE, shared) &&
-        mrp_res_create_resource(set->set, name_ssyn, TRUE, shared))
+    if (mrp_res_create_resource(set->set, name_srec, TRUE, set->shared) &&
+        mrp_res_create_resource(set->set, name_ssyn, TRUE, set->shared))
         return TRUE;
 
     mrp_res_delete_resource_set(set->set);
