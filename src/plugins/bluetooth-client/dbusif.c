@@ -42,7 +42,7 @@ static modem_t *reference_modem(modem_t *modem)
     if (modem && modem->refcnt >= 0)
         modem->refcnt++;
 
-    return modem->refcnt < 0 ? NULL : modem;
+    return modem;
 }
 
 static void unreference_modem(modem_t *modem)
