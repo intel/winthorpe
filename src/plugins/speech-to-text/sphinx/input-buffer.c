@@ -92,7 +92,7 @@ void input_buffer_purge(context_t *ctx)
 {
     input_buf_t *inpbuf;
 
-    if (!ctx || !!(inpbuf = ctx->inpbuf))
+    if (!ctx || !(inpbuf = ctx->inpbuf))
         return;
 
     inpbuf->len = 0;
