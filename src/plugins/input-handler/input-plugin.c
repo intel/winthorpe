@@ -277,6 +277,7 @@ static int add_input(context_t *ctx,
     size = sizeof(input_t) * (idx + 1);
 
     if (!(*pinputs = mrp_realloc(*pinputs, size))) {
+        close(fd);
         *pninput = 0;
         return -1;
     }
