@@ -738,9 +738,10 @@ int srs_config_collect(srs_cfg_t *settings, const char *prefix,
     return n;
 
  fail:
-    while (n >= 0) {
+    while (--n >= 0) {
         mrp_free(m[n].key);
         mrp_free(m[n].value);
+        n--;
     }
 
     mrp_free(m);
