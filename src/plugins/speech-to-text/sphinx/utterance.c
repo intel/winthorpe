@@ -156,8 +156,8 @@ static void acoustic_processor(context_t *ctx,
          nb  = ps_nbest_next(nb))
     {
         if (ncand >= CANDIDATE_MAX-1) {
-            break;
             ps_nbest_free(nb);
+            break;
         }
 
         if ((seg  = ps_nbest_seg(nb, &score))) {
