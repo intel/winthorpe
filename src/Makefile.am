@@ -345,8 +345,8 @@ if W3C_SPEECH_ENABLED
 plugin_LTLIBRARIES += plugin-w3c-speech.la
 
 plugin_w3c_speech_la_SOURCES =					\
-		plugins/client-api/w3c-speech/w3c-server.c	\
-		plugins/client-api/w3c-speech/w3c-message.c
+		plugins/client-api/w3c-speech/w3c-server.c
+
 
 plugin_w3c_speech_la_CFLAGS  =				\
 		$(AM_CFLAGS)
