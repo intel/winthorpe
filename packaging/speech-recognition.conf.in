@@ -49,7 +49,7 @@ load search-client
 load native-client
 
 w3c-speech.address  = unxs:@winthorpe.w3c-speech
-w3c-speech.grammars = /etc/speech-recognition/w3c-grammars
+w3c-speech.grammars = @DATADIR@/speech-recognition/w3c-grammars
 load w3c-speech
 
 # wrt-media-client needs GMainLoop
