@@ -118,13 +118,11 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
 /usr/bin/install -m 644 packaging/speech-recognition.conf \
     $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
 
-case %{_arch} in
-    *64) LIBDIR=/usr/lib64;;
-      *) LIBDIR=/usr/lib;;
-esac
-
+cat packaging/speech-recognition.conf.in | \
+    sed "s#@DATADIR@#%{_datadir}#g" \
+        > packaging/speech-recognition.conf
 cat packaging/speech-recognition.service.in | \
-    sed "s#@LIBDIR@#$LIBDIR#g" \
+    sed "s#@LIBDIR@#%{_libdir}#g" \
         > packaging/speech-recognition.service
 
 /usr/bin/install -m 644 packaging/speech-recognition.service \
@@ -138,9 +136,10 @@ cat packaging/speech-recognition.service.in | \
 /usr/bin/install -m 755 packaging/start-speech-service.sh \
      $RPM_BUILD_ROOT%{_libdir}/srs/scripts
 
-
 /usr/bin/install -m 755 packaging/org.tizen.srs.service \
      $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
+
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/speech-recognition/dictionaries/w3c-speech
 
 %install_service ../user/weston.target.wants speech-recognition.socket
 
@@ -166,6 +165,7 @@ ldconfig
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %dir %{_sysconfdir}/speech-recognition/w3c-grammars
 %{_datadir}/speech-recognition/dictionaries
+%dir %{_datadir}/speech-recognition/w3c-speech
 %{_unitdir_user}/speech-recognition.service
 %{_unitdir_user}/speech-recognition.socket
 %{_unitdir_user}/weston.target.wants/speech-recognition.socket
