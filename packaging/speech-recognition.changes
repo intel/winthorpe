@@ -1,3 +1,7 @@
+* Fri Nov 07 15:24:12 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.9
+- packaging: generate config file (to get %{_datadir} right).
+- synced with latest upstream, including static analysis fixes.
+
 * Tue Oct 28 16:12:00 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.8
 - packaging: enabled W3C speech plugin.
 - synced with latest upstream fixes.

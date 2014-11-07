@@ -6,7 +6,7 @@
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version: 0.0.8
+Version: 0.0.9
 Release: 0
 License: BSD-3-Clause
 Group: Base/Utilities
@@ -115,15 +115,15 @@ mkdir -p $RPM_BUILD_ROOT%{_sysconfdir} \
     $RPM_BUILD_ROOT%{_libdir}/srs/scripts \
     $RPM_BUILD_ROOT%{_datadir}/dbus-1/services
 
-/usr/bin/install -m 644 packaging/speech-recognition.conf \
-    $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
-
 cat packaging/speech-recognition.conf.in | \
     sed "s#@DATADIR@#%{_datadir}#g" \
         > packaging/speech-recognition.conf
 cat packaging/speech-recognition.service.in | \
     sed "s#@LIBDIR@#%{_libdir}#g" \
         > packaging/speech-recognition.service
+
+/usr/bin/install -m 644 packaging/speech-recognition.conf \
+    $RPM_BUILD_ROOT%{_sysconfdir}/speech-recognition
 
 /usr/bin/install -m 644 packaging/speech-recognition.service \
     $RPM_BUILD_ROOT%{_unitdir_user}
@@ -165,7 +165,7 @@ ldconfig
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %dir %{_sysconfdir}/speech-recognition/w3c-grammars
 %{_datadir}/speech-recognition/dictionaries
-%dir %{_datadir}/speech-recognition/w3c-speech
+%dir %{_datadir}/speech-recognition/dictionaries/w3c-speech
 %{_unitdir_user}/speech-recognition.service
 %{_unitdir_user}/speech-recognition.socket
 %{_unitdir_user}/weston.target.wants/speech-recognition.socket
