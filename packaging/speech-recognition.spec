@@ -38,6 +38,7 @@ Requires: sphinxbase
 Requires: pocketsphinx
 %endif
 BuildRequires: pkgconfig(libsystemd-daemon)
+BuildRequires: pkgconfig(glib-2.0)
 
 %description
 SRS/Winthorpe speech recognition system service.
@@ -162,6 +163,8 @@ ldconfig
 %{_sbindir}/srs-daemon
 %{_libdir}/srs
 %{_libdir}/libsrs*.so.*
+# crosswalk speech extension.
+%{_libdir}/tizen-extensions-crosswalk/*
 %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %dir %{_sysconfdir}/speech-recognition/w3c-grammars
 %{_datadir}/speech-recognition/dictionaries
