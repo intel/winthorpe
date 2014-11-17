@@ -305,11 +305,25 @@ AC_ARG_ENABLE(w3c-speech,
 if test "$enable_w3cspeech" = "yes"; then
     AC_MSG_NOTICE([W3C Speech API plugin is enabled.])
     AC_DEFINE([W3C_SPEECH_ENABLED], 1, [Enable W3C Speech API plugin ?])
+
+    # Check if W3C Speech API crosswalk extenion was enabled
+    AC_ARG_ENABLE(w3c-speech-xwalk-extension,
+                [  --enable-w3c-speech-xwalk-extension enable W3C Speech API xwalk extension],
+                [enable_w3cspeech_xwalk_extension=$enableval],
+                [enable_w3cspeech_xwalk_extension=$enable_w3cspeech])
+
+    if test "x$enable_w3cspeech_xwalk_extension" = "xyes"; then
+        AC_MSG_NOTICE([W3C Speech API crosswalk extensionis enabled.])
+        AC_DEFINE([W3C_SPEECH_XWALK_EXTENSION_ENABLED], 1, [Enabe W3c Speec crosswalk extension])
+    else
+        AC_MSG_NOTICE([W3C Speech API crosswalk extension disabled.])
+    fi
 else
     AC_MSG_NOTICE([W3C Speech API plugin is disabled.])
 fi
 
 AM_CONDITIONAL(W3C_SPEECH_ENABLED, [test "$enable_w3cspeech" = "yes"])
+AM_CONDITIONAL(W3C_SPEECH_XWALK_EXTENSION_ENABLED, [test "$enable_w3cspeech_xwalk_extension" = "yes"])
 
 # Check if systemd socket-based activation was enabled.
 AC_ARG_ENABLE(systemd,
@@ -358,6 +372,9 @@ echo "Sphinx support: $enable_sphinx"
 echo "Festival support: $enable_festival"
 echo "Espeak support: $enable_espeak"
 echo "W3C Speech API: $enable_w3cspeech"
+if test "$enable_w3cspeech";then
+    echo "W3C Speech API Crosswalk extension: $enable_w3cspeech_xwalk_extension"
+fi
 echo "systemd socket-based activation: $enable_systemd"
 echo "Bluetooth voice recording support: $enable_bluetooth"
 echo "Mediaplayer remote interface support: $enable_mpris"

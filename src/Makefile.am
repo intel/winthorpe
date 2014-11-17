@@ -369,6 +369,49 @@ srs_w3c_client_CFLAGS =						\
 srs_w3c_client_LDADD =						\
 		$(MURPHY_BREEDLINE_LIBS)			\
 		$(MURPHY_COMMON_LIBS)
+
+# xwalk extension
+if W3C_SPEECH_XWALK_EXTENSION_ENABLED
+
+xwalkextension_LTLIBRARIES = libtizen_w3c_speech.la
+xwalkextensiondir=$(libdir)/tizen-extensions-crosswalk
+
+XWALK_EXTENSION_SRCDIR = plugins/client-api/w3c-speech/crosswalk-extension
+
+$(XWALK_EXTENSION_SRCDIR)/speech_api_gen.cc : $(XWALK_EXTENSION_SRCDIR)/speech_api.js
+	python $(XWALK_EXTENSION_SRCDIR)/tools/generate_api.py \
+		$(XWALK_EXTENSION_SRCDIR)/speech_api.js            \
+		kSource_speech_api                                 \
+		$(XWALK_EXTENSION_SRCDIR)/speech_api_gen.cc
+
+libtizen_w3c_speech_la_SOURCES = \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/extension.cc \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/extension.h  \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/picojson.h   \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/utils.h      \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/XW_Extension.h \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/XW_Extension_EntryPoints.h \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/XW_Extension_Permissions.h \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/XW_Extension_Runtime.h \
+	plugins/client-api/w3c-speech/crosswalk-extension/common/XW_Extension_SyncMessage.h \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_extension.cc  \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_extension.h   \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_instance.cc   \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_instance.h    \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_logs.h        \
+	plugins/client-api/w3c-speech/crosswalk-extension/speech_api_gen.cc
+
+libtizen_w3c_speech_la_CXXFLAGS = \
+	-Iplugins/client-api/w3c-speech/crosswalk-extension  -std=c++11 \
+	$(AM_CFLAGS) \
+	$(AM_CXXFLAGS) \
+	$(GLIB_CFLAGS)
+
+libtizen_w3c_speech_la_LIBADD = \
+	$(GLIB_LIBS)
+
+endif # W3C_SPEECH_XWALK_EXTENSION_ENABLED
+
 endif
 
 # simple-voice synthesizer plugin
