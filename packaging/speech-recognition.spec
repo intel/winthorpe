@@ -165,7 +165,7 @@ ldconfig
 %{_libdir}/libsrs*.so.*
 # crosswalk speech extension.
 %{_libdir}/tizen-extensions-crosswalk/*
-%{_sysconfdir}/speech-recognition/speech-recognition.conf
+%config %{_sysconfdir}/speech-recognition/speech-recognition.conf
 %dir %{_sysconfdir}/speech-recognition/w3c-grammars
 %{_datadir}/speech-recognition/dictionaries
 %dir %{_datadir}/speech-recognition/dictionaries/w3c-speech
