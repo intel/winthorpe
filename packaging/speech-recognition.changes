@@ -1,3 +1,6 @@
+* Fri Nov 23 15:24:12 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.10
+- w3c-speech: added crosswalk W3C Speech API extension.
+
 * Fri Nov 07 15:24:12 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.9
 - packaging: generate config file (to get %{_datadir} right).
 - synced with latest upstream, including static analysis fixes.
