@@ -6,7 +6,7 @@
 
 Summary: Speech recognition service for Tizen
 Name: speech-recognition
-Version: 0.0.9
+Version: 0.0.10
 Release: 0
 License: BSD-3-Clause
 Group: Base/Utilities
