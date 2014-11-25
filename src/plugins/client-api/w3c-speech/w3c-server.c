@@ -694,7 +694,7 @@ static int w3c_command_notify(srs_client_t *c, int idx, int ntoken,
     mrp_json_add_string(r, "transcript", text);
 
     if (mrp_json_array_append(results, r)) {
-        send_event(rec->c->t, rec->id, "match",
+        send_event(rec->c->t, rec->id, "result",
                    "final"  , MRP_JSON_BOOLEAN, true,
                    "length" , MRP_JSON_INTEGER, 1,
                    "results", MRP_JSON_OBJECT , results);
