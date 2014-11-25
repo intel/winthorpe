@@ -20,13 +20,30 @@
 #include "speech_logs.h"
 
 #define WINTHORP_SERVER_SOCKET "@winthorpe.w3c-speech"
+#ifdef TIZEN
+// static
+void SpeechInstance::SetupMainloop(void* data) {
+  SpeechInstance* self = reinterpret_cast<SpeechInstance*>(data);
+
+  g_main_loop_run(self->main_loop_);
+}
+#endif  // TIZEN
 
 SpeechInstance::SpeechInstance()
-   : fd_(-1)
+#ifdef TIZEN
+    : main_loop_(g_main_loop_new(0, FALSE))
+    , thread_(SpeechInstance::SetupMainloop, this)
+    , fd_(-1)
+#else
+    : fd_(-1)
+#endif  // TIZEN
     , channel_(NULL)
     , watcher_id_(0)
     , pending_request_timer_(0)
     , pending_reply_timer_(0) {
+#ifdef TIZEN
+    thread_.detach();
+#endif  // TIZEN
   if ((fd_ = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
     ERR("Failed to create socket: %s", strerror(errno));
     fd_ = -1;
@@ -67,6 +84,11 @@ SpeechInstance::~SpeechInstance() {
     close(fd_);
   if (channel_)
     g_io_channel_unref(channel_);
+
+#ifdef TIZEN
+  g_main_loop_quit(main_loop_);
+  g_main_loop_unref(main_loop_);
+#endif  // TIZEN
 }
 
 // static

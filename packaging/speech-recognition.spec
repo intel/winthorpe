@@ -68,6 +68,7 @@ export CFLAGS="-O0 -g3"
 export CXXFLAGS="-O0 -g3"
 V="V=1"
 %endif
+export CXXFLAGS=$CXXFLAGS" -DTIZEN=1"
 
 CONFIG_OPTIONS=""
 

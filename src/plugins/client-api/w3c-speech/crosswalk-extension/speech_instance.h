@@ -34,6 +34,11 @@ class SpeechInstance : public common::Instance {
   void QueueRequest(const std::string& req);
   bool SendRequest(const char* message);
   uint32_t ReadReply(char** reply);
+#ifdef TIZEN
+  static void SetupMainloop(void *data);
+  GMainLoop* main_loop_;
+  std::thread  thread_;
+#endif  // TIZEN
 
   std::queue<std::string> pending_replies_;
   std::queue<std::string> pending_requests_;
