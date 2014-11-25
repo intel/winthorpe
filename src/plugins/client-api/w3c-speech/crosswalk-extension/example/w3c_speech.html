@@ -1,0 +1,128 @@
+<html>
+<head>
+<title>Speech Example</title>
+<script>
+
+var sr = null;
+
+function hide(btn) {
+  btn.style.display = 'none';
+}
+
+function show(btn) {
+  btn.style.display = 'block';
+}
+
+function toggleSTT() {
+  var btn = document.getElementById('btn_stt');
+  var last_state = btn.value;
+  var log = document.getElementById('log');
+
+  if (sr == null) {
+    sr = new tizen.SpeechRecognition();
+    sr.onerror = function(err) {
+      log.innerHTML += '<b>ERROR:</b>' + err.message + '<br/>';
+
+      console.log("ERROR : " + err.message);
+      btn.value = last_state;
+    };
+
+    sr.onresult = function (ev) {
+      var matches = '';
+      for (var i = ev.resultIndex; i < ev.results.length; ++i) {
+        if (ev.results[i].isFinal) {
+          matches += ev.results[i][0].transcript + '(confidence: ' + ev.results[i][0].confidence + ')</br>';
+        }
+      }
+      log.innerHTML += 'Found Match: ' + matches + '</br>';
+    };
+
+    sr.lang = 'en-US';
+    sr.grammars.addFromString('winthorpe://player.grm');
+  }
+
+  if (btn.value == 'Record Voice') {
+    sr.start();
+    btn.value = 'Stop Recording';
+  } else {
+    sr.stop();
+    btn.value = 'Record Voice';
+  }
+}
+
+function handleTextToSpeech() {
+  var currentText = document.getElementById("inputText").value;
+  var ut = new tizen.SpeechSynthesisUtterance(currentText);
+  var log = document.getElementById('log');
+
+  ut.onerror = function (err) {
+    show(document.getElementById('btn_say'));
+    hide(document.getElementById('btn_pause_resume'));
+    hide(document.getElementById('btn_abort'));
+    log.innerHTML += 'ERROR : ' + err.message + '</br>';
+  };
+  ut.onend = function(ev) {
+    show(document.getElementById('btn_say'));
+    hide(document.getElementById('btn_pause_resume'));
+    hide(document.getElementById('btn_abort'));
+    log.innerHTML += 'end of speaking utterance: elapsedTime: ' + ev.elapsedTime + '</br>';
+  };
+  ut.onstart = function(ev) {
+    log.innerHTML += 'Started speaking utterance: elapsedTime: ' + ev.elapsedTime + '</br>';
+    hide(document.getElementById('btn_say'));
+    show(document.getElementById('btn_pause_resume'));
+    show(document.getElementById('btn_abort'));
+  };
+  ut.onpause = function() {
+    dobument.getElementById('btn_pause_resume').value = 'Resume';
+    log.innerHTML += 'Paused</br>';
+  };
+  ut.onresume = function() {
+    dobument.getElementById('btn_pause_resume').value = 'Pause';
+    log.innerHTML += 'Resumed</br>';
+  };
+
+  tizen.speechSynthesis.speak(ut);
+}
+
+function handlePauseResume() {
+  var btn = document.getElementById('btn_pause_resume');
+  if (btn.value == 'Pause') {
+    tizen.speechSynthesis.pause();
+    btn.value = 'Resume';
+  } else {
+    tizen.speechSynthesis.resume();
+    btn.value = 'Pause';
+  }
+}
+
+function handleAbort() {
+  tizen.speechSynthesis.cancel();
+
+  hide(document.getElementById('btn_abort'));
+  hide(document.getElementById('btn_pause_resume'));
+  show(document.getElementById('btn_say'));
+}
+
+</script>
+
+</head>
+<body>
+  <div name="input">
+    <div id="instructionLabel">Type in your text here:</div>
+    <textarea id="inputText" cols=80>w3c speech extremely long text message to test pause resume abort and a whole set of other really really really intereseting synthesizing test cases</textarea></br>
+    <table>
+    <tr><td>
+    <input id='btn_say' type='button' onClick='handleTextToSpeech()' value='Speak Out'/>
+    <input id='btn_pause_resume' type='button' onClick='handlePauseResume()' value='Pause' style='display:none'/>
+    <td>
+    <input id='btn_abort' type='button' onClick='handleAbort()' value='abort' style='display:none'/>
+    </table>
+  </div>
+
+  <div id="output">
+    <input id='btn_stt' type='button' onClick='toggleSTT()' value='Record Voice'/>
+    <div id='log'></div>
+  </div>
+</body>
+</html>
