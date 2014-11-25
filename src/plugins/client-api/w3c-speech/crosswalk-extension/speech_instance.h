@@ -47,5 +47,6 @@ class SpeechInstance : public common::Instance {
   guint watcher_id_;
   guint pending_request_timer_;
   guint pending_reply_timer_;
+  bool is_waiting_for_reply_;
 };
 #endif  // SPEECH_SPEECH_INSTANCE_H_
