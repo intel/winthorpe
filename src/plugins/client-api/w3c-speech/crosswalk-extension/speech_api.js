@@ -72,6 +72,7 @@
       var args = { };
       var obj = _dynamic_objects[msg.id];
       if (!obj) {
+        /* Synthesizer events */
         if (msg.event == 'pending') {
           _v8tools.forceSetProperty(exports, 'pending', msg.state);
         } else if (msg.event == 'speaking') {
@@ -91,9 +92,17 @@
       } else if (msg.event == 'result') {
         // currently we support only signle shot result
         args.resultIndex = 0;
-        args.results = msg.results;
         args.interpretation = null;
         args.emma = null;
+        var res = new SpeechRecognitionResult(msg.final);
+        msg.results.forEach(function(alternative) {
+          res.push({
+            'transcript': alternative.transcript,
+            'confidence': alternative.confidence
+          });
+        });
+        DBG('Result Length: ' + res.length);
+        args.results = [ res ];
       } else if (msg.event == 'nomatch') {
         args.resultIndex = 0;
         args.results = null;
@@ -110,7 +119,7 @@
           args.name = null;
         }
       } else if (msg.event == 'end') {
-        if (obj.type == 'recognizer') {
+        if (obj._type == 'recognizer') {
         } else {
           args.charIndex = msg.charIndex;
           args.elapsedTime = msg.elapsedTime;
@@ -236,22 +245,12 @@
   // SpeechRecognition : Speech -> Text
   //
   function SpeechRecognitionResult(is_final) {
-    this.push.apply(this, arguments);
 
-    _addConstProperty(this, 'final', is_final || true);
+    _addConstProperty(this, 'isFinal', is_final || true);
 
     this.item = function(index) {
       return this[index];
     };
-
-    this.toJSON = function() {
-      var a = [];
-      for (var i = 0; i < this.length; i++) {
-        a[i] = this[i];
-      }
-      return a;
-    };
-
   }
   SpeechRecognitionResult.prototype = Object.create(Array.prototype);
   SpeechRecognitionResult.prototype.construrctor = SpeechRecognitionResult;
@@ -285,6 +284,7 @@
   function SpeechRecognition() {
     this._id = -1;
     this._is_active = 0;
+    this._type = 'recognizer';
 
     EventTarget.call(this, [
       'audiostart',

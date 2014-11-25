@@ -25,6 +25,8 @@
 void SpeechInstance::SetupMainloop(void* data) {
   SpeechInstance* self = reinterpret_cast<SpeechInstance*>(data);
 
+  DBG("Running Mainloop...");
+
   g_main_loop_run(self->main_loop_);
 }
 #endif  // TIZEN
@@ -40,7 +42,8 @@ SpeechInstance::SpeechInstance()
     , channel_(NULL)
     , watcher_id_(0)
     , pending_request_timer_(0)
-    , pending_reply_timer_(0) {
+    , pending_reply_timer_(0)
+    , is_waiting_for_reply_(false) {
 #ifdef TIZEN
     thread_.detach();
 #endif  // TIZEN
@@ -109,6 +112,8 @@ gboolean SpeechInstance::IOWatchCb(GIOChannel *c,
     case G_IO_IN: {
       char *reply = NULL;
       uint32_t size = 0;
+
+      if (self->is_waiting_for_reply_) break;
 
       if ((size = self->ReadReply(&reply))) {
         self->PostMessage(reply);
@@ -262,6 +267,8 @@ void SpeechInstance::HandleSyncMessage(const char* message) {
     obj["message"] = picojson::value("server connection failure");
     out = picojson::value(obj);
   } else {
+
+    is_waiting_for_reply_ = true;
     picojson::parse(v, message, message + strlen(message), &err);
     if (!err.empty())
       return;
@@ -273,6 +280,7 @@ void SpeechInstance::HandleSyncMessage(const char* message) {
       uint32_t size;
 
       if ((size = ReadReply(&reply)) != 0) {
+        is_waiting_for_reply_ = false;
         picojson::parse(out, reply, reply + size, &err);
         free(reply);
         if (!err.empty()) {
