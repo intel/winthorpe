@@ -63,6 +63,15 @@
     });
   }
 
+  function _addPropertyWithSetterGetter(obj, prop, setter, getter) {
+    Object.defineProperty(obj, prop, {
+      set: setter,
+      get: getter,
+      configurable: true,
+      enumerable: true
+    });
+  }
+
   extension.setMessageListener(function(json) {
     var msg = JSON.parse(json);
     var reqno = msg.reqno;
@@ -407,6 +416,12 @@
 
   function SpeechSynthesisUtterance(text) {
     this._id = -1;
+    var _text = text ? text: '';
+    var _lang = 'english';
+    var _voiceURI = null;
+    var _volume = 1.0;
+    var _rate = 0.0;
+    var _pitch = 1.0;
 
     EventTarget.call(this, [
       'start',
@@ -418,14 +433,48 @@
       'boundary'
     ]);
 
-    _addProperty(this, 'text', text);
-    _addProperty(this, 'lang', 'english');
-    _addProperty(this, 'voiceURI');
-    _addProperty(this, 'volume', 1.0);
-    _addProperty(this, 'rate', 0, 0);
-    _addProperty(this, 'pitch', 1.0);
-
     var ut = this;
+
+    function setAttribute(name, value) {
+      if (ut._id == -1) {
+        DBG('Ignoring setAttribute request as no id preset for this object');
+        return;
+      }
+      var set = {};
+      set[name] = value;
+      _sendSyncMessage({
+        'reqno': _getNextReqId(),
+        'type': 'set',
+        'id': ut._id,
+        'set': set
+      });
+    }
+
+    _addPropertyWithSetterGetter(this, 'text', function(text) {
+      _text = text;
+      setAttribute('text', _text);
+    }, function() { return _text; });
+    _addPropertyWithSetterGetter(this, 'lang', function(lang) {
+      _lang = lang;
+      setAttribute('lang', lang);
+    }, function() { return _lang; });
+    _addPropertyWithSetterGetter(this, 'voiceURI', function(uri) {
+      _voiceURI = uri;
+      setAttribute('voiceURI', uri);
+    }, function() { return _voiceURI; });
+    _addPropertyWithSetterGetter(this, 'volume', function(volume) {
+      _volume = volume;
+      setAttribute('volume', volume);
+    }, function() { return _volume; });
+    _addPropertyWithSetterGetter(this, 'rate', function(rate) {
+      _rate = rate;
+      setAttribute('rate', rate);
+    }, function() { return _rate; });
+    _addPropertyWithSetterGetter(this, 'pitch', function(pitch) {
+      _pitch = pitch;
+      setAttribute('pitch', pitch);
+    }, function() { return _pitch; });
+
 
     this.addEventListener('end', function() {
       _dynamic_objects[ut._id] = null;
