@@ -487,7 +487,7 @@ static void disamb_del_client(srs_client_t *client, void *api_data)
     int       i;
 
     for (i = 0; i < client->ncommand; i++) {
-        mrp_debug("unregistering client command %s/#d", client->id, i);
+        mrp_debug("unregistering client command %s/#%d", client->id, i);
         unregister_command(dis, client, i);
     }
 }
