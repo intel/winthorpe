@@ -79,8 +79,8 @@ int input_buffer_initialize(context_t *ctx, size_t size, size_t minreq)
     inpbuf->minreq = minreq;
 
     if (ctx->verbose) {
-        mrp_debug("input buffer length: %u byte (%.3lf sec), "
-                  "min. request %u byte (%.3lf sec)",
+        mrp_debug("input buffer length: %zu byte (%.3lf sec), "
+                  "min. request %zu byte (%.3lf sec)",
                   size, (double)(size/sizeof(int16)) / (double)opts->rate,
                   minreq, (double)(minreq/sizeof(int16)) / (double)opts->rate);
     }
@@ -144,7 +144,7 @@ void input_buffer_process_data(context_t *ctx, const void *buf, size_t len)
         return;
 
     if (ctx->verbose)
-        mrp_debug("processing %u byte input data", inpbuf->len);
+        mrp_debug("processing %zu byte input data", inpbuf->len);
 
     if (!inpbuf->calibrated) {
         if (cont_ad_calib(cont) < 0) {

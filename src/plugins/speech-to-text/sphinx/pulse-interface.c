@@ -172,7 +172,7 @@ static int stream_create(context_t *ctx)
 
         if (ctx->verbose) {
             mrp_debug("sphinx plugin: calibration requires %u samples "
-                      "(%.3lf sec)", calsiz / sizeof(int16),
+                      "(%.3lf sec)", (unsigned int)(calsiz / sizeof(int16)),
                       (double)(calsiz / sizeof(int16)) / (double)rate);
         }
 

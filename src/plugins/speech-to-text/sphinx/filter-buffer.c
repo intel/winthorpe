@@ -146,7 +146,7 @@ void filter_buffer_purge(context_t *ctx, int32_t length)
             filtbuf->len = filtbuf->len - length + sillen;
 
             if (ctx->verbose) {
-                mrp_debug("purging buffer. %d samples preserved out of %u",
+                mrp_debug("purging buffer. %d samples preserved out of %zu",
                               filtbuf->len, origlen);
             }
 
