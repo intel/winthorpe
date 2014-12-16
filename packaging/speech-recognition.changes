@@ -1,3 +1,8 @@
+* Tue Dec 16 18:04:32:30 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.12
+- sphinx: fix a few incorrect mrp_debug usages.
+- simple-disambiguator: fix a few incorrect mrp_debug usages.
+- festival: don't use typeof in C++.
+
 * Thu Dec 11 14:40:30 EEST 2014 Krisztian Litkey <kli@iki.fi> - 0.0.11
 - crosswalk-extension: fix setting SpeechSynthesisUtterance.text.
 - Fixes: TC-661.
