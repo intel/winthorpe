@@ -33,7 +33,7 @@ static voice_t *find_voice_entry(const char *name)
     mrp_list_hook_t *p, *n;
 
     mrp_list_foreach(&ventries, p, n) {
-        v = mrp_list_entry(p, typeof(*v), hook);
+        v = mrp_list_entry(p, voice_t, hook);
 
         if (!strcmp(v->name, name))
             return v;
@@ -173,7 +173,7 @@ void carnival_exit(void)
     voice_t         *v;
 
     mrp_list_foreach(&ventries, p, n) {
-        v = mrp_list_entry(p, typeof(*v), hook);
+        v = mrp_list_entry(p, voice_t, hook);
 
         mrp_list_delete(&v->hook);
 
@@ -206,7 +206,7 @@ int carnival_available_voices(char ***voicesp, int *nvoicep)
         return -1;
 
     mrp_list_foreach(&ventries, p, n) {
-        v = mrp_list_entry(p, typeof(*v), hook);
+        v = mrp_list_entry(p, voice_t, hook);
 
         if (!v->name)
             continue;
@@ -245,7 +245,7 @@ int carnival_loaded_voices(char ***voicesp, int *nvoicep)
         return -1;
 
     mrp_list_foreach(&ventries, p, n) {
-        v = mrp_list_entry(p, typeof(*v), hook);
+        v = mrp_list_entry(p, voice_t, hook);
 
         if (!v->language)
             continue;
